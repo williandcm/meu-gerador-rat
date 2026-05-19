@@ -11,21 +11,35 @@
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; }
         h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
-        textarea { width: 100%; height: 180px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; font-size: 14px; }
+        textarea { width: 100%; height: 150px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; font-size: 14px; }
+        
+        /* Painel de Preview */
+        #previewArea { display: none; background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .preview-label { font-size: 12px; color: #64748b; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+        .preview-inc { font-size: 20px; color: #1e293b; font-weight: bold; border-left: 4px solid #3b82f6; padding-left: 10px; }
+
         .btn-group { display: flex; gap: 10px; }
         button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 15px; }
-        .btn-save { background: #3b82f6; color: white; }
+        .btn-preview { background: #64748b; color: white; }
+        .btn-save { background: #3b82f6; color: white; display: none; }
         .btn-pdf { background: #10b981; color: white; display: none; }
-        button:disabled { background: #cbd5e1; cursor: not-allowed; }
+        
         #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Sistema RAT Santander</h2>
-    <textarea id="textoBruto" placeholder="Cole aqui o conteúdo do chamado..."></textarea>
+    <h2>📄 Gerador de RAT</h2>
     
+    <textarea id="textoBruto" placeholder="Cole o conteúdo do chamado aqui..." oninput="atualizarPreview()"></textarea>
+    
+    <div id="previewArea">
+        <div class="preview-label">Número detectado para o carimbo:</div>
+        <div id="incDetectado" class="preview-inc">---</div>
+        <p style="font-size: 11px; color: #94a3b8; margin-top: 10px;">Posição configurada: X:123, Y:768 | Cor: Preto</p>
+    </div>
+
     <div class="btn-group">
         <button id="btnSave" class="btn-save" onclick="processarRAT()">1. Salvar Atendimento</button>
         <button id="btnDownload" class="btn-pdf" onclick="carimbarPDF()">2. Gerar PDF Carimbado</button>
@@ -35,36 +49,38 @@
 </div>
 
 <script>
-    // Configurações do Supabase - Verificadas
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
-    // Link direto para o seu PDF no Storage
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let numeroIncAtual = '';
 
-    function mostrarStatus(msg, cor, duracao = 0) {
-        const s = document.getElementById('status');
-        s.style.display = 'block';
-        s.style.background = cor;
-        s.innerText = msg;
-        if (duracao > 0) setTimeout(() => { s.style.display = 'none'; }, duracao);
+    // Função que roda enquanto você digita/cola
+    function atualizarPreview() {
+        const texto = document.getElementById('textoBruto').value.trim();
+        const areaPreview = document.getElementById('previewArea');
+        const displayInc = document.getElementById('incDetectado');
+        const btnSave = document.getElementById('btnSave');
+
+        if (texto.length > 5) {
+            const match = /(INC\d+)/i.exec(texto);
+            numeroIncAtual = match ? match[1].toUpperCase() : "NÃO DETECTADO";
+            
+            displayInc.innerText = numeroIncAtual;
+            areaPreview.style.display = 'block';
+            
+            // Só mostra o botão de salvar se detectou algo ou se tem texto
+            btnSave.style.display = 'block';
+        } else {
+            areaPreview.style.display = 'none';
+            btnSave.style.display = 'none';
+        }
     }
 
     async function processarRAT() {
         const texto = document.getElementById('textoBruto').value.trim();
-        if (!texto) {
-            mostrarStatus("⚠️ Cole o texto antes de salvar.", "#fee2e2", 3000);
-            return;
-        }
-
-        // Tenta encontrar o padrão INC seguido de números
-        const match = /(INC\d+)/i.exec(texto);
-        numeroIncAtual = match ? match[1].toUpperCase() : "AVULSO-" + Date.now().toString().slice(-4);
-
-        mostrarStatus("⌛ Conectando ao Supabase...", "#e0f2fe");
-        document.getElementById('btnSave').disabled = true;
+        mostrarStatus("⌛ Salvando no banco...", "#e0f2fe");
 
         try {
             const { error } = await supabaseClient
@@ -74,61 +90,45 @@
             if (error) throw error;
 
             document.getElementById('btnDownload').style.display = 'block';
-            mostrarStatus("✅ Salvo com sucesso! Agora gere o PDF.", "#dcfce7");
+            mostrarStatus("✅ Salvo! Pode gerar o PDF.", "#dcfce7");
         } catch (err) {
-            console.error(err);
-            mostrarStatus("❌ Erro ao salvar: " + err.message, "#fee2e2");
-        } finally {
-            document.getElementById('btnSave').disabled = false;
+            mostrarStatus("❌ Erro: " + err.message, "#fee2e2");
         }
     }
 
     async function carimbarPDF() {
         try {
-            mostrarStatus("⌛ Carimbando... Isso pode levar alguns segundos.", "#e0f2fe");
-            
-            // Carrega os bytes do PDF com política de cache desativada para evitar erros
-            const response = await fetch(URL_MODELO_PDF, { cache: "no-store" });
-            if (!response.ok) throw new Error("Não consegui baixar o modelo do Storage.");
-            
+            mostrarStatus("⌛ Gerando PDF...", "#e0f2fe");
+            const response = await fetch(URL_MODELO_PDF);
             const existingPdfBytes = await response.arrayBuffer();
-
-            // Inicia a edição com PDF-LIB
             const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
             const pages = pdfDoc.getPages();
             const firstPage = pages[0];
 
-            // --- RÉGUA DE CALIBRAÇÃO (Remova depois que acertar a posição) ---
-            for (let i = 0; i <= 600; i += 50) {
-                firstPage.drawText(i.toString(), { x: i, y: 10, size: 8, color: PDFLib.rgb(0.7, 0.7, 0.7) });
-            }
-            for (let i = 0; i <= 850; i += 50) {
-                firstPage.drawText(i.toString(), { x: 10, y: i, size: 8, color: PDFLib.rgb(0.7, 0.7, 0.7) });
-            }
-            // ---------------------------------------------------------------
-
-            // ESCREVE O INC NO CAMPO (Ajuste X e Y baseado nos números da régua)
             firstPage.drawText(numeroIncAtual, {
                 x: 123, 
                 y: 768, 
                 size: 11,
-                color: PDFLib.rgb(0.9, 0, 0), // Vermelho Santander
+                color: PDFLib.rgb(0, 0, 0),
             });
 
             const pdfBytes = await pdfDoc.save();
-            
-            // Download do arquivo
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = `RAT_${numeroIncAtual}.pdf`;
             link.click();
 
-            mostrarStatus("✅ PDF Gerado!", "#dcfce7", 4000);
+            mostrarStatus("✅ Pronto!", "#dcfce7", 3000);
         } catch (err) {
-            console.error(err);
-            mostrarStatus("❌ Erro no PDF: Verifique se o arquivo no Storage é público.", "#fee2e2");
+            mostrarStatus("❌ Erro no PDF.", "#fee2e2");
         }
+    }
+
+    function mostrarStatus(msg, cor, tempo = 0) {
+        const s = document.getElementById('status');
+        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
+        if(tempo > 0) setTimeout(() => s.style.display = 'none', tempo);
     }
 </script>
 
