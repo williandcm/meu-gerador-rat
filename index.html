@@ -18,11 +18,11 @@
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
         
-        /* Área do PDF */
         #pdfPreviewContainer { display: none; width: 100%; margin-top: 20px; border-top: 2px solid #e2e8f0; padding-top: 20px; }
         #pdfViewer { width: 100%; height: 600px; border: 1px solid #cbd5e1; border-radius: 8px; }
         
         #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; width: 100%; box-sizing: border-box; }
+        .info-detectada { background: #f1f5f9; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; color: #475569; }
     </style>
 </head>
 <body>
@@ -30,24 +30,23 @@
 <div class="card">
     <h2>📄 Gerador de RAT Santander</h2>
     
-    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="detectarINC()"></textarea>
+    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="processarDados()"></textarea>
     
-    <div style="margin-bottom: 15px; font-weight: bold; color: #1e293b;">
-        INC Detectado: <span id="displayInc" style="color: #3b82f6;">---</span>
+    <div class="info-detectada">
+        <strong>INC:</strong> <span id="displayInc">---</span> | 
+        <strong>Hora Partida:</strong> <span id="displayHora">--</span>: <span id="displayMin">--</span>
     </div>
 
     <div class="btn-group">
-        <button id="btnSave" class="btn-save" onclick="processarRAT()">1. Salvar Atendimento</button>
+        <button id="btnSave" class="btn-save" onclick="salvarNoBanco()">1. Salvar Atendimento</button>
         <button class="btn-pdf" onclick="gerarVisualizacao()">2. Visualizar RAT Carimbada</button>
     </div>
 
     <div id="status"></div>
 
     <div id="pdfPreviewContainer">
-        <h3 style="font-size: 14px; color: #64748b; margin-bottom: 10px;">Prévia do Documento:</h3>
-        <object id="pdfViewer" data="" type="application/pdf">
-            <p>Seu navegador não suporta visualização de PDF. <a id="pdfLinkFallback" href="#" target="_blank">Clique aqui para abrir diretamente.</a></p>
-        </object>
+        <h3 style="font-size: 14px; color: #64748b; margin-bottom: 10px;">Prévia da RAT:</h3>
+        <object id="pdfViewer" data="" type="application/pdf" style="width:100%; height:600px;"></object>
     </div>
 </div>
 
@@ -57,69 +56,95 @@
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    let numeroIncAtual = '';
+    
+    let dadosAtendimento = {
+        inc: '',
+        hora: '',
+        minuto: ''
+    };
 
-    function detectarINC() {
-        const texto = document.getElementById('textoBruto').value.trim();
-        const match = /(INC\d+)/i.exec(texto);
-        numeroIncAtual = match ? match[1].toUpperCase() : "NÃO DETECTADO";
-        document.getElementById('displayInc').innerText = numeroIncAtual;
+    function processarDados() {
+        const texto = document.getElementById('textoBruto').value;
+        
+        // 1. Detectar INC
+        const matchInc = /(INC\d+)/i.exec(texto);
+        dadosAtendimento.inc = matchInc ? matchInc[1].toUpperCase() : "NÃO DETECTADO";
+        
+        // 2. Detectar Hora de Partida (Extraído de "Data de Chegada :")
+        // O regex busca por "Data de Chegada :" ignorando espaços e pegando o padrão HH:mm
+        const matchHora = /Data de Chegada\s*:\s*(\d{2}):(\d{2})/i.exec(texto);
+        if (matchHora) {
+            dadosAtendimento.hora = matchHora[1];
+            dadosAtendimento.minuto = matchHora[2];
+        } else {
+            dadosAtendimento.hora = '--';
+            dadosAtendimento.minuto = '--';
+        }
+
+        // Atualizar exibição na tela
+        document.getElementById('displayInc').innerText = dadosAtendimento.inc;
+        document.getElementById('displayHora').innerText = dadosAtendimento.hora;
+        document.getElementById('displayMin').innerText = dadosAtendimento.minuto;
     }
 
-    async function processarRAT() {
+    async function salvarNoBanco() {
         const texto = document.getElementById('textoBruto').value.trim();
-        if(!texto) return alert("Cole o texto primeiro!");
-        mostrarStatus("⌛ Gravando no Supabase...", "#e0f2fe");
+        if(!texto) return alert("Cole o texto!");
+        mostrarStatus("⌛ Salvando...", "#e0f2fe");
 
         try {
             const { error } = await supabaseClient
                 .from('chamados')
-                .insert([{ numero_inc: numeroIncAtual, texto_bruto: texto, analista: 'Willian' }]);
+                .insert([{ 
+                    numero_inc: dadosAtendimento.inc, 
+                    texto_bruto: texto, 
+                    analista: 'Willian' 
+                }]);
             if (error) throw error;
-            mostrarStatus("✅ Salvo com sucesso!", "#dcfce7", 3000);
-        } catch (err) {
-            alert("Erro: " + err.message);
-        }
+            mostrarStatus("✅ Salvo!", "#dcfce7", 3000);
+        } catch (err) { alert(err.message); }
     }
 
     async function gerarVisualizacao() {
         try {
-            mostrarStatus("⌛ Gerando visualização...", "#e0f2fe");
+            mostrarStatus("⌛ Carimbando PDF...", "#e0f2fe");
             
-            // Carregando o PDF ignorando o cache para evitar erros de permissão antiga
-            const response = await fetch(URL_MODELO_PDF, { mode: 'cors' });
-            if (!response.ok) throw new Error("Erro ao acessar o arquivo no Supabase Storage.");
-            
+            const response = await fetch(URL_MODELO_PDF);
             const bytes = await response.arrayBuffer();
             const pdfDoc = await PDFLib.PDFDocument.load(bytes);
             const firstPage = pdfDoc.getPages()[0];
 
-            // Coordenadas: X=123, Y=768, Tamanho=11, Cor=Preto
-            firstPage.drawText(numeroIncAtual, {
-                x: 123, 
-                y: 768, 
-                size: 11,
-                color: PDFLib.rgb(0, 0, 0) 
+            // 1. CARIMBO DO INC (Coordenada que você já ajustou)
+            firstPage.drawText(dadosAtendimento.inc, {
+                x: 123, y: 768, size: 11, color: PDFLib.rgb(0, 0, 0) 
             });
 
-            const pdfBytes = await pdfDoc.save();
-            const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const pdfUrl = URL.createObjectURL(pdfBlob);
+            // 2. CARIMBO DA HORA DE PARTIDA
+            // Ajuste o X e Y abaixo para cair nos quadradinhos da HORA
+            if(dadosAtendimento.hora !== '--') {
+                firstPage.drawText(dadosAtendimento.hora, {
+                    x: 100, // <--- AJUSTE AQUI (HORA)
+                    y: 700, // <--- AJUSTE AQUI (HORA)
+                    size: 11,
+                    color: PDFLib.rgb(0, 0, 0)
+                });
 
-            // Atualiza o visualizador
-            const viewer = document.getElementById('pdfViewer');
-            const fallbackLink = document.getElementById('pdfLinkFallback');
-            
-            viewer.data = pdfUrl;
-            fallbackLink.href = pdfUrl;
-            
+                // Ajuste o X e Y abaixo para cair nos quadradinhos dos MINUTOS
+                firstPage.drawText(dadosAtendimento.minuto, {
+                    x: 130, // <--- AJUSTE AQUI (MINUTO)
+                    y: 700, // <--- AJUSTE AQUI (MINUTO)
+                    size: 11,
+                    color: PDFLib.rgb(0, 0, 0)
+                });
+            }
+
+            const pdfBytes = await pdfDoc.save();
+            const pdfUrl = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
+            document.getElementById('pdfViewer').data = pdfUrl;
             document.getElementById('pdfPreviewContainer').style.display = 'block';
-            mostrarStatus("✅ Pronto!", "#dcfce7", 2000);
+            mostrarStatus("✅ Visualização pronta!", "#dcfce7", 2000);
             
-        } catch (e) {
-            console.error(e);
-            alert("Erro ao abrir a RAT: Verifique se o arquivo no Supabase está como 'Public'.");
-        }
+        } catch (e) { alert("Erro ao gerar PDF."); }
     }
 
     function mostrarStatus(msg, cor, t=0) {
