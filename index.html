@@ -32,7 +32,7 @@
 <div class="card">
     <h2>📄 Sistema de RAT Santander</h2>
     
-    <textarea id="textoBruto" placeholder="Cole o chamado completo aqui..." oninput="extrairDados()"></textarea>
+    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
         <div class="info-item">
@@ -71,16 +71,80 @@
         
         // Extrai INC
         const mInc = /(INC\d+)/i.exec(texto);
-        dados.inc = mInc ? mInc[1].toUpperCase() : "NÃO ENCONTRADO";
+        dados.inc = mInc ? mInc[1].toUpperCase() : "---";
         
-        // Extrai Hora após a Data (Ex: Data de Chegada : 19/05/2026 14:30)
-        // O regex procura por "Data de Chegada :", pula a data e pega HH:mm
-        const mHora = /Data de Chegada\s*:\s*\d{2}\/\d{2}\/\d{4}\s+(\d{2}):(\d{2})/i.exec(texto);
+        // Regex aprimorado: Procura "Data de Início" ou "Data de Chegada", pula a data e pega HH e mm
+        const regexHorario = /(?:Data de Início|Data de Chegada)\s*:\s*\d{2}\/\d{2}\/\d{4}\s+(\d{2}):(\d{2})/i;
+        const mHora = regexHorario.exec(texto);
         
         if (mHora) {
             dados.hora = mHora[1];
             dados.min = mHora[2];
         } else {
-            // Caso não tenha a data no meio, tenta o formato simples HH:mm
-            const mHoraSimples = /Data de Chegada\s*:\s*(\d{2}):(\d{2})/i.exec(texto);
-            dados.hora = mHoraSim
+            dados.hora = "00";
+            dados.min = "00";
+        }
+
+        document.getElementById('pInc').innerText = dados.inc;
+        document.getElementById('pHora').innerText = dados.hora;
+        document.getElementById('pMin').innerText = dados.min;
+    }
+
+    async function salvarAtendimento() {
+        const texto = document.getElementById('textoBruto').value.trim();
+        if(!texto) return;
+        mostrarStatus("⌛ Gravando...", "#e0f2fe");
+        try {
+            const { error } = await supabaseClient.from('chamados').insert([{ 
+                numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' 
+            }]);
+            if (error) throw error;
+            mostrarStatus("✅ Salvo no Supabase!", "#dcfce7", 2000);
+        } catch (e) { alert("Erro ao salvar: " + e.message); }
+    }
+
+    async function visualizarRAT() {
+        try {
+            mostrarStatus("⌛ Gerando Preview...", "#e0f2fe");
+            const res = await fetch(URL_MODELO_PDF);
+            const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
+            const page = pdfDoc.getPages()[0];
+
+            // 1. CARIMBO INC (Posição que você já validou)
+            page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: PDFLib.rgb(0,0,0) });
+
+            // 2. CARIMBO HORA E MINUTOS (Separados)
+            if(dados.hora !== "00") {
+                // Ajuste as coordenadas X e Y conforme a posição dos quadradinhos da sua RAT
+                // QUADRADO DA HORA
+                page.drawText(dados.hora, { 
+                    x: 235, // <--- AJUSTE AQUI
+                    y: 690, // <--- AJUSTE AQUI
+                    size: 11, 
+                    color: PDFLib.rgb(0,0,0) 
+                });
+
+                // QUADRADO DOS MINUTOS
+                page.drawText(dados.min, { 
+                    x: 265, // <--- AJUSTE AQUI
+                    y: 690, // <--- AJUSTE AQUI
+                    size: 11, 
+                    color: PDFLib.rgb(0,0,0) 
+                });
+            }
+
+            const pdfUrl = URL.createObjectURL(new Blob([await pdfDoc.save()], {type:'application/pdf'}));
+            document.getElementById('pdfViewer').data = pdfUrl;
+            document.getElementById('previewContainer').style.display = 'block';
+            mostrarStatus("✅ Pronto!", "#dcfce7", 2000);
+        } catch (e) { alert("Erro ao processar PDF"); }
+    }
+
+    function mostrarStatus(msg, cor, t=0) {
+        const s = document.getElementById('status');
+        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
+        if(t > 0) setTimeout(() => s.style.display = 'none', t);
+    }
+</script>
+</body>
+</html>
