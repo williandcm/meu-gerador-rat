@@ -16,111 +16,119 @@
         button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 15px; }
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; display: none; }
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
-        #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
-        .info-calibracao { margin-top: 10px; font-size: 12px; color: #64748b; text-align: center; }
+        button:disabled { background: #cbd5e1; cursor: not-allowed; }
+        #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Carimbador de RAT</h2>
-    <textarea id="textoBruto" placeholder="Cole aqui os dados do chamado (incluindo o INC)..."></textarea>
+    <h2>📄 Sistema RAT Santander</h2>
+    <textarea id="textoBruto" placeholder="Cole aqui o conteúdo do chamado..."></textarea>
     
     <div class="btn-group">
-        <button class="btn-save" onclick="processarRAT()">1. Salvar Atendimento</button>
+        <button id="btnSave" class="btn-save" onclick="processarRAT()">1. Salvar Atendimento</button>
         <button id="btnDownload" class="btn-pdf" onclick="carimbarPDF()">2. Gerar PDF Carimbado</button>
     </div>
 
     <div id="status"></div>
-    <p class="info-calibracao">O PDF gerado terá uma régua lateral para ajudar a encontrar a posição exata.</p>
 </div>
 
 <script>
-    // Configurações do seu projeto
+    // Configurações do Supabase - Verificadas
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
+    // Link direto para o seu PDF no Storage
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let numeroIncAtual = '';
 
-    // Função para salvar no banco de dados
+    function mostrarStatus(msg, cor, duracao = 0) {
+        const s = document.getElementById('status');
+        s.style.display = 'block';
+        s.style.background = cor;
+        s.innerText = msg;
+        if (duracao > 0) setTimeout(() => { s.style.display = 'none'; }, duracao);
+    }
+
     async function processarRAT() {
-        const texto = document.getElementById('textoBruto').value;
-        if (!texto.trim()) {
-            mostrarStatus("⚠️ Por favor, cole o texto do chamado.", "#fee2e2");
+        const texto = document.getElementById('textoBruto').value.trim();
+        if (!texto) {
+            mostrarStatus("⚠️ Cole o texto antes de salvar.", "#fee2e2", 3000);
             return;
         }
 
+        // Tenta encontrar o padrão INC seguido de números
         const match = /(INC\d+)/i.exec(texto);
         numeroIncAtual = match ? match[1].toUpperCase() : "AVULSO-" + Date.now().toString().slice(-4);
 
-        mostrarStatus("⌛ Salvando no Supabase...", "#e0f2fe");
+        mostrarStatus("⌛ Conectando ao Supabase...", "#e0f2fe");
+        document.getElementById('btnSave').disabled = true;
 
-        const { error } = await supabaseClient
-            .from('chamados')
-            .insert([{ numero_inc: numeroIncAtual, texto_bruto: texto, analista: 'Willian' }]);
+        try {
+            const { error } = await supabaseClient
+                .from('chamados')
+                .insert([{ numero_inc: numeroIncAtual, texto_bruto: texto, analista: 'Willian' }]);
 
-        if (error) {
-            mostrarStatus("❌ Erro ao salvar: " + error.message, "#fee2e2");
-        } else {
+            if (error) throw error;
+
             document.getElementById('btnDownload').style.display = 'block';
-            mostrarStatus("✅ Salvo! Agora clique em Gerar PDF.", "#dcfce7");
+            mostrarStatus("✅ Salvo com sucesso! Agora gere o PDF.", "#dcfce7");
+        } catch (err) {
+            console.error(err);
+            mostrarStatus("❌ Erro ao salvar: " + err.message, "#fee2e2");
+        } finally {
+            document.getElementById('btnSave').disabled = false;
         }
     }
 
-    // Função para buscar o modelo no Storage e carimbar o INC
     async function carimbarPDF() {
         try {
-            mostrarStatus("⌛ Processando PDF...", "#e0f2fe");
-
-            // 1. Busca o arquivo original que você subiu no Storage
-            const response = await fetch(URL_MODELO_PDF);
-            if (!response.ok) throw new Error("Não foi possível carregar o modelo do Supabase.");
+            mostrarStatus("⌛ Carimbando... Isso pode levar alguns segundos.", "#e0f2fe");
+            
+            // Carrega os bytes do PDF com política de cache desativada para evitar erros
+            const response = await fetch(URL_MODELO_PDF, { cache: "no-store" });
+            if (!response.ok) throw new Error("Não consegui baixar o modelo do Storage.");
             
             const existingPdfBytes = await response.arrayBuffer();
+
+            // Inicia a edição com PDF-LIB
             const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
             const pages = pdfDoc.getPages();
             const firstPage = pages[0];
 
-            // --- FERRAMENTA DE CALIBRAÇÃO (REGUA) ---
-            // Desenha números de 50 em 50 para você se localizar na folha
+            // --- RÉGUA DE CALIBRAÇÃO (Remova depois que acertar a posição) ---
             for (let i = 0; i <= 600; i += 50) {
-                firstPage.drawText(i.toString(), { x: i, y: 5, size: 8, color: PDFLib.rgb(0.6, 0.6, 0.6) });
+                firstPage.drawText(i.toString(), { x: i, y: 10, size: 8, color: PDFLib.rgb(0.7, 0.7, 0.7) });
             }
             for (let i = 0; i <= 850; i += 50) {
-                firstPage.drawText(i.toString(), { x: 5, y: i, size: 8, color: PDFLib.rgb(0.6, 0.6, 0.6) });
+                firstPage.drawText(i.toString(), { x: 10, y: i, size: 8, color: PDFLib.rgb(0.7, 0.7, 0.7) });
             }
-            // ----------------------------------------
+            // ---------------------------------------------------------------
 
-            // 2. ESCREVE O NÚMERO DO CHAMADO (O CARIMBO)
-            // AJUSTE AQUI após ver o PDF com a régua:
+            // ESCREVE O INC NO CAMPO (Ajuste X e Y baseado nos números da régua)
             firstPage.drawText(numeroIncAtual, {
-                x: 435, // Posição horizontal (Eixo X)
-                y: 755, // Posição vertical (Eixo Y)
-                size: 14,
-                color: PDFLib.rgb(0.8, 0, 0), // Vermelho
+                x: 435, 
+                y: 755, 
+                size: 15,
+                color: PDFLib.rgb(0.9, 0, 0), // Vermelho Santander
             });
 
-            // 3. Finaliza e baixa o documento
             const pdfBytes = await pdfDoc.save();
+            
+            // Download do arquivo
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `RAT_${numeroIncAtual}_Carimbada.pdf`;
+            link.download = `RAT_${numeroIncAtual}.pdf`;
             link.click();
 
-            mostrarStatus("✅ PDF Carimbado com sucesso!", "#dcfce7");
+            mostrarStatus("✅ PDF Gerado!", "#dcfce7", 4000);
         } catch (err) {
             console.error(err);
-            mostrarStatus("❌ Erro ao gerar PDF: " + err.message, "#fee2e2");
+            mostrarStatus("❌ Erro no PDF: Verifique se o arquivo no Storage é público.", "#fee2e2");
         }
-    }
-
-    function mostrarStatus(msg, cor) {
-        const s = document.getElementById('status');
-        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
     }
 </script>
 
