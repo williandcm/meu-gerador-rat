@@ -69,11 +69,11 @@
     function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         
-        // Extrai INC
+        // 1. Extrai INC
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
         
-        // Regex aprimorado: Procura "Data de Início" ou "Data de Chegada", pula a data e pega HH e mm
+        // 2. Extrai Hora (Data de Início ou Data de Chegada)
         const regexHorario = /(?:Data de Início|Data de Chegada)\s*:\s*\d{2}\/\d{2}\/\d{4}\s+(\d{2}):(\d{2})/i;
         const mHora = regexHorario.exec(texto);
         
@@ -110,24 +110,33 @@
             const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
             const page = pdfDoc.getPages()[0];
 
-            // 1. CARIMBO INC (Posição que você já validou)
+            // --- FERRAMENTA DE CALIBRAÇÃO (REGUA) ---
+            // Desenha números de 50 em 50 para você se localizar na folha
+            for (let i = 0; i <= 600; i += 50) {
+                page.drawText(i.toString(), { x: i, y: 10, size: 8, color: PDFLib.rgb(0.7, 0.7, 0.7) });
+            }
+            for (let i = 0; i <= 850; i += 50) {
+                page.drawText(i.toString(), { x: 10, y: i, size: 8, color: PDFLib.rgb(0.7, 0.7, 0.7) });
+            }
+            // ----------------------------------------
+
+            // 1. CARIMBO INC
             page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: PDFLib.rgb(0,0,0) });
 
-            // 2. CARIMBO HORA E MINUTOS (Separados)
+            // 2. CARIMBO HORA E MINUTOS
             if(dados.hora !== "00") {
-                // Ajuste as coordenadas X e Y conforme a posição dos quadradinhos da sua RAT
-                // QUADRADO DA HORA
+                // QUADRADO DA HORA (Ajuste X e Y baseado nos números da régua)
                 page.drawText(dados.hora, { 
-                    x: 235, // <--- AJUSTE AQUI
-                    y: 690, // <--- AJUSTE AQUI
+                    x: 235, // <--- AJUSTAR APÓS VER A RÉGUA
+                    y: 690, // <--- AJUSTAR APÓS VER A RÉGUA
                     size: 11, 
                     color: PDFLib.rgb(0,0,0) 
                 });
 
-                // QUADRADO DOS MINUTOS
+                // QUADRADO DOS MINUTOS (Ajuste X e Y baseado nos números da régua)
                 page.drawText(dados.min, { 
-                    x: 265, // <--- AJUSTE AQUI
-                    y: 690, // <--- AJUSTE AQUI
+                    x: 265, // <--- AJUSTAR APÓS VER A RÉGUA
+                    y: 690, // <--- AJUSTAR APÓS VER A RÉGUA
                     size: 11, 
                     color: PDFLib.rgb(0,0,0) 
                 });
@@ -136,7 +145,7 @@
             const pdfUrl = URL.createObjectURL(new Blob([await pdfDoc.save()], {type:'application/pdf'}));
             document.getElementById('pdfViewer').data = pdfUrl;
             document.getElementById('previewContainer').style.display = 'block';
-            mostrarStatus("✅ Pronto!", "#dcfce7", 2000);
+            mostrarStatus("✅ Visualização com Régua Pronta!", "#dcfce7", 2000);
         } catch (e) { alert("Erro ao processar PDF"); }
     }
 
