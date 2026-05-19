@@ -9,35 +9,47 @@
     
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 650px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
         h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
-        textarea { width: 100%; height: 120px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; font-size: 14px; }
-        #previewContainer { display: none; background: #ffffff; border: 2px dashed #cbd5e1; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .preview-text { font-family: monospace; font-size: 13px; background: #f8fafc; padding: 10px; border-radius: 4px; white-space: pre-wrap; max-height: 100px; overflow-y: auto; }
-        .btn-group { display: flex; gap: 10px; }
+        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
+        
+        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
         button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 15px; }
         .btn-save { background: #3b82f6; color: white; }
-        .btn-pdf { background: #10b981; color: white; display: none; }
-        #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
+        .btn-pdf { background: #10b981; color: white; }
+        
+        /* Área do PDF */
+        #pdfPreviewContainer { display: none; width: 100%; margin-top: 20px; border-top: 2px solid #e2e8f0; padding-top: 20px; }
+        #pdfIframe { width: 100%; height: 500px; border: 1px solid #cbd5e1; border-radius: 8px; }
+        
+        #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; width: 100%; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Gerador de RAT</h2>
-    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="mostrarPreview()"></textarea>
+    <h2>📄 Gerador e Visualizador de RAT</h2>
     
-    <div id="previewContainer">
-        <div style="font-size: 11px; color: #3b82f6; font-weight: bold;">PRÉ-VISUALIZAÇÃO:</div>
-        <div style="font-size: 16px; font-weight: bold; margin: 5px 0;">INC: <span id="pInc">---</span></div>
-        <div id="pTexto" class="preview-text"></div>
+    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="detectarINC()"></textarea>
+    
+    <div style="margin-bottom: 15px; font-weight: bold; color: #1e293b;">
+        INC Detectado: <span id="displayInc" style="color: #3b82f6;">---</span>
     </div>
 
     <div class="btn-group">
         <button id="btnSave" class="btn-save" onclick="processarRAT()">1. Salvar Atendimento</button>
-        <button id="btnDownload" class="btn-pdf" onclick="carimbarPDF()">2. Gerar PDF Carimbado</button>
+        <button class="btn-pdf" onclick="gerarPreviewPDF()">2. Visualizar RAT Carimbada</button>
     </div>
+
     <div id="status"></div>
+
+    <div id="pdfPreviewContainer">
+        <h3 style="font-size: 14px; color: #64748b; margin-bottom: 10px;">Visualização Prévia do Documento:</h3>
+        <iframe id="pdfIframe"></iframe>
+        <p style="text-align: center; margin-top: 10px; font-size: 12px; color: #94a3b8;">
+            Se estiver tudo correto, o arquivo já pode ser impresso ou salvo pelo visualizador acima.
+        </p>
+    </div>
 </div>
 
 <script>
@@ -48,71 +60,32 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let numeroIncAtual = '';
 
-    function mostrarPreview() {
+    function detectarINC() {
         const texto = document.getElementById('textoBruto').value.trim();
-        const container = document.getElementById('previewContainer');
-        if (texto.length > 5) {
-            const match = /(INC\d+)/i.exec(texto);
-            numeroIncAtual = match ? match[1].toUpperCase() : "NÃO IDENTIFICADO";
-            document.getElementById('pInc').innerText = numeroIncAtual;
-            document.getElementById('pTexto').innerText = texto;
-            container.style.display = 'block';
-        } else { container.style.display = 'none'; }
+        const match = /(INC\d+)/i.exec(texto);
+        numeroIncAtual = match ? match[1].toUpperCase() : "NÃO IDENTIFICADO";
+        document.getElementById('displayInc').innerText = numeroIncAtual;
     }
 
     async function processarRAT() {
         const texto = document.getElementById('textoBruto').value.trim();
         if(!texto) return alert("Cole o texto primeiro!");
 
-        mostrarStatus("⌛ Tentando salvar...", "#e0f2fe");
+        mostrarStatus("⌛ Salvando no Supabase...", "#e0f2fe");
 
         try {
-            // Tenta inserir os dados
             const { error } = await supabaseClient
                 .from('chamados')
-                .insert([{ 
-                    numero_inc: numeroIncAtual, 
-                    texto_bruto: texto, 
-                    analista: 'Willian' 
-                }]);
+                .insert([{ numero_inc: numeroIncAtual, texto_bruto: texto, analista: 'Willian' }]);
 
-            if (error) {
-                console.error(error);
-                alert("ERRO DO SUPABASE: " + error.message);
-                mostrarStatus("❌ Falha ao salvar", "#fee2e2");
-            } else {
-                document.getElementById('btnDownload').style.display = 'block';
-                mostrarStatus("✅ Salvo com sucesso!", "#dcfce7");
-            }
+            if (error) throw error;
+            mostrarStatus("✅ Dados salvos com sucesso!", "#dcfce7", 3000);
         } catch (err) {
-            alert("ERRO CRÍTICO: " + err.message);
+            alert("Erro ao salvar: " + err.message);
+            mostrarStatus("❌ Erro na gravação", "#fee2e2");
         }
     }
 
-    async function carimbarPDF() {
+    async function gerarPreviewPDF() {
         try {
-            mostrarStatus("⌛ Gerando PDF...", "#e0f2fe");
-            const response = await fetch(URL_MODELO_PDF);
-            const bytes = await response.arrayBuffer();
-            const pdfDoc = await PDFLib.PDFDocument.load(bytes);
-            const firstPage = pdfDoc.getPages()[0];
-
-            firstPage.drawText(numeroIncAtual, { x: 123, y: 768, size: 11, color: PDFLib.rgb(0, 0, 0) });
-
-            const pdfBytes = await pdfDoc.save();
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
-            link.download = `RAT_${numeroIncAtual}.pdf`;
-            link.click();
-            mostrarStatus("✅ Pronto!", "#dcfce7", 3000);
-        } catch (e) { alert("Erro no PDF: " + e.message); }
-    }
-
-    function mostrarStatus(msg, cor, t=0) {
-        const s = document.getElementById('status');
-        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
-        if(t > 0) setTimeout(() => s.style.display = 'none', t);
-    }
-</script>
-</body>
-</html>
+            mostrarStatus("⌛ Gerando visualização...", "#e0
