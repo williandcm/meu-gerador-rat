@@ -6,78 +6,72 @@
     <title>Gerador de RAT - Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 550px; }
-        h2 { color: #1e293b; margin-top: 0; text-align: center; }
-        .instrucao { color: #64748b; font-size: 0.9em; margin-bottom: 15px; }
-        textarea { width: 100%; height: 180px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; margin-bottom: 15px; resize: none; font-size: 14px; }
-        textarea:focus { border-color: #3b82f6; outline: none; }
-        button { background: #3b82f6; color: white; border: none; padding: 14px 20px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; margin-bottom: 20px; }
+        h2 { color: #1e293b; margin-top: 0; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
+        textarea { width: 100%; height: 150px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; }
+        button { background: #3b82f6; color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px; }
         button:hover { background: #2563eb; }
-        #status { margin-top: 20px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: 500; }
+        #ratVisual { display: none; background: #fff; border: 2px dashed #3b82f6; padding: 20px; border-radius: 8px; margin-top: 20px; }
+        .rat-header { display: flex; justify-content: space-between; font-weight: bold; color: #2563eb; margin-bottom: 15px; }
+        .rat-body { background: #f8fafc; padding: 15px; border-radius: 6px; white-space: pre-wrap; font-family: monospace; }
+        #status { margin-top: 15px; padding: 10px; border-radius: 6px; display: none; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Sistema de Chamados</h2>
-    <p class="instrucao">Cole o conteúdo do chamado (INC) abaixo para registrar no banco de dados.</p>
-    
-    <textarea id="textoBruto" placeholder="Ex: Chamado INC123456..."></textarea>
-    
-    <button onclick="processarRAT()">Salvar no Supabase</button>
-    
+    <h2>📄 Gerador de RAT</h2>
+    <textarea id="textoBruto" placeholder="Cole aqui o texto do chamado..."></textarea>
+    <button onclick="processarRAT()">Salvar e Gerar Visualização</button>
     <div id="status"></div>
+
+    <div id="ratVisual">
+        <div class="rat-header">
+            <span>RELATÓRIO DE ATENDIMENTO (RAT)</span>
+            <span id="vInc"></span>
+        </div>
+        <div class="rat-body" id="vCorpo"></div>
+        <p style="font-size: 0.8em; color: #64748b; margin-top: 10px;">Analista: Willian | Data: <span id="vData"></span></p>
+    </div>
 </div>
 
 <script>
-    // Configurações do seu projeto (Já preenchidas!)
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
-
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     async function processarRAT() {
         const texto = document.getElementById('textoBruto').value;
         const statusDiv = document.getElementById('status');
         
-        if (!texto.trim()) {
-            mostrarStatus("Por favor, cole o texto do chamado.", "#fee2e2");
-            return;
-        }
+        if (!texto.trim()) return;
 
-        // Tenta encontrar o número do INC no texto
         const match = /(INC\d+)/i.exec(texto);
-        const numeroInc = match ? match[1].toUpperCase() : "INC-AVULSO-" + Date.now();
+        const numeroInc = match ? match[1].toUpperCase() : "INC-AVULSO";
 
-        mostrarStatus("Enviando para o banco de dados...", "#e0f2fe");
-
-        // Insere na tabela 'chamados' que você criou
-        const { data, error } = await supabaseClient
+        // 1. Salva no Banco
+        const { error } = await supabaseClient
             .from('chamados')
-            .insert([
-                { 
-                    numero_inc: numeroInc, 
-                    texto_bruto: texto, 
-                    analista: 'Willian',
-                    link_rat: 'Pendente'
-                }
-            ]);
+            .insert([{ numero_inc: numeroInc, texto_bruto: texto, analista: 'Willian' }]);
 
         if (error) {
-            console.error(error);
-            mostrarStatus("Erro ao salvar: " + error.message, "#fee2e2");
+            statusDiv.style.display = 'block';
+            statusDiv.style.background = '#fee2e2';
+            statusDiv.innerText = "Erro: " + error.message;
         } else {
-            mostrarStatus("✅ Sucesso! Chamado " + numeroInc + " registrado.", "#dcfce7");
-            document.getElementById('textoBruto').value = '';
+            // 2. Preenche e mostra a RAT na tela
+            document.getElementById('vInc').innerText = "Nº " + numeroInc;
+            document.getElementById('vData').innerText = new Date().toLocaleDateString();
+            
+            // Aqui você pode personalizar o que aparece na visualização
+            document.getElementById('vCorpo').innerText = "DESCRIÇÃO DO ATENDIMENTO:\n" + texto;
+            
+            document.getElementById('ratVisual').style.display = 'block';
+            statusDiv.style.display = 'block';
+            statusDiv.style.background = '#dcfce7';
+            statusDiv.innerText = "✅ Salvo e Gerado!";
         }
-    }
-
-    function mostrarStatus(mensagem, cor) {
-        const statusDiv = document.getElementById('status');
-        statusDiv.style.display = 'block';
-        statusDiv.style.background = cor;
-        statusDiv.innerText = mensagem;
     }
 </script>
 
