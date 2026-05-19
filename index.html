@@ -8,21 +8,25 @@
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 650px; }
         h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
-        textarea { width: 100%; height: 150px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; font-size: 14px; }
         
-        /* Painel de Preview */
-        #previewArea { display: none; background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .preview-label { font-size: 12px; color: #64748b; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
-        .preview-inc { font-size: 20px; color: #1e293b; font-weight: bold; border-left: 4px solid #3b82f6; padding-left: 10px; }
+        textarea { width: 100%; height: 120px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; font-size: 14px; }
+        
+        /* Estilo da Área de Visualização */
+        #previewContainer { display: none; background: #ffffff; border: 2px dashed #cbd5e1; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .preview-header { font-size: 11px; color: #3b82f6; font-weight: bold; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+        .preview-row { margin-bottom: 10px; }
+        .preview-label { font-size: 12px; color: #64748b; font-weight: bold; }
+        .preview-value { font-size: 16px; color: #1e293b; font-weight: bold; }
+        .preview-text { font-family: 'Courier New', monospace; font-size: 13px; background: #f8fafc; padding: 10px; border-radius: 4px; border: 1px solid #e2e8f0; white-space: pre-wrap; max-height: 150px; overflow-y: auto; }
 
         .btn-group { display: flex; gap: 10px; }
         button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 15px; }
-        .btn-preview { background: #64748b; color: white; }
-        .btn-save { background: #3b82f6; color: white; display: none; }
+        .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; display: none; }
+        button:disabled { background: #cbd5e1; cursor: not-allowed; }
         
         #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; font-size: 14px; }
     </style>
@@ -30,14 +34,21 @@
 <body>
 
 <div class="card">
-    <h2>📄 Gerador de RAT</h2>
+    <h2>📄 Sistema de RAT - Preview</h2>
     
-    <textarea id="textoBruto" placeholder="Cole o conteúdo do chamado aqui..." oninput="atualizarPreview()"></textarea>
+    <textarea id="textoBruto" placeholder="Cole o conteúdo do chamado aqui..." oninput="mostrarPreview()"></textarea>
     
-    <div id="previewArea">
-        <div class="preview-label">Número detectado para o carimbo:</div>
-        <div id="incDetectado" class="preview-inc">---</div>
-        <p style="font-size: 11px; color: #94a3b8; margin-top: 10px;">Posição configurada: X:123, Y:768 | Cor: Preto</p>
+    <div id="previewContainer">
+        <div class="preview-header">👀 Pré-visualização dos Dados</div>
+        <div class="preview-row">
+            <span class="preview-label">Número do Chamado (Carimbo):</span><br>
+            <span id="pInc" class="preview-value">---</span>
+        </div>
+        <div class="preview-row">
+            <span class="preview-label">Texto que será arquivado:</span>
+            <div id="pTexto" class="preview-text">---</div>
+        </div>
+        <p style="font-size: 10px; color: #94a3b8; text-align: right; margin: 0;">Posição: X=123, Y=768 | Cor: Preto</p>
     </div>
 
     <div class="btn-group">
@@ -56,32 +67,29 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let numeroIncAtual = '';
 
-    // Função que roda enquanto você digita/cola
-    function atualizarPreview() {
+    // Função que atualiza o Preview enquanto você digita ou cola
+    function mostrarPreview() {
         const texto = document.getElementById('textoBruto').value.trim();
-        const areaPreview = document.getElementById('previewArea');
-        const displayInc = document.getElementById('incDetectado');
-        const btnSave = document.getElementById('btnSave');
+        const container = document.getElementById('previewContainer');
+        const pInc = document.getElementById('pInc');
+        const pTexto = document.getElementById('pTexto');
 
         if (texto.length > 5) {
             const match = /(INC\d+)/i.exec(texto);
-            numeroIncAtual = match ? match[1].toUpperCase() : "NÃO DETECTADO";
+            numeroIncAtual = match ? match[1].toUpperCase() : "NÃO IDENTIFICADO";
             
-            displayInc.innerText = numeroIncAtual;
-            areaPreview.style.display = 'block';
-            
-            // Só mostra o botão de salvar se detectou algo ou se tem texto
-            btnSave.style.display = 'block';
+            pInc.innerText = numeroIncAtual;
+            pTexto.innerText = texto;
+            container.style.display = 'block';
         } else {
-            areaPreview.style.display = 'none';
-            btnSave.style.display = 'none';
+            container.style.display = 'none';
         }
     }
 
     async function processarRAT() {
         const texto = document.getElementById('textoBruto').value.trim();
-        mostrarStatus("⌛ Salvando no banco...", "#e0f2fe");
-
+        mostrarStatus("⌛ Enviando para o banco de dados...", "#e0f2fe");
+        
         try {
             const { error } = await supabaseClient
                 .from('chamados')
@@ -90,47 +98,16 @@
             if (error) throw error;
 
             document.getElementById('btnDownload').style.display = 'block';
-            mostrarStatus("✅ Salvo! Pode gerar o PDF.", "#dcfce7");
+            mostrarStatus("✅ Dados salvos com sucesso!", "#dcfce7");
         } catch (err) {
-            mostrarStatus("❌ Erro: " + err.message, "#fee2e2");
+            mostrarStatus("❌ Erro ao salvar: " + err.message, "#fee2e2");
         }
     }
 
     async function carimbarPDF() {
         try {
-            mostrarStatus("⌛ Gerando PDF...", "#e0f2fe");
+            mostrarStatus("⌛ Gerando sua RAT carimbada...", "#e0f2fe");
             const response = await fetch(URL_MODELO_PDF);
             const existingPdfBytes = await response.arrayBuffer();
             const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
-            const pages = pdfDoc.getPages();
-            const firstPage = pages[0];
-
-            firstPage.drawText(numeroIncAtual, {
-                x: 123, 
-                y: 768, 
-                size: 11,
-                color: PDFLib.rgb(0, 0, 0),
-            });
-
-            const pdfBytes = await pdfDoc.save();
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `RAT_${numeroIncAtual}.pdf`;
-            link.click();
-
-            mostrarStatus("✅ Pronto!", "#dcfce7", 3000);
-        } catch (err) {
-            mostrarStatus("❌ Erro no PDF.", "#fee2e2");
-        }
-    }
-
-    function mostrarStatus(msg, cor, tempo = 0) {
-        const s = document.getElementById('status');
-        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
-        if(tempo > 0) setTimeout(() => s.style.display = 'none', tempo);
-    }
-</script>
-
-</body>
-</html>
+            const pages = pdfDoc.get
