@@ -9,44 +9,51 @@
     
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 850px; }
         h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
-        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
+        textarea { width: 100%; height: 120px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
         
-        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; }
+        .info-painel { display: flex; gap: 20px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; justify-content: center; }
+        .info-item { text-align: center; }
+        .info-label { display: block; font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+        .info-value { font-size: 18px; color: #1e293b; font-weight: bold; }
+
+        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
         button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 15px; }
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
         
-        #pdfPreviewContainer { display: none; width: 100%; margin-top: 20px; border-top: 2px solid #e2e8f0; padding-top: 20px; }
-        #pdfViewer { width: 100%; height: 600px; border: 1px solid #cbd5e1; border-radius: 8px; }
-        
-        #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; width: 100%; box-sizing: border-box; }
-        .info-detectada { background: #f1f5f9; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; color: #475569; }
+        #pdfViewer { width: 100%; height: 600px; border: 1px solid #cbd5e1; border-radius: 8px; margin-top: 10px; }
+        #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Gerador de RAT Santander</h2>
+    <h2>📄 Sistema de RAT Santander</h2>
     
-    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="processarDados()"></textarea>
+    <textarea id="textoBruto" placeholder="Cole o chamado completo aqui..." oninput="extrairDados()"></textarea>
     
-    <div class="info-detectada">
-        <strong>INC:</strong> <span id="displayInc">---</span> | 
-        <strong>Hora Partida:</strong> <span id="displayHora">--</span>: <span id="displayMin">--</span>
+    <div class="info-painel">
+        <div class="info-item">
+            <span class="info-label">Chamado</span>
+            <span id="pInc" class="info-value">---</span>
+        </div>
+        <div class="info-item" style="border-left: 1px solid #e2e8f0; padding-left: 20px;">
+            <span class="info-label">Hora Partida</span>
+            <span class="info-value"><span id="pHora">00</span>:<span id="pMin">00</span></span>
+        </div>
     </div>
 
     <div class="btn-group">
-        <button id="btnSave" class="btn-save" onclick="salvarNoBanco()">1. Salvar Atendimento</button>
-        <button class="btn-pdf" onclick="gerarVisualizacao()">2. Visualizar RAT Carimbada</button>
+        <button class="btn-save" onclick="salvarAtendimento()">1. Salvar no Banco</button>
+        <button class="btn-pdf" onclick="visualizarRAT()">2. Visualizar RAT Carimbada</button>
     </div>
 
     <div id="status"></div>
 
-    <div id="pdfPreviewContainer">
-        <h3 style="font-size: 14px; color: #64748b; margin-bottom: 10px;">Prévia da RAT:</h3>
-        <object id="pdfViewer" data="" type="application/pdf" style="width:100%; height:600px;"></object>
+    <div id="previewContainer" style="display:none; width: 100%;">
+        <object id="pdfViewer" data="" type="application/pdf"></object>
     </div>
 </div>
 
@@ -57,101 +64,23 @@
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    let dadosAtendimento = {
-        inc: '',
-        hora: '',
-        minuto: ''
-    };
+    let dados = { inc: '', hora: '00', min: '00' };
 
-    function processarDados() {
+    function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         
-        // 1. Detectar INC
-        const matchInc = /(INC\d+)/i.exec(texto);
-        dadosAtendimento.inc = matchInc ? matchInc[1].toUpperCase() : "NÃO DETECTADO";
+        // Extrai INC
+        const mInc = /(INC\d+)/i.exec(texto);
+        dados.inc = mInc ? mInc[1].toUpperCase() : "NÃO ENCONTRADO";
         
-        // 2. Detectar Hora de Partida (Extraído de "Data de Chegada :")
-        // O regex busca por "Data de Chegada :" ignorando espaços e pegando o padrão HH:mm
-        const matchHora = /Data de Chegada\s*:\s*(\d{2}):(\d{2})/i.exec(texto);
-        if (matchHora) {
-            dadosAtendimento.hora = matchHora[1];
-            dadosAtendimento.minuto = matchHora[2];
+        // Extrai Hora após a Data (Ex: Data de Chegada : 19/05/2026 14:30)
+        // O regex procura por "Data de Chegada :", pula a data e pega HH:mm
+        const mHora = /Data de Chegada\s*:\s*\d{2}\/\d{2}\/\d{4}\s+(\d{2}):(\d{2})/i.exec(texto);
+        
+        if (mHora) {
+            dados.hora = mHora[1];
+            dados.min = mHora[2];
         } else {
-            dadosAtendimento.hora = '--';
-            dadosAtendimento.minuto = '--';
-        }
-
-        // Atualizar exibição na tela
-        document.getElementById('displayInc').innerText = dadosAtendimento.inc;
-        document.getElementById('displayHora').innerText = dadosAtendimento.hora;
-        document.getElementById('displayMin').innerText = dadosAtendimento.minuto;
-    }
-
-    async function salvarNoBanco() {
-        const texto = document.getElementById('textoBruto').value.trim();
-        if(!texto) return alert("Cole o texto!");
-        mostrarStatus("⌛ Salvando...", "#e0f2fe");
-
-        try {
-            const { error } = await supabaseClient
-                .from('chamados')
-                .insert([{ 
-                    numero_inc: dadosAtendimento.inc, 
-                    texto_bruto: texto, 
-                    analista: 'Willian' 
-                }]);
-            if (error) throw error;
-            mostrarStatus("✅ Salvo!", "#dcfce7", 3000);
-        } catch (err) { alert(err.message); }
-    }
-
-    async function gerarVisualizacao() {
-        try {
-            mostrarStatus("⌛ Carimbando PDF...", "#e0f2fe");
-            
-            const response = await fetch(URL_MODELO_PDF);
-            const bytes = await response.arrayBuffer();
-            const pdfDoc = await PDFLib.PDFDocument.load(bytes);
-            const firstPage = pdfDoc.getPages()[0];
-
-            // 1. CARIMBO DO INC (Coordenada que você já ajustou)
-            firstPage.drawText(dadosAtendimento.inc, {
-                x: 123, y: 768, size: 11, color: PDFLib.rgb(0, 0, 0) 
-            });
-
-            // 2. CARIMBO DA HORA DE PARTIDA
-            // Ajuste o X e Y abaixo para cair nos quadradinhos da HORA
-            if(dadosAtendimento.hora !== '--') {
-                firstPage.drawText(dadosAtendimento.hora, {
-                    x: 100, // <--- AJUSTE AQUI (HORA)
-                    y: 700, // <--- AJUSTE AQUI (HORA)
-                    size: 11,
-                    color: PDFLib.rgb(0, 0, 0)
-                });
-
-                // Ajuste o X e Y abaixo para cair nos quadradinhos dos MINUTOS
-                firstPage.drawText(dadosAtendimento.minuto, {
-                    x: 130, // <--- AJUSTE AQUI (MINUTO)
-                    y: 700, // <--- AJUSTE AQUI (MINUTO)
-                    size: 11,
-                    color: PDFLib.rgb(0, 0, 0)
-                });
-            }
-
-            const pdfBytes = await pdfDoc.save();
-            const pdfUrl = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
-            document.getElementById('pdfViewer').data = pdfUrl;
-            document.getElementById('pdfPreviewContainer').style.display = 'block';
-            mostrarStatus("✅ Visualização pronta!", "#dcfce7", 2000);
-            
-        } catch (e) { alert("Erro ao gerar PDF."); }
-    }
-
-    function mostrarStatus(msg, cor, t=0) {
-        const s = document.getElementById('status');
-        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
-        if(t > 0) setTimeout(() => s.style.display = 'none', t);
-    }
-</script>
-</body>
-</html>
+            // Caso não tenha a data no meio, tenta o formato simples HH:mm
+            const mHoraSimples = /Data de Chegada\s*:\s*(\d{2}):(\d{2})/i.exec(texto);
+            dados.hora = mHoraSim
