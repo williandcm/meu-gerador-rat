@@ -1,105 +1,41 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de RAT - Willian</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-    
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; }
-        h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
-        textarea { width: 100%; height: 150px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
-        .btn-group { display: flex; gap: 10px; }
-        button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; }
-        .btn-save { background: #3b82f6; color: white; }
-        .btn-pdf { background: #10b981; color: white; display: none; }
-        #status { margin-top: 15px; padding: 10px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
-    </style>
-</head>
-<body>
-
-<div class="card">
-    <h2>📄 Sistema de Carimbo RAT</h2>
-    <textarea id="textoBruto" placeholder="Cole os dados do chamado aqui..."></textarea>
-    
-    <div class="btn-group">
-        <button class="btn-save" onclick="processarRAT()">1. Salvar Atendimento</button>
-        <button id="btnDownload" class="btn-pdf" onclick="carimbarPDF()">2. Gerar PDF Carimbado</button>
-    </div>
-
-    <div id="status"></div>
-</div>
-
-<script>
-    const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // Link do seu modelo que você acabou de me passar
-    const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
-
-    let numeroIncAtual = '';
-
-    async function processarRAT() {
-        const texto = document.getElementById('textoBruto').value;
-        if (!texto.trim()) return;
-
-        const match = /(INC\d+)/i.exec(texto);
-        numeroIncAtual = match ? match[1].toUpperCase() : "SEM-INC";
-
-        const { error } = await supabaseClient
-            .from('chamados')
-            .insert([{ numero_inc: numeroIncAtual, texto_bruto: texto, analista: 'Willian' }]);
-
-        if (error) {
-            mostrarStatus("Erro ao salvar: " + error.message, "#fee2e2");
-        } else {
-            document.getElementById('btnDownload').style.display = 'block';
-            mostrarStatus("✅ Dados salvos! Pronto para carimbar o PDF original.", "#dcfce7");
-        }
-    }
+// ... (mantenha o início igual)
 
     async function carimbarPDF() {
         try {
-            mostrarStatus("⌛ Buscando modelo no Supabase...", "#e0f2fe");
-
+            mostrarStatus("⌛ Gerando PDF...", "#e0f2fe");
             const existingPdfBytes = await fetch(URL_MODELO_PDF).then(res => res.arrayBuffer());
             const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
             const pages = pdfDoc.getPages();
             const firstPage = pages[0];
 
-            // --- AJUSTE O CARIMBO AQUI ---
-            // x: horizontal (aumentar vai para direita)
-            // y: vertical (aumentar vai para cima)
+            // --- FERRAMENTA DE CALIBRAÇÃO (Remova quando acertar o lugar) ---
+            // Desenha números a cada 50 pontos para você se localizar
+            for (let i = 0; i < 600; i += 50) {
+                firstPage.drawText(i.toString(), { x: i, y: 10, size: 8, color: PDFLib.rgb(0.5, 0.5, 0.5) }); 
+            }
+            for (let i = 0; i < 850; i += 50) {
+                firstPage.drawText(i.toString(), { x: 10, y: i, size: 8, color: PDFLib.rgb(0.5, 0.5, 0.5) });
+            }
+            // ---------------------------------------------------------------
+
+            // ONDE O CARIMBO VAI CAIR:
+            // Tentei ajustar para o padrão do Santander (Geralmente no topo à direita)
             firstPage.drawText(numeroIncAtual, {
-                x: 440, 
-                y: 755, 
-                size: 16,
-                color: PDFLib.rgb(0.8, 0, 0), // Vermelho
+                x: 435, // Se precisar ir para a DIREITA, aumente. ESQUERDA, diminua.
+                y: 755, // Se precisar SUBIR, aumente. DESCER, diminua.
+                size: 14,
+                color: PDFLib.rgb(0.8, 0, 0),
             });
 
             const pdfBytes = await pdfDoc.save();
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `RAT_${numeroIncAtual}_Preenchida.pdf`;
+            link.download = `CALIBRACAO_${numeroIncAtual}.pdf`;
             link.click();
 
-            mostrarStatus("✅ PDF Carimbado com Sucesso!", "#dcfce7");
+            mostrarStatus("✅ PDF Gerado! Verifique os números na borda.", "#dcfce7");
         } catch (err) {
-            console.error(err);
-            mostrarStatus("Erro ao processar PDF. Verifique a URL pública.", "#fee2e2");
+            mostrarStatus("Erro ao processar PDF.", "#fee2e2");
         }
     }
-
-    function mostrarStatus(msg, cor) {
-        const s = document.getElementById('status');
-        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
-    }
-</script>
-
-</body>
-</html>
