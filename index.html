@@ -1,41 +1,128 @@
-// ... (mantenha o início igual)
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de RAT - Willian</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; }
+        h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
+        textarea { width: 100%; height: 180px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; font-size: 14px; }
+        .btn-group { display: flex; gap: 10px; }
+        button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 15px; }
+        .btn-save { background: #3b82f6; color: white; }
+        .btn-pdf { background: #10b981; color: white; display: none; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
+        .info-calibracao { margin-top: 10px; font-size: 12px; color: #64748b; text-align: center; }
+    </style>
+</head>
+<body>
 
+<div class="card">
+    <h2>📄 Carimbador de RAT</h2>
+    <textarea id="textoBruto" placeholder="Cole aqui os dados do chamado (incluindo o INC)..."></textarea>
+    
+    <div class="btn-group">
+        <button class="btn-save" onclick="processarRAT()">1. Salvar Atendimento</button>
+        <button id="btnDownload" class="btn-pdf" onclick="carimbarPDF()">2. Gerar PDF Carimbado</button>
+    </div>
+
+    <div id="status"></div>
+    <p class="info-calibracao">O PDF gerado terá uma régua lateral para ajudar a encontrar a posição exata.</p>
+</div>
+
+<script>
+    // Configurações do seu projeto
+    const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
+    const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let numeroIncAtual = '';
+
+    // Função para salvar no banco de dados
+    async function processarRAT() {
+        const texto = document.getElementById('textoBruto').value;
+        if (!texto.trim()) {
+            mostrarStatus("⚠️ Por favor, cole o texto do chamado.", "#fee2e2");
+            return;
+        }
+
+        const match = /(INC\d+)/i.exec(texto);
+        numeroIncAtual = match ? match[1].toUpperCase() : "AVULSO-" + Date.now().toString().slice(-4);
+
+        mostrarStatus("⌛ Salvando no Supabase...", "#e0f2fe");
+
+        const { error } = await supabaseClient
+            .from('chamados')
+            .insert([{ numero_inc: numeroIncAtual, texto_bruto: texto, analista: 'Willian' }]);
+
+        if (error) {
+            mostrarStatus("❌ Erro ao salvar: " + error.message, "#fee2e2");
+        } else {
+            document.getElementById('btnDownload').style.display = 'block';
+            mostrarStatus("✅ Salvo! Agora clique em Gerar PDF.", "#dcfce7");
+        }
+    }
+
+    // Função para buscar o modelo no Storage e carimbar o INC
     async function carimbarPDF() {
         try {
-            mostrarStatus("⌛ Gerando PDF...", "#e0f2fe");
-            const existingPdfBytes = await fetch(URL_MODELO_PDF).then(res => res.arrayBuffer());
+            mostrarStatus("⌛ Processando PDF...", "#e0f2fe");
+
+            // 1. Busca o arquivo original que você subiu no Storage
+            const response = await fetch(URL_MODELO_PDF);
+            if (!response.ok) throw new Error("Não foi possível carregar o modelo do Supabase.");
+            
+            const existingPdfBytes = await response.arrayBuffer();
             const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
             const pages = pdfDoc.getPages();
             const firstPage = pages[0];
 
-            // --- FERRAMENTA DE CALIBRAÇÃO (Remova quando acertar o lugar) ---
-            // Desenha números a cada 50 pontos para você se localizar
-            for (let i = 0; i < 600; i += 50) {
-                firstPage.drawText(i.toString(), { x: i, y: 10, size: 8, color: PDFLib.rgb(0.5, 0.5, 0.5) }); 
+            // --- FERRAMENTA DE CALIBRAÇÃO (REGUA) ---
+            // Desenha números de 50 em 50 para você se localizar na folha
+            for (let i = 0; i <= 600; i += 50) {
+                firstPage.drawText(i.toString(), { x: i, y: 5, size: 8, color: PDFLib.rgb(0.6, 0.6, 0.6) });
             }
-            for (let i = 0; i < 850; i += 50) {
-                firstPage.drawText(i.toString(), { x: 10, y: i, size: 8, color: PDFLib.rgb(0.5, 0.5, 0.5) });
+            for (let i = 0; i <= 850; i += 50) {
+                firstPage.drawText(i.toString(), { x: 5, y: i, size: 8, color: PDFLib.rgb(0.6, 0.6, 0.6) });
             }
-            // ---------------------------------------------------------------
+            // ----------------------------------------
 
-            // ONDE O CARIMBO VAI CAIR:
-            // Tentei ajustar para o padrão do Santander (Geralmente no topo à direita)
+            // 2. ESCREVE O NÚMERO DO CHAMADO (O CARIMBO)
+            // AJUSTE AQUI após ver o PDF com a régua:
             firstPage.drawText(numeroIncAtual, {
-                x: 435, // Se precisar ir para a DIREITA, aumente. ESQUERDA, diminua.
-                y: 755, // Se precisar SUBIR, aumente. DESCER, diminua.
+                x: 435, // Posição horizontal (Eixo X)
+                y: 755, // Posição vertical (Eixo Y)
                 size: 14,
-                color: PDFLib.rgb(0.8, 0, 0),
+                color: PDFLib.rgb(0.8, 0, 0), // Vermelho
             });
 
+            // 3. Finaliza e baixa o documento
             const pdfBytes = await pdfDoc.save();
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `CALIBRACAO_${numeroIncAtual}.pdf`;
+            link.download = `RAT_${numeroIncAtual}_Carimbada.pdf`;
             link.click();
 
-            mostrarStatus("✅ PDF Gerado! Verifique os números na borda.", "#dcfce7");
+            mostrarStatus("✅ PDF Carimbado com sucesso!", "#dcfce7");
         } catch (err) {
-            mostrarStatus("Erro ao processar PDF.", "#fee2e2");
+            console.error(err);
+            mostrarStatus("❌ Erro ao gerar PDF: " + err.message, "#fee2e2");
         }
     }
+
+    function mostrarStatus(msg, cor) {
+        const s = document.getElementById('status');
+        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
+    }
+</script>
+
+</body>
+</html>
