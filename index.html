@@ -5,152 +5,99 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerador de RAT - Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; }
-        h2 { color: #1e293b; margin-top: 0; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; text-align: center; }
-        .instrucao { color: #64748b; font-size: 0.9em; margin-bottom: 15px; text-align: center; }
-        
-        textarea { width: 100%; height: 150px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; font-size: 14px; box-sizing: border-box; }
-        textarea:focus { border-color: #3b82f6; outline: none; }
-
+        h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
+        textarea { width: 100%; height: 150px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
         .btn-group { display: flex; gap: 10px; }
-        button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; border: none; transition: 0.3s; }
+        button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; }
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; display: none; }
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
-
-        #status { margin-top: 15px; padding: 10px; border-radius: 6px; display: none; text-align: center; width: 100%; font-weight: 500; }
-
-        /* Estilo da Visualização da RAT na Tela */
-        #ratVisual { display: none; background: #fff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; margin-top: 20px; width: 100%; box-sizing: border-box; }
-        .rat-header { border-bottom: 2px solid #1e293b; margin-bottom: 15px; padding-bottom: 5px; font-weight: bold; font-size: 18px; display: flex; justify-content: space-between; }
-        .carimbo-virtual { color: #ef4444; border: 2px solid #ef4444; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
-        .rat-info { font-size: 14px; color: #475569; margin-bottom: 10px; line-height: 1.6; }
-        #vCorpo { white-space: pre-wrap; background: #f8fafc; padding: 15px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; font-size: 13px; border: 1px solid #e2e8f0; }
+        #status { margin-top: 15px; padding: 10px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Sistema de RAT</h2>
-    <p class="instrucao">Cole o conteúdo do chamado para processar e carimbar.</p>
-    
-    <textarea id="textoBruto" placeholder="Cole os dados do chamado (Ex: INC067...)"></textarea>
+    <h2>📄 Sistema de Carimbo RAT</h2>
+    <textarea id="textoBruto" placeholder="Cole os dados do chamado aqui..."></textarea>
     
     <div class="btn-group">
         <button class="btn-save" onclick="processarRAT()">1. Salvar Atendimento</button>
-        <button id="btnDownload" class="btn-pdf" onclick="gerarPDF()">2. Gerar PDF Carimbado</button>
+        <button id="btnDownload" class="btn-pdf" onclick="carimbarPDF()">2. Gerar PDF Carimbado</button>
     </div>
 
     <div id="status"></div>
-
-    <div id="ratVisual">
-        <div class="rat-header">
-            <span>RELATÓRIO DIGITAL</span>
-            <span id="vInc" class="carimbo-virtual"></span>
-        </div>
-        <div class="rat-info">
-            <strong>Analista:</strong> Willian <br>
-            <strong>Data do Registro:</strong> <span id="vData"></span>
-        </div>
-        <div id="vCorpo"></div>
-    </div>
 </div>
 
 <script>
-    // Configurações do Supabase
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let dadosAtuais = { inc: '', texto: '' };
+    // Link do seu modelo que você acabou de me passar
+    const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
+
+    let numeroIncAtual = '';
 
     async function processarRAT() {
         const texto = document.getElementById('textoBruto').value;
-        const statusDiv = document.getElementById('status');
-        
-        if (!texto.trim()) {
-            mostrarStatus("Por favor, cole o texto do chamado.", "#fee2e2");
-            return;
-        }
+        if (!texto.trim()) return;
 
-        // Busca o número do INC no texto
         const match = /(INC\d+)/i.exec(texto);
-        const numeroInc = match ? match[1].toUpperCase() : "AVULSO-" + Date.now().toString().slice(-5);
-        
-        dadosAtuais = { inc: numeroInc, texto: texto };
+        numeroIncAtual = match ? match[1].toUpperCase() : "SEM-INC";
 
-        mostrarStatus("Salvando no banco de dados...", "#e0f2fe");
-
-        // Salva na tabela 'chamados'
         const { error } = await supabaseClient
             .from('chamados')
-            .insert([{ 
-                numero_inc: numeroInc, 
-                texto_bruto: texto, 
-                analista: 'Willian' 
-            }]);
+            .insert([{ numero_inc: numeroIncAtual, texto_bruto: texto, analista: 'Willian' }]);
 
         if (error) {
             mostrarStatus("Erro ao salvar: " + error.message, "#fee2e2");
         } else {
-            // Atualiza a visualização na tela
-            document.getElementById('vInc').innerText = numeroInc;
-            document.getElementById('vData').innerText = new Date().toLocaleString('pt-BR');
-            document.getElementById('vCorpo').innerText = texto;
-            
-            document.getElementById('ratVisual').style.display = 'block';
             document.getElementById('btnDownload').style.display = 'block';
-            mostrarStatus("✅ Salvo! Agora você pode gerar o PDF.", "#dcfce7");
+            mostrarStatus("✅ Dados salvos! Pronto para carimbar o PDF original.", "#dcfce7");
         }
     }
 
-    function gerarPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        // --- DESENHO DO "CARIMBO" NO PDF ---
-        doc.setDrawColor(239, 68, 68); // Cor vermelha
-        doc.setLineWidth(1);
-        doc.rect(140, 10, 55, 15); // Retângulo do carimbo (X, Y, Largura, Altura)
-        
-        doc.setFontSize(16);
-        doc.setTextColor(239, 68, 68);
-        doc.setFont("helvetica", "bold");
-        doc.text(dadosAtuais.inc, 167, 20, { align: "center" });
+    async function carimbarPDF() {
+        try {
+            mostrarStatus("⌛ Buscando modelo no Supabase...", "#e0f2fe");
 
-        // --- CONTEÚDO DO DOCUMENTO ---
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(18);
-        doc.text("RELATÓRIO DE ATENDIMENTO", 10, 20);
-        
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text("Analista Responsável: Willian", 10, 35);
-        doc.text("Data e Hora: " + new Date().toLocaleString('pt-BR'), 10, 40);
-        
-        doc.line(10, 45, 200, 45); // Linha divisória
+            const existingPdfBytes = await fetch(URL_MODELO_PDF).then(res => res.arrayBuffer());
+            const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
+            const pages = pdfDoc.getPages();
+            const firstPage = pages[0];
 
-        doc.setFontSize(11);
-        doc.text("CONTEÚDO ORIGINAL DO CHAMADO:", 10, 55);
-        
-        // Texto formatado com quebra automática
-        const splitText = doc.splitTextToSize(dadosAtuais.texto, 180);
-        doc.setFont("courier", "normal");
-        doc.text(splitText, 10, 65);
+            // --- AJUSTE O CARIMBO AQUI ---
+            // x: horizontal (aumentar vai para direita)
+            // y: vertical (aumentar vai para cima)
+            firstPage.drawText(numeroIncAtual, {
+                x: 440, 
+                y: 755, 
+                size: 16,
+                color: PDFLib.rgb(0.8, 0, 0), // Vermelho
+            });
 
-        // Baixa o arquivo
-        doc.save("RAT_" + dadosAtuais.inc + ".pdf");
+            const pdfBytes = await pdfDoc.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `RAT_${numeroIncAtual}_Preenchida.pdf`;
+            link.click();
+
+            mostrarStatus("✅ PDF Carimbado com Sucesso!", "#dcfce7");
+        } catch (err) {
+            console.error(err);
+            mostrarStatus("Erro ao processar PDF. Verifique a URL pública.", "#fee2e2");
+        }
     }
 
     function mostrarStatus(msg, cor) {
         const s = document.getElementById('status');
-        s.style.display = 'block';
-        s.style.background = cor;
-        s.innerText = msg;
+        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
     }
 </script>
 
