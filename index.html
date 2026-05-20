@@ -34,7 +34,7 @@
 <div class="card">
     <h2>📄 Sistema de RAT Santander</h2>
     
-    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
+    <textarea id="textoBruto" placeholder="Cole o chamado completo aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
@@ -53,7 +53,7 @@
     <div id="previewContainer">
         <iframe id="pdfIframe"></iframe>
         <br>
-        <a id="btnFallback" class="fallback-link" target="_blank">Abrir PDF em tela cheia</a>
+        <a id="btnFallback" class="fallback-link" target="_blank">Abrir em Tela Cheia</a>
     </div>
 </div>
 
@@ -109,27 +109,26 @@
             const fontColor = PDFLib.rgb(0, 0, 0);
             const rulerColor = PDFLib.rgb(0.7, 0.7, 0.7);
 
-            // --- RÉGUA DE CALIBRAÇÃO (Início) ---
+            // --- RÉGUA DE CALIBRAÇÃO (MANTIDA) ---
             for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 8, color: rulerColor }); }
             for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 8, color: rulerColor }); }
-            // --- RÉGUA DE CALIBRAÇÃO (Fim) ---
 
-            // 1. INC
+            // 1. CHAMADO
             page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
 
-            // 2. PARTIDA (Fixo)
+            // 2. HORA PARTIDA
             if(dados.partida.h !== "00") {
                 page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
                 page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
             }
 
-            // 3. CHEGADA (Fixo)
+            // 3. HORA CHEGADA
             if(dados.chegada.h !== "00") {
                 page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
                 page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
             }
 
-            // 4. ATENDIMENTO (Para ajustar com a régua)
+            // 4. HORA INICIO ATENDIMENTO (Novas Coordenadas)
             if(dados.atendimento.h !== "00") {
                 page.drawText(dados.atendimento.h, { x: 418, y: 749, size: 11, color: fontColor });
                 page.drawText(dados.atendimento.m, { x: 436, y: 749, size: 11, color: fontColor });
@@ -140,7 +139,7 @@
             document.getElementById('pdfIframe').src = pdfUrl;
             document.getElementById('btnFallback').href = pdfUrl;
             document.getElementById('previewContainer').style.display = 'block';
-            mostrarStatus("✅ Use a régua cinza para ajustar!", "#dcfce7", 3000);
+            mostrarStatus("✅ RAT Gerada!", "#dcfce7", 2000);
         } catch (e) { alert("Erro: " + e.message); }
     }
 
