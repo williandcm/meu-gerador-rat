@@ -6,152 +6,77 @@
     <title>Gerador de RAT - Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     
     <style>
-        body { 
-            font-family: 'Segoe UI', sans-serif; 
-            background: #f0f2f5; 
-            margin: 0; 
-            padding: 10px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-        }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 950px; box-sizing: border-box; }
+        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; font-size: 16px; box-sizing: border-box; }
         
-        .card { 
-            background: white; 
-            padding: 15px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
-            width: 100%; 
-            max-width: 950px; 
-            box-sizing: border-box;
-        }
-
-        h2 { color: #1e293b; text-align: center; font-size: 1.2rem; margin-bottom: 15px; }
-
-        textarea { 
-            width: 100%; 
-            height: 120px; 
-            padding: 12px; 
-            border: 2px solid #e2e8f0; 
-            border-radius: 8px; 
-            margin-bottom: 15px; 
-            resize: vertical; 
-            box-sizing: border-box; 
-            font-size: 16px;
-        }
-
-        .info-painel { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); 
-            gap: 10px; 
-            background: #f8fafc; 
-            padding: 15px; 
-            border-radius: 8px; 
-            border: 1px solid #e2e8f0; 
-            margin-bottom: 20px; 
-        }
-
+        .info-painel { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
         .info-item { text-align: center; }
-        .info-label { display: block; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+        .info-label { display: block; font-size: 10px; color: #64748b; font-weight: bold; }
         .info-value { font-size: 13px; color: #1e293b; font-weight: bold; }
 
-        .btn-group { 
-            display: flex; 
-            gap: 10px; 
-            margin-bottom: 20px; 
-            flex-wrap: wrap;
-        }
-
-        button { 
-            flex: 1; 
-            min-width: 140px; 
-            padding: 14px; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            border: none; 
-            transition: 0.3s; 
-            font-size: 15px; 
-        }
-
+        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        button { flex: 1; min-width: 140px; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; font-size: 15px; }
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
-        .btn-download { 
-            background: #f59e0b; 
-            color: white; 
-            display: none; /* Só aparece após gerar o PDF */
-            margin-top: 10px;
-            width: 100%;
-        }
 
-        #previewContainer { 
+        /* Estilo do Visualizador */
+        #canvasContainer { 
             display: none; 
             width: 100%; 
-            margin-top: 10px; 
-            height: 60vh; 
             border: 2px solid #cbd5e1; 
-            border-radius: 8px;
-            overflow: hidden;
+            border-radius: 8px; 
+            background: #525659; 
+            overflow-y: auto; 
+            max-height: 70vh; 
+            text-align: center;
+            padding: 10px 0;
         }
-
-        iframe { 
-            width: 100%; 
-            height: 100%; 
-            border: none; 
-            background: #f1f5f9; 
-        }
-
-        @media (max-width: 600px) {
-            button { width: 100%; }
-        }
+        canvas { max-width: 100%; height: auto; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 RAT Santander - Mobile</h2>
+    <h2>📄 Sistema de RAT - Visualização Direta</h2>
     <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
-        <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Patrimônio</span><span id="pPatri" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Cidade / UF</span><span id="pLocal" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">🕒 Atend.</span><span id="dispAtendimento" class="info-value">00:00</span></div>
+        <div class="info-item"><span class="info-label">Chamado</span><span id="pInc">---</span></div>
+        <div class="info-item"><span class="info-label">Patrimônio</span><span id="pPatri">---</span></div>
+        <div class="info-item"><span class="info-label">Cidade</span><span id="pLocal">---</span></div>
     </div>
 
     <div class="btn-group">
-        <button class="btn-save" onclick="salvarAtendimento()">1. Salvar Banco</button>
-        <button class="btn-pdf" id="btnGerar" onclick="visualizarRAT()">2. Gerar RAT</button>
+        <button class="btn-save" onclick="salvarAtendimento()">Salvar Banco</button>
+        <button class="btn-pdf" id="btnGerar" onclick="gerarERenderizar()">Gerar e Visualizar</button>
     </div>
 
-    <button id="btnDownload" class="btn-download" onclick="abrirPdfNovaAba()">📥 Abrir RAT no Navegador / Baixar</button>
-
-    <div id="previewContainer">
-        <iframe id="pdfIframe"></iframe>
+    <div id="canvasContainer">
+        <canvas id="pdfCanvas"></canvas>
     </div>
 </div>
 
 <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    let blobUrlAtual = null;
-    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
+    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', patri:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
     async function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         if(!texto) return;
 
-        const mInc = /(INC\d+)/i.exec(texto);
-        dados.inc = mInc ? mInc[1].toUpperCase() : "---";
-        const mPatri = /SGPI\s*:\s*(\d+)/i.exec(texto);
-        dados.patri = mPatri ? mPatri[1] : "---";
-        const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
-        dados.uniorg = mUniorg ? mUniorg[1] : "---";
+        dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1].toUpperCase();
+        dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+        dados.uniorg = (/Uniorg\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
         const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
         if (mFullEnd) {
@@ -159,8 +84,7 @@
             dados.rua = (/^([^0-9,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
             dados.num = (/(\d+)/.exec(linhaEnd.replace(dados.rua, "")) || ["","---"])[1];
             dados.cid = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
-            const mUf = /,\s*([A-Z]{2})/.exec(linhaEnd);
-            dados.uf = mUf ? mUf[1] : "";
+            dados.uf = (/,\s*([A-Z]{2})/.exec(linhaEnd) || ["",""])[1];
         }
         
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
@@ -169,11 +93,10 @@
 
         document.getElementById('pInc').innerText = dados.inc;
         document.getElementById('pPatri').innerText = dados.patri;
-        document.getElementById('pLocal').innerText = dados.uf ? `${dados.cid} / ${dados.uf}` : dados.cid;
-        document.getElementById('dispAtendimento').innerText = `${dados.a.h}:${dados.a.m}`;
+        document.getElementById('pLocal').innerText = dados.cid;
     }
 
-    async function visualizarRAT() {
+    async function gerarERenderizar() {
         const btn = document.getElementById('btnGerar');
         btn.disabled = true;
         try {
@@ -184,6 +107,7 @@
 
             const txt = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
 
+            // Carimbos
             txt(dados.inc, 123, 768);
             txt(dados.uniorg, 64, 714);
             txt(dados.rua, 79, 701, 10);
@@ -198,27 +122,27 @@
             txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
 
             const pdfBytes = await pdfDoc.save();
-            if (blobUrlAtual) URL.revokeObjectURL(blobUrlAtual);
-            
-            // Criar Blob e URL
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            blobUrlAtual = URL.createObjectURL(blob);
-            
-            // Tenta mostrar no Iframe (funciona em alguns tablets e PCs)
-            document.getElementById('pdfIframe').src = blobUrlAtual;
-            document.getElementById('previewContainer').style.display = 'block';
-            
-            // Mostra o botão de download/abrir (essencial para celulares)
-            document.getElementById('btnDownload').style.display = 'block';
+            renderPdfCanvas(pdfBytes);
 
-        } catch (e) { alert("Erro ao gerar PDF: " + e.message); }
+        } catch (e) { alert(e.message); }
         finally { btn.disabled = false; }
     }
 
-    function abrirPdfNovaAba() {
-        if (blobUrlAtual) {
-            window.open(blobUrlAtual, '_blank');
-        }
+    // Função que desenha o PDF na tela como uma imagem
+    async function renderPdfCanvas(pdfBytes) {
+        const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+        
+        const viewport = page.getViewport({scale: 1.5}); // Ajuste de qualidade
+        const canvas = document.getElementById('pdfCanvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({canvasContext: context, viewport: viewport}).promise;
+        document.getElementById('canvasContainer').style.display = 'block';
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
 
     async function salvarAtendimento() {
@@ -227,8 +151,8 @@
         try {
             const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' }]);
             if (error) throw error;
-            alert("✅ Salvo!");
-        } catch (e) { alert("Erro Banco: " + e.message); }
+            alert("Salvo!");
+        } catch (e) { alert(e.message); }
     }
 </script>
 </body>
