@@ -72,7 +72,6 @@
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
         dados.host = (/Hostname\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         
-        // Regex atualizada para SN ou Serial
         const mSn = (/(?:SN|Serial)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         dados.sn = mSn;
 
@@ -142,7 +141,7 @@
 
             txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
             txt(dados.modelo, 69, 457, 11); 
-            txt(dados.host, 78, 443, 11);
+            txt(dados.host, 78, 443, 11); // Coordenada X atualizada para 78
             txt(dados.patri, 88, 485, 11); 
             txt(dados.sn, 110, 471, 11);
 
