@@ -39,9 +39,9 @@
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Uniorg</span><span id="pUniorg" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Rua/Av</span><span id="pEndereco" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">🕒 Partida</span><span id="dispPartida" class="info-value">00:00</span></div>
         <div class="info-item"><span class="info-label">🏁 Chegada</span><span id="dispChegada" class="info-value">00:00</span></div>
-        <div class="info-item"><span class="info-label">🛠️ Atendim.</span><span id="dispAtendimento" class="info-value">00:00</span></div>
     </div>
 
     <div class="btn-group">
@@ -66,21 +66,25 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
     let dados = { 
-        inc: '', 
-        uniorg: '',
-        partida: {h:'00',m:'00'}, 
-        chegada: {h:'00',m:'00'}, 
-        atendimento: {h:'00',m:'00'} 
+        inc: '', uniorg: '', enderecoRua: '',
+        partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} 
     };
 
     function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         
+        // INC
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
 
+        // Uniorg
         const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
         dados.uniorg = mUniorg ? mUniorg[1] : "---";
+
+        // Endereço (Extrai apenas o que vem antes do primeiro número)
+        // Ex: "AV. BARAO DE ITAPURA 980" -> "AV. BARAO DE ITAPURA"
+        const mEnd = /Endereço\s*:\s*([^0-9,]+)/i.exec(texto);
+        dados.enderecoRua = mEnd ? mEnd[1].trim() : "---";
         
         const buscarHora = (label) => {
             const regex = new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
@@ -94,9 +98,9 @@
 
         document.getElementById('pInc').innerText = dados.inc;
         document.getElementById('pUniorg').innerText = dados.uniorg;
+        document.getElementById('pEndereco').innerText = dados.enderecoRua;
         document.getElementById('dispPartida').innerText = `${dados.partida.h}:${dados.partida.m}`;
         document.getElementById('dispChegada').innerText = `${dados.chegada.h}:${dados.chegada.m}`;
-        document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
     }
 
     async function salvarAtendimento() {
@@ -121,31 +125,34 @@
             const fontColor = PDFLib.rgb(0, 0, 0);
             const rulerColor = PDFLib.rgb(0.7, 0.7, 0.7);
 
-            // --- RÉGUA DE CALIBRAÇÃO (MANTIDA) ---
+            // --- RÉGUA ---
             for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 8, color: rulerColor }); }
             for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 8, color: rulerColor }); }
 
             // 1. CHAMADO
             page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
 
-            // 2. UNIORG (COORDENADAS ATUALIZADAS)
-            if(dados.uniorg !== "---") {
-                page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
+            // 2. UNIORG
+            if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
+
+            // 3. RUA / AVENIDA (AJUSTAR COM A RÉGUA)
+            if(dados.enderecoRua !== "---") {
+                page.drawText(dados.enderecoRua, { 
+                    x: 64,  // <--- AJUSTAR X
+                    y: 700, // <--- AJUSTAR Y
+                    size: 10, color: fontColor 
+                });
             }
 
-            // 3. HORA PARTIDA
+            // 4. DATAS
             if(dados.partida.h !== "00") {
                 page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
                 page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
             }
-
-            // 4. HORA CHEGADA
             if(dados.chegada.h !== "00") {
                 page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
                 page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
             }
-
-            // 5. HORA INICIO ATENDIMENTO
             if(dados.atendimento.h !== "00") {
                 page.drawText(dados.atendimento.h, { x: 418, y: 749, size: 11, color: fontColor });
                 page.drawText(dados.atendimento.m, { x: 436, y: 749, size: 11, color: fontColor });
@@ -156,7 +163,7 @@
             document.getElementById('pdfIframe').src = pdfUrl;
             document.getElementById('btnFallback').href = pdfUrl;
             document.getElementById('previewContainer').style.display = 'block';
-            mostrarStatus("✅ RAT Gerada!", "#dcfce7", 2000);
+            mostrarStatus("✅ Use a régua para o endereço!", "#dcfce7", 2000);
         } catch (e) { alert("Erro: " + e.message); }
     }
 
