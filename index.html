@@ -32,8 +32,8 @@
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Patrimônio</span><span id="pPatri" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Cidade / UF</span><span id="pLocal" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Bairro</span><span id="pBairro" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">🕒 Atend.</span><span id="dispAtendimento" class="info-value">00:00</span></div>
     </div>
 
@@ -54,14 +54,20 @@
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let blobUrlAtual = null;
-    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
+    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
     async function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         if(!texto) return;
 
+        // Extração básica
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
+        
+        // Extração Patrimônio (SGPI)
+        const mPatri = /SGPI\s*:\s*(\d+)/i.exec(texto);
+        dados.patri = mPatri ? mPatri[1] : "---";
+
         const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
         dados.uniorg = mUniorg ? mUniorg[1] : "---";
 
@@ -73,12 +79,6 @@
             dados.cid = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
             const mUf = /,\s*([A-Z]{2})/.exec(linhaEnd);
             dados.uf = mUf ? mUf[1] : "";
-
-            const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
-            if (mCep && mCep[1] !== dados.cep) {
-                dados.cep = mCep[1];
-                buscarBairro(dados.cep);
-            }
         }
         
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
@@ -86,19 +86,9 @@
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
 
         document.getElementById('pInc').innerText = dados.inc;
+        document.getElementById('pPatri').innerText = dados.patri;
         document.getElementById('pLocal').innerText = dados.uf ? `${dados.cid} / ${dados.uf}` : dados.cid;
         document.getElementById('dispAtendimento').innerText = `${dados.a.h}:${dados.a.m}`;
-    }
-
-    async function buscarBairro(cep) {
-        try {
-            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            const data = await res.json();
-            if (!data.erro) {
-                dados.bai = data.bairro.toUpperCase();
-                document.getElementById('pBairro').innerText = dados.bai;
-            }
-        } catch (e) {}
     }
 
     async function visualizarRAT() {
@@ -112,16 +102,19 @@
 
             const txt = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
 
+            // Cabeçalho e Endereço
             txt(dados.inc, 123, 768);
             txt(dados.uniorg, 64, 714);
             txt(dados.rua, 79, 701, 10);
             txt(dados.num, 300, 702);
             txt(dados.cid, 338, 689);
             txt(dados.uf, 43, 675); 
-            txt(dados.bai, 65, 688);
 
-            // CARIMBO DEFEITO EM MAIÚSCULA
+            // Carimbo Equipamento Inoperante
             txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
+
+            // --- CAMPOS EQUIPAMENTO ATUAL ---
+            txt(dados.patri, 85, 440, 10); // Carimba o Patrimônio extraído do SGPI
 
             // Horas
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
