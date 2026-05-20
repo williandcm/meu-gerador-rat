@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de RAT - Willian (Modo Régua)</title>
+    <title>Gerador de RAT - Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     
@@ -23,23 +23,14 @@
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
         
-        #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; position: relative; }
+        #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; }
         iframe { width: 100%; height: 800px; border: 2px solid #cbd5e1; border-radius: 8px; background: #cbd5e1; }
-        
-        /* QUADRO DE COORDENADAS */
-        .coordenadas-fixas {
-            position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); 
-            color: #00ff00; padding: 10px; border-radius: 5px; font-family: monospace; 
-            z-index: 10000; pointer-events: none;
-        }
     </style>
 </head>
 <body>
 
-<div class="coordenadas-fixas" id="mouseCoord">X: 0 | Y: 0</div>
-
 <div class="card">
-    <h2>📄 Sistema de RAT - Ajuste de Posição</h2>
+    <h2>📄 Sistema de RAT Santander</h2>
     
     <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
@@ -51,10 +42,8 @@
 
     <div class="btn-group">
         <button class="btn-save" onclick="salvarAtendimento()">1. Salvar no Banco</button>
-        <button class="btn-pdf" onclick="visualizarRAT()">2. Gerar com Régua Visual</button>
+        <button class="btn-pdf" onclick="visualizarRAT()">2. Gerar e Abrir RAT</button>
     </div>
-
-    <div id="status"></div>
 
     <div id="previewContainer">
         <iframe id="pdfIframe"></iframe>
@@ -70,13 +59,6 @@
     let blobUrlAtual = null;
     let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
-    // RASTREADOR DE MOUSE PARA O WILLIAN
-    window.addEventListener('mousemove', (e) => {
-        const x = Math.round(e.pageX); 
-        const y = Math.round(e.pageY);
-        document.getElementById('mouseCoord').innerText = `MOUSE -> X: ${x} | Y: ${y}`;
-    });
-
     async function extrairDados() {
         const t = document.getElementById('textoBruto').value;
         if(!t) return;
@@ -89,62 +71,4 @@
             dados.cid = (/-\s*([^,]+)/.exec(linha) || ["","---"])[1].trim();
             dados.uf = (/,\s*([A-Z]{2})/.exec(linha) || ["",""])[1];
             const mCep = /(\d{8})/.exec(linha.replace(/\s/g, ""));
-            if(mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
-        }
-        document.getElementById('pInc').innerText = dados.inc;
-        document.getElementById('pLocal').innerText = `${dados.cid} / ${dados.uf}`;
-    }
-
-    async function buscarBairro(cep) {
-        const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-        const d = await res.json();
-        if(!d.erro) { dados.bai = d.bairro.toUpperCase(); document.getElementById('pBairro').innerText = dados.bai; }
-    }
-
-    async function visualizarRAT() {
-        try {
-            const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
-            const pdfDoc = await PDFLib.PDFDocument.load(await response.arrayBuffer());
-            const page = pdfDoc.getPages()[0];
-            const { width, height } = page.getSize();
-            const corPreta = PDFLib.rgb(0, 0, 0);
-            const corRegua = PDFLib.rgb(1, 0, 0); // Vermelho para a régua
-
-            // --- DESENHAR RÉGUA NO PDF ---
-            // Linhas Horizontais (Y) de 50 em 50
-            for(let y = 0; y <= height; y += 50) {
-                page.drawLine({ start: {x: 0, y}, end: {x: width, y}, thickness: 0.5, color: corRegua, opacity: 0.3 });
-                page.drawText(y.toString(), { x: 2, y: y + 2, size: 8, color: corRegua });
-            }
-            // Linhas Verticais (X) de 50 em 50
-            for(let x = 0; x <= width; x += 50) {
-                page.drawLine({ start: {x, y: 0}, end: {x, y: height}, thickness: 0.5, color: corRegua, opacity: 0.3 });
-                page.drawText(x.toString(), { x: x + 2, y: height - 10, size: 8, color: corRegua });
-            }
-
-            // --- CARIMBOS ATUAIS ---
-            const txt = (t, x, y, s=11) => { if(t && t!=='---') page.drawText(t, {x, y, size:s, color:corPreta}); };
-            
-            txt(dados.inc, 123, 768);
-            txt(dados.rua, 79, 701, 10);
-            txt(dados.num, 300, 702);
-            txt(dados.cid, 338, 689);
-            txt(dados.uf, 45, 689); // ESTADO (AJUSTE AQUI)
-            txt(dados.bai, 65, 688);
-
-            const pdfBytes = await pdfDoc.save();
-            if (blobUrlAtual) URL.revokeObjectURL(blobUrlAtual);
-            blobUrlAtual = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
-            document.getElementById('pdfIframe').src = blobUrlAtual;
-            document.getElementById('previewContainer').style.display = 'block';
-        } catch (e) { alert(e.message); }
-    }
-
-    async function salvarAtendimento() {
-        const t = document.getElementById('textoBruto').value;
-        const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: t, analista: 'Willian' }]);
-        if(error) alert(error.message); else alert("Salvo!");
-    }
-</script>
-</body>
-</html>
+            if(mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep);
