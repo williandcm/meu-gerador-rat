@@ -8,7 +8,6 @@
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     
     <style>
-        /* BASE RESPONSIVA */
         body { 
             font-family: 'Segoe UI', sans-serif; 
             background: #f0f2f5; 
@@ -40,10 +39,9 @@
             margin-bottom: 15px; 
             resize: vertical; 
             box-sizing: border-box; 
-            font-size: 16px; /* Evita zoom automático no iOS */
+            font-size: 16px;
         }
 
-        /* PAINEL DE INFO ADAPTÁVEL */
         .info-painel { 
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); 
@@ -59,7 +57,6 @@
         .info-label { display: block; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; }
         .info-value { font-size: 13px; color: #1e293b; font-weight: bold; }
 
-        /* BOTÕES LADO A LADO OU EMPILHADOS */
         .btn-group { 
             display: flex; 
             gap: 10px; 
@@ -69,7 +66,7 @@
 
         button { 
             flex: 1; 
-            min-width: 150px; 
+            min-width: 140px; 
             padding: 14px; 
             border-radius: 8px; 
             cursor: pointer; 
@@ -81,13 +78,19 @@
 
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
+        .btn-download { 
+            background: #f59e0b; 
+            color: white; 
+            display: none; /* Só aparece após gerar o PDF */
+            margin-top: 10px;
+            width: 100%;
+        }
 
-        /* CONTAINER DO PDF RESPONSIVO */
         #previewContainer { 
             display: none; 
             width: 100%; 
             margin-top: 10px; 
-            height: 75vh; /* Ocupa 75% da altura da tela do celular/tablet */
+            height: 60vh; 
             border: 2px solid #cbd5e1; 
             border-radius: 8px;
             overflow: hidden;
@@ -101,7 +104,6 @@
         }
 
         @media (max-width: 600px) {
-            .card { padding: 10px; }
             button { width: 100%; }
         }
     </style>
@@ -109,7 +111,7 @@
 <body>
 
 <div class="card">
-    <h2>📄 RAT Santander - Mobile Ready</h2>
+    <h2>📄 RAT Santander - Mobile</h2>
     <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
@@ -123,6 +125,8 @@
         <button class="btn-save" onclick="salvarAtendimento()">1. Salvar Banco</button>
         <button class="btn-pdf" id="btnGerar" onclick="visualizarRAT()">2. Gerar RAT</button>
     </div>
+
+    <button id="btnDownload" class="btn-download" onclick="abrirPdfNovaAba()">📥 Abrir RAT no Navegador / Baixar</button>
 
     <div id="previewContainer">
         <iframe id="pdfIframe"></iframe>
@@ -186,7 +190,6 @@
             txt(dados.num, 300, 702);
             txt(dados.cid, 338, 689);
             txt(dados.uf, 43, 675); 
-
             txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
             txt(dados.patri, 88, 485, 11);
 
@@ -196,16 +199,26 @@
 
             const pdfBytes = await pdfDoc.save();
             if (blobUrlAtual) URL.revokeObjectURL(blobUrlAtual);
-            blobUrlAtual = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
             
+            // Criar Blob e URL
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            blobUrlAtual = URL.createObjectURL(blob);
+            
+            // Tenta mostrar no Iframe (funciona em alguns tablets e PCs)
             document.getElementById('pdfIframe').src = blobUrlAtual;
             document.getElementById('previewContainer').style.display = 'block';
             
-            // Scroll suave até o PDF para facilitar visualização no celular
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            // Mostra o botão de download/abrir (essencial para celulares)
+            document.getElementById('btnDownload').style.display = 'block';
 
-        } catch (e) { alert("Erro: " + e.message); }
+        } catch (e) { alert("Erro ao gerar PDF: " + e.message); }
         finally { btn.disabled = false; }
+    }
+
+    function abrirPdfNovaAba() {
+        if (blobUrlAtual) {
+            window.open(blobUrlAtual, '_blank');
+        }
     }
 
     async function salvarAtendimento() {
