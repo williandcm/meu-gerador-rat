@@ -49,6 +49,10 @@
             <span class="info-label">🏁 Chegada</span>
             <span class="info-value" id="dispChegada">00:00</span>
         </div>
+        <div class="info-item" style="border-left: 1px solid #e2e8f0;">
+            <span class="info-label">🛠️ Atendim.</span>
+            <span class="info-value" id="dispAtendimento">00:00</span>
+        </div>
     </div>
 
     <div class="btn-group">
@@ -72,7 +76,12 @@
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    let dados = { inc: '', partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'} };
+    let dados = { 
+        inc: '', 
+        partida: {h:'00',m:'00'}, 
+        chegada: {h:'00',m:'00'},
+        atendimento: {h:'00',m:'00'}
+    };
 
     function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
@@ -87,10 +96,12 @@
 
         dados.partida = buscarHora("Data de Início");
         dados.chegada = buscarHora("Data de Chegada");
+        dados.atendimento = buscarHora("Data de Atendimento");
 
         document.getElementById('pInc').innerText = dados.inc;
         document.getElementById('dispPartida').innerText = `${dados.partida.h}:${dados.partida.m}`;
         document.getElementById('dispChegada').innerText = `${dados.chegada.h}:${dados.chegada.m}`;
+        document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
     }
 
     async function salvarAtendimento() {
@@ -114,19 +125,33 @@
             const page = pdfDoc.getPages()[0];
             const fontColor = PDFLib.rgb(0, 0, 0);
 
-            // 1. CARIMBO CHAMADO (INC)
+            // 1. CARIMBO CHAMADO (INC) - FIXO
             page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
 
-            // 2. CARIMBO HORA PARTIDA
+            // 2. CARIMBO HORA PARTIDA - FIXO
             if(dados.partida.h !== "00") {
                 page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
                 page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
             }
 
-            // 3. CARIMBO HORA CHEGADA
+            // 3. CARIMBO HORA CHEGADA - FIXO
             if(dados.chegada.h !== "00") {
                 page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
                 page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
+            }
+
+            // 4. CARIMBO HORA ATENDIMENTO (VALORES ESTIMADOS - AJUSTE SE NECESSÁRIO)
+            if(dados.atendimento.h !== "00") {
+                page.drawText(dados.atendimento.h, { 
+                    x: 91,  // <--- AJUSTAR SE PRECISAR
+                    y: 725, // <--- AJUSTAR (Seguindo a lógica de descer 11 pontos)
+                    size: 11, color: fontColor 
+                });
+                page.drawText(dados.atendimento.m, { 
+                    x: 110, // <--- AJUSTAR SE PRECISAR
+                    y: 725, // <--- AJUSTAR
+                    size: 11, color: fontColor 
+                });
             }
 
             const pdfBytes = await pdfDoc.save();
