@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerador de RAT - Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
@@ -22,9 +22,11 @@
         button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 15px; }
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
+        button:disabled { background: #cbd5e1; cursor: not-allowed; }
         
         #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; }
-        iframe { width: 100%; height: 600px; border: 2px solid #cbd5e1; border-radius: 8px; background: #cbd5e1; }
+        .iframe-wrapper { width: 100%; height: 600px; border: 2px solid #cbd5e1; border-radius: 8px; background: #eee; position: relative; }
+        iframe { width: 100%; height: 100%; border: none; }
         .fallback-link { display: inline-block; margin-top: 10px; padding: 12px 24px; background: #ef4444; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; }
         #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
     </style>
@@ -51,9 +53,10 @@
     <div id="status"></div>
 
     <div id="previewContainer">
-        <a id="btnFallback" class="fallback-link" target="_blank">Clique aqui se o PDF não carregar abaixo</a>
+        <a id="btnFallback" class="fallback-link" target="_blank">Abrir em Tela Cheia (Caso falhe abaixo)</a>
         <br><br>
-        <iframe id="pdfIframe"></iframe>
+        <div id="iframeHolder" class="iframe-wrapper">
+            </div>
     </div>
 </div>
 
@@ -63,44 +66,34 @@
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    let blobUrlAtual = null;
+    let currentBlobUrl = null;
     
     let dados = { 
         inc: '', uniorg: '', enderecoRua: '', enderecoNum: '', cidade: '', uf: '', bairro: '', cep: '',
         partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} 
     };
 
-    async function extrairDados() {
+    function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         if(!texto) return;
 
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
-        
         const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
         dados.uniorg = mUniorg ? mUniorg[1] : "---";
 
         const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
         if (mFullEnd) {
             const linhaEnd = mFullEnd[1];
-            
-            // Rua
             const mRua = /^([^0-9,]+)/.exec(linhaEnd);
             dados.enderecoRua = mRua ? mRua[1].trim() : "---";
-            
-            // Número
             const mNum = /(\d+)/.exec(linhaEnd.replace(dados.enderecoRua, ""));
             dados.enderecoNum = mNum ? mNum[1] : "---";
-            
-            // Cidade (entre - e ,)
             const mCid = /-\s*([^,]+)/.exec(linhaEnd);
             dados.cidade = mCid ? mCid[1].trim() : "---";
-
-            // ESTADO (UF) - Pega os 2 caracteres após a vírgula
             const mUf = /,\s*([A-Z]{2})/.exec(linhaEnd);
             dados.uf = mUf ? mUf[1] : "";
 
-            // CEP para Bairro
             const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
             if (mCep && mCep[1] !== dados.cep) {
                 dados.cep = mCep[1];
@@ -108,61 +101,53 @@
             }
         }
         
-        const regexHora = (label) => new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
-        const p = regexHora("Início").exec(texto); if(p) dados.partida = {h:p[1], m:p[2]};
-        const c = regexHora("Chegada").exec(texto); if(c) dados.chegada = {h:c[1], m:c[2]};
-        const a = regexHora("Atendimento").exec(texto); if(a) dados.atendimento = {h:a[1], m:a[2]};
+        const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
+        const p = reg("Início").exec(texto); if(p) dados.partida = {h:p[1], m:p[2]};
+        const c = reg("Chegada").exec(texto); if(c) dados.chegada = {h:c[1], m:c[2]};
+        const a = reg("Atendimento").exec(texto); if(a) dados.atendimento = {h:a[1], m:a[2]};
 
-        atualizarPainel();
-    }
-
-    async function buscarBairro(cep) {
-        try {
-            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            const data = await res.json();
-            if (!data.erro) {
-                dados.bairro = data.bairro.toUpperCase();
-                document.getElementById('pBairro').innerText = dados.bairro;
-            }
-        } catch (e) { console.error("Erro CEP"); }
-    }
-
-    function atualizarPainel() {
         document.getElementById('pInc').innerText = dados.inc;
         document.getElementById('pLocal').innerText = `${dados.cidade} / ${dados.uf}`;
         document.getElementById('pBairro').innerText = dados.bairro || "---";
         document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
     }
 
+    async function buscarBairro(cep) {
+        try {
+            const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            const d = await r.json();
+            if (!d.erro) {
+                dados.bairro = d.bairro.toUpperCase();
+                document.getElementById('pBairro').innerText = dados.bairro;
+            }
+        } catch (e) {}
+    }
+
     async function visualizarRAT() {
-        if(!document.getElementById('textoBruto').value) return alert("Cole o chamado!");
-        
         const btn = document.getElementById('btnGerar');
         btn.disabled = true;
-        
-        try {
-            mostrarStatus("⌛ Gerando PDF...", "#e0f2fe");
-            
-            if (blobUrlAtual) URL.revokeObjectURL(blobUrlAtual);
+        mostrarStatus("⌛ Gerando...", "#e0f2fe");
 
-            const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
-            const pdfDoc = await PDFLib.PDFDocument.load(await response.arrayBuffer());
+        try {
+            // 1. Limpa tudo o que existe
+            if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+            document.getElementById('iframeHolder').innerHTML = ''; 
+
+            // 2. Baixa o modelo
+            const resp = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
+            const arrayBuffer = await resp.arrayBuffer();
+
+            // 3. Edita o PDF
+            const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
             const page = pdfDoc.getPages()[0];
             const fontColor = PDFLib.rgb(0, 0, 0);
 
-            // Carimbos
             page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
             if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
             if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
             if(dados.enderecoNum !== "---") page.drawText(dados.enderecoNum, { x: 300, y: 702, size: 11, color: fontColor });
-            
-            // CIDADE
             if(dados.cidade !== "---") page.drawText(dados.cidade, { x: 338, y: 689, size: 11, color: fontColor });
-            
-            // ESTADO (UF) - Ajuste as coordenadas X e Y abaixo quando tiver
             if(dados.uf) page.drawText(dados.uf, { x: 480, y: 689, size: 11, color: fontColor });
-
-            // BAIRRO
             if(dados.bairro) page.drawText(dados.bairro, { x: 65, y: 688, size: 11, color: fontColor });
 
             // Horas
@@ -173,28 +158,8 @@
             page.drawText(dados.atendimento.h, { x: 418, y: 749, size: 11, color: fontColor });
             page.drawText(dados.atendimento.m, { x: 436, y: 749, size: 11, color: fontColor });
 
+            // 4. Cria o novo Blob
             const pdfBytes = await pdfDoc.save();
-            blobUrlAtual = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
+            currentBlobUrl = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
 
-            document.getElementById('pdfIframe').src = blobUrlAtual;
-            document.getElementById('btnFallback').href = blobUrlAtual;
-            document.getElementById('previewContainer').style.display = 'block';
-
-            mostrarStatus("✅ Pronto!", "#dcfce7", 3000);
-            
-        } catch (e) { alert("Erro: " + e.message); }
-        finally { btn.disabled = false; }
-    }
-
-    function mostrarStatus(msg, cor, t=0) {
-        const s = document.getElementById('status');
-        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
-        if(t > 0) setTimeout(() => s.style.display = 'none', t);
-    }
-
-    async function salvarAtendimento() {
-        const texto = document.getElementById('textoBruto').value.trim();
-        if(!texto) return;
-        try {
-            const { error } = await supabaseClient.from('chamados').insert([{ 
-                numero_inc: dados.inc, texto_br
+            // 5. Injeta o iframe
