@@ -51,7 +51,7 @@
     <div id="status"></div>
 
     <div id="previewContainer">
-        <a id="btnFallback" class="fallback-link" target="_blank">⚠️ O PDF não abriu? Clique aqui para abrir em tela cheia</a>
+        <a id="btnFallback" class="fallback-link" target="_blank">⚠️ O PDF não abriu? Clique aqui</a>
         <br><br>
         <iframe id="pdfIframe"></iframe>
     </div>
@@ -63,6 +63,7 @@
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let currentPdfUrl = null;
     
     let dados = { 
         inc: '', uniorg: '', enderecoRua: '', enderecoNum: '', cidade: '', bairro: '', cep: '',
@@ -95,99 +96,4 @@
             }
         }
         
-        const regexHora = (label) => new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
-        dados.partida = regexHora("Data de Início").exec(texto) ? {h: RegExp.$1, m: RegExp.$2} : {h:'00',m:'00'};
-        dados.chegada = regexHora("Data de Chegada").exec(texto) ? {h: RegExp.$1, m: RegExp.$2} : {h:'00',m:'00'};
-        dados.atendimento = regexHora("Data de Atendimento").exec(texto) ? {h: RegExp.$1, m: RegExp.$2} : {h:'00',m:'00'};
-
-        atualizarPainel();
-    }
-
-    async function buscarBairro(cep) {
-        try {
-            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            const data = await res.json();
-            if (!data.erro) {
-                dados.bairro = data.bairro.toUpperCase();
-                document.getElementById('pBairro').innerText = dados.bairro;
-            }
-        } catch (e) { console.error("Erro CEP"); }
-    }
-
-    function atualizarPainel() {
-        document.getElementById('pInc').innerText = dados.inc;
-        document.getElementById('pCidade').innerText = dados.cidade;
-        document.getElementById('pBairro').innerText = dados.bairro || "---";
-        document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
-    }
-
-    async function visualizarRAT() {
-        if(!document.getElementById('textoBruto').value) return alert("Cole o chamado!");
-        
-        try {
-            mostrarStatus("⌛ Gerando PDF carimbado...", "#e0f2fe");
-            
-            // Bypass de cache para o modelo
-            const res = await fetch(URL_MODELO_PDF + '?nocache=' + Math.random());
-            const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
-            const page = pdfDoc.getPages()[0];
-            const fontColor = PDFLib.rgb(0, 0, 0);
-
-            // Carimbos
-            page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
-            if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
-            if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
-            if(dados.enderecoNum !== "---") page.drawText(dados.enderecoNum, { x: 300, y: 702, size: 11, color: fontColor });
-            if(dados.cidade !== "---") page.drawText(dados.cidade, { x: 338, y: 689, size: 11, color: fontColor });
-            
-            // Bairro (Aguardando coordenadas oficiais, usei 79, 689 provisório)
-            if(dados.bairro) page.drawText(dados.bairro, { x: 65, y: 688, size: 11, color: fontColor });
-
-            // Horas
-            page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
-            page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
-            page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
-            page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
-            page.drawText(dados.atendimento.h, { x: 418, y: 749, size: 11, color: fontColor });
-            page.drawText(dados.atendimento.m, { x: 436, y: 749, size: 11, color: fontColor });
-
-            const pdfBytes = await pdfDoc.save();
-            const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const pdfUrl = URL.createObjectURL(pdfBlob);
-
-            // 1. Tenta carregar no iframe
-            document.getElementById('pdfIframe').src = pdfUrl;
-            document.getElementById('btnFallback').href = pdfUrl;
-            document.getElementById('previewContainer').style.display = 'block';
-
-            // 2. Abre automaticamente em nova aba para garantir
-            window.open(pdfUrl, '_blank');
-
-            mostrarStatus("✅ RAT Aberta!", "#dcfce7", 3000);
-        } catch (e) { 
-            alert("Erro ao abrir RAT: " + e.message); 
-            mostrarStatus("❌ Falha na abertura", "#fee2e2", 3000);
-        }
-    }
-
-    function mostrarStatus(msg, cor, t=0) {
-        const s = document.getElementById('status');
-        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
-        if(t > 0) setTimeout(() => s.style.display = 'none', t);
-    }
-
-    async function salvarAtendimento() {
-        const texto = document.getElementById('textoBruto').value.trim();
-        if(!texto) return;
-        mostrarStatus("⌛ Gravando...", "#e0f2fe");
-        try {
-            const { error } = await supabaseClient.from('chamados').insert([{ 
-                numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' 
-            }]);
-            if (error) throw error;
-            mostrarStatus("✅ Salvo no Banco!", "#dcfce7", 2000);
-        } catch (e) { alert("Erro Banco: " + e.message); }
-    }
-</script>
-</body>
-</html>
+        const regexHora = (label) => new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\
