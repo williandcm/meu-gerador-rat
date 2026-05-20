@@ -60,11 +60,9 @@
         const texto = document.getElementById('textoBruto').value;
         if(!texto) return;
 
-        // Extração básica
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
         
-        // Extração Patrimônio (SGPI)
         const mPatri = /SGPI\s*:\s*(\d+)/i.exec(texto);
         dados.patri = mPatri ? mPatri[1] : "---";
 
@@ -100,21 +98,21 @@
             const page = pdfDoc.getPages()[0];
             const fontColor = PDFLib.rgb(0, 0, 0);
 
+            // FUNÇÃO DE CARIMBO PADRONIZADA (SIZE 11)
             const txt = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
 
-            // Cabeçalho e Endereço
+            // Cabeçalho
             txt(dados.inc, 123, 768);
             txt(dados.uniorg, 64, 714);
-            txt(dados.rua, 79, 701, 10);
+            txt(dados.rua, 79, 701, 10); // Endereço um pouco menor para caber
             txt(dados.num, 300, 702);
             txt(dados.cid, 338, 689);
             txt(dados.uf, 43, 675); 
+            txt(dados.bai, 65, 688);
 
-            // Carimbo Equipamento Inoperante
+            // Carimbos Fixos e Ajustados (Tamanho 11)
             txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
-
-            // --- CAMPOS EQUIPAMENTO ATUAL ---
-            txt(dados.patri, 88, 485, 11); // Carimba o Patrimônio extraído do SGPI
+            txt(dados.patri, 88, 485, 11); // Patrimônio Atual Ajustado
 
             // Horas
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
