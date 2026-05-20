@@ -14,9 +14,9 @@
         textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
         
         .info-painel { display: flex; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; justify-content: space-around; flex-wrap: wrap; }
-        .info-item { text-align: center; min-width: 100px; }
+        .info-item { text-align: center; min-width: 80px; }
         .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
-        .info-value { font-size: 14px; color: #1e293b; font-weight: bold; }
+        .info-value { font-size: 13px; color: #1e293b; font-weight: bold; }
 
         .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
         button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 15px; }
@@ -40,6 +40,7 @@
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Uniorg</span><span id="pUniorg" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Rua/Av</span><span id="pEndereco" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Nº</span><span id="pNumero" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">🕒 Partida</span><span id="dispPartida" class="info-value">00:00</span></div>
         <div class="info-item"><span class="info-label">🏁 Chegada</span><span id="dispChegada" class="info-value">00:00</span></div>
     </div>
@@ -66,22 +67,30 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
     let dados = { 
-        inc: '', uniorg: '', enderecoRua: '',
+        inc: '', uniorg: '', enderecoRua: '', enderecoNum: '',
         partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} 
     };
 
     function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         
+        // INC e Uniorg
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
-
         const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
         dados.uniorg = mUniorg ? mUniorg[1] : "---";
 
-        // Extrai apenas o logradouro (antes do número)
-        const mEnd = /Endereço\s*:\s*([^0-9,]+)/i.exec(texto);
-        dados.enderecoRua = mEnd ? mEnd[1].trim() : "---";
+        // Endereço Completo
+        const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
+        if (mFullEnd) {
+            const linhaEnd = mFullEnd[1];
+            // Rua (antes do número)
+            const mRua = /^([^0-9,]+)/.exec(linhaEnd);
+            dados.enderecoRua = mRua ? mRua[1].trim() : "---";
+            // Número (primeira sequência de dígitos após a rua)
+            const mNum = /(\d+)/.exec(linhaEnd.replace(dados.enderecoRua, ""));
+            dados.enderecoNum = mNum ? mNum[1] : "---";
+        }
         
         const buscarHora = (label) => {
             const regex = new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
@@ -96,6 +105,7 @@
         document.getElementById('pInc').innerText = dados.inc;
         document.getElementById('pUniorg').innerText = dados.uniorg;
         document.getElementById('pEndereco').innerText = dados.enderecoRua;
+        document.getElementById('pNumero').innerText = dados.enderecoNum;
         document.getElementById('dispPartida').innerText = `${dados.partida.h}:${dados.partida.m}`;
         document.getElementById('dispChegada').innerText = `${dados.chegada.h}:${dados.chegada.m}`;
     }
@@ -122,7 +132,7 @@
             const fontColor = PDFLib.rgb(0, 0, 0);
             const rulerColor = PDFLib.rgb(0.7, 0.7, 0.7);
 
-            // --- RÉGUA (Mantida para o resto do endereço) ---
+            // --- RÉGUA ---
             for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 8, color: rulerColor }); }
             for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 8, color: rulerColor }); }
 
@@ -132,12 +142,19 @@
             // 2. UNIORG
             if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
 
-            // 3. RUA / AVENIDA (COORDENADAS ATUALIZADAS)
-            if(dados.enderecoRua !== "---") {
-                page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
+            // 3. RUA / AVENIDA (Fixo conforme seu ajuste)
+            if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
+
+            // 4. NÚMERO (AJUSTAR COM A RÉGUA)
+            if(dados.enderecoNum !== "---") {
+                page.drawText(dados.enderecoNum, { 
+                    x: 350, // <--- AJUSTAR X
+                    y: 701, // <--- AJUSTAR Y (Coloquei na mesma linha da rua por enquanto)
+                    size: 10, color: fontColor 
+                });
             }
 
-            // 4. DATAS
+            // 5. DATAS
             if(dados.partida.h !== "00") {
                 page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
                 page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
@@ -156,7 +173,7 @@
             document.getElementById('pdfIframe').src = pdfUrl;
             document.getElementById('btnFallback').href = pdfUrl;
             document.getElementById('previewContainer').style.display = 'block';
-            mostrarStatus("✅ Rua posicionada!", "#dcfce7", 2000);
+            mostrarStatus("✅ Posicione o número!", "#dcfce7", 2000);
         } catch (e) { alert("Erro: " + e.message); }
     }
 
