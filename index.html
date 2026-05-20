@@ -5,155 +5,180 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerador de RAT - Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 900px; }
-        h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
-        textarea { width: 100%; height: 120px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin: 15px 0; resize: none; box-sizing: border-box; font-size: 14px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 950px; }
+        h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
+        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
         
-        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 16px; color: white; }
-        .btn-save { background: #3b82f6; }
-        .btn-pdf { background: #10b981; }
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        .info-painel { display: flex; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; justify-content: space-around; flex-wrap: wrap; }
+        .info-item { text-align: center; min-width: 80px; }
+        .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+        .info-value { font-size: 13px; color: #1e293b; font-weight: bold; }
 
-        #previewContainer { display: none; width: 100%; margin-top: 20px; }
-        iframe { width: 100%; height: 600px; border: 2px solid #cbd5e1; border-radius: 8px; }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 15px; }
+        .btn-save { background: #3b82f6; color: white; }
+        .btn-pdf { background: #10b981; color: white; }
         
-        .status-msg { padding: 12px; border-radius: 6px; margin-bottom: 10px; display: none; text-align: center; font-weight: bold; }
-        .download-btn { display: inline-block; margin-bottom: 10px; padding: 10px; background: #f59e0b; color: white; text-decoration: none; border-radius: 5px; font-size: 14px; }
+        #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; }
+        iframe { width: 100%; height: 650px; border: 2px solid #cbd5e1; border-radius: 8px; background: #eee; }
+        #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Gerador de RAT Santander - Willian</h2>
+    <h2>📄 Sistema de RAT Santander</h2>
     
-    <div id="status" class="status-msg"></div>
-
-    <textarea id="textoBruto" placeholder="Cole aqui o conteúdo do chamado (INC ou SGPI)..." oninput="extrairDados()"></textarea>
+    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
-    <div class="btn-group">
-        <button class="btn-save" onclick="salvarNoBanco()">1. Salvar Atendimento</button>
-        <button class="btn-pdf" onclick="gerarPDF()">2. Carimbar e Visualizar RAT</button>
+    <div class="info-painel">
+        <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Uniorg</span><span id="pUniorg" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Cidade</span><span id="pCidade" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Nº</span><span id="pNumero" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">🕒 Partida</span><span id="dispPartida" class="info-value">00:00</span></div>
     </div>
 
+    <div class="btn-group">
+        <button class="btn-save" onclick="salvarAtendimento()">1. Salvar no Banco</button>
+        <button class="btn-pdf" onclick="visualizarRAT()">2. Visualizar RAT Carimbada</button>
+    </div>
+
+    <div id="status"></div>
+
     <div id="previewContainer">
-        <a id="linkDownload" class="download-btn" download="RAT_CARIMBADA.pdf">⬇️ Baixar PDF Manualmente</a>
-        <iframe id="pdfVisualizador"></iframe>
+        <iframe id="pdfIframe"></iframe>
     </div>
 </div>
 
 <script>
-    // Configurações
-    const URL_MODELO = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
+    const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
+    const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    let dados = {
-        inc: '', uniorg: '', rua: '', num: '', cidade: '',
-        hPartida: '00', mPartida: '00',
-        hChegada: '00', mChegada: '00',
-        hAtend: '00', mAtend: '00'
+    let dados = { 
+        inc: '', uniorg: '', enderecoRua: '', enderecoNum: '', cidade: '',
+        partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} 
     };
 
     function extrairDados() {
-        const txt = document.getElementById('textoBruto').value;
-        
-        // Chamado
-        const mInc = /(INC\d+|SGPI:\s*\d+)/i.exec(txt);
-        dados.inc = mInc ? mInc[1].replace(/SGPI:\s*/i, "SGPI ").toUpperCase() : "";
+        const texto = document.getElementById('textoBruto').value;
+        if(!texto) return;
 
-        // Uniorg
-        const mUni = /(Uniorg\s*:\s*(\d+)|SN:\s*(\w+))/i.exec(txt);
-        dados.uniorg = mUni ? (mUni[2] || mUni[3]) : "";
+        // Extração INC
+        const mInc = /(INC\d+)/i.exec(texto);
+        dados.inc = mInc ? mInc[1].toUpperCase() : "---";
 
-        // Endereço
-        const mEnd = /Endereço\s*:\s*(.+)/i.exec(txt);
-        if (mEnd) {
-            const linha = mEnd[1];
-            const mRua = /^([^0-9,]+)/.exec(linha);
-            dados.rua = mRua ? mRua[1].trim() : "";
-            const mNum = /(\d+)/.exec(linha.replace(dados.rua, ""));
-            dados.num = mNum ? mNum[1] : "";
-            const mCid = /-\s*([^,]+)/.exec(linha);
-            dados.cidade = mCid ? mCid[1].trim() : "";
+        // Extração Uniorg
+        const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
+        dados.uniorg = mUniorg ? mUniorg[1] : "---";
+
+        // --- NOVA LÓGICA DE ENDEREÇO ---
+        const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
+        if (mFullEnd) {
+            const linhaEnd = mFullEnd[1];
+            
+            // 1. Rua: tudo antes do primeiro número
+            const mRua = /^([^0-9,]+)/.exec(linhaEnd);
+            dados.enderecoRua = mRua ? mRua[1].trim() : "---";
+            
+            // 2. Número: primeiro bloco de números após a rua
+            const restoAposRua = linhaEnd.replace(dados.enderecoRua, "");
+            const mNum = /(\d+)/.exec(restoAposRua);
+            dados.enderecoNum = mNum ? mNum[1] : "---";
+            
+            // 3. Cidade: Entre o traço (-) e a vírgula (,)
+            // Ex: "980 - CAMPINAS, SP" -> Pega "CAMPINAS"
+            const mCid = /-\s*([^,]+)/.exec(linhaEnd);
+            dados.cidade = mCid ? mCid[1].trim() : "---";
         }
 
-        // Horas
-        const regexHora = (label) => new RegExp(label + ".*?(\\d{2}):(\\d{2})", "i");
-        const p = regexHora("Início").exec(txt);
-        if(p) { dados.hPartida = p[1]; dados.mPartida = p[2]; }
-        const c = regexHora("Chegada").exec(txt);
-        if(c) { dados.hChegada = c[1]; dados.mChegada = c[2]; }
-        const a = regexHora("Atendimento").exec(txt);
-        if(a) { dados.hAtend = a[1]; dados.mAtend = a[2]; }
+        const buscarHora = (label) => {
+            const regex = new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
+            const match = regex.exec(texto);
+            return match ? { h: match[1], m: match[2] } : { h: '00', m: '00' };
+        };
+
+        dados.partida = buscarHora("Data de Início");
+        dados.chegada = buscarHora("Data de Chegada");
+        dados.atendimento = buscarHora("Data de Atendimento");
+
+        document.getElementById('pInc').innerText = dados.inc;
+        document.getElementById('pUniorg').innerText = dados.uniorg;
+        document.getElementById('pEndereco').innerText = dados.enderecoRua;
+        document.getElementById('pNumero').innerText = dados.enderecoNum;
+        document.getElementById('pCidade').innerText = dados.cidade;
+        document.getElementById('dispPartida').innerText = `${dados.partida.h}:${dados.partida.m}`;
     }
 
-    async function gerarPDF() {
-        if (!document.getElementById('textoBruto').value) return alert("Cole o chamado!");
-        
+    async function visualizarRAT() {
+        if(!document.getElementById('textoBruto').value) return;
+
         try {
-            msg("⌛ Processando PDF...", "#e0f2fe");
+            mostrarStatus("⌛ Carimbando...", "#e0f2fe");
+            const res = await fetch(`${URL_MODELO_PDF}?t=${new Date().getTime()}`);
+            const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
+            const page = pdfDoc.getPages()[0];
+            const fontColor = PDFLib.rgb(0, 0, 0);
+            const rulerColor = PDFLib.rgb(0.7, 0.7, 0.7);
 
-            // 1. Carrega o arquivo modelo
-            const resposta = await fetch(`${URL_MODELO}?t=${Date.now()}`);
-            if (!resposta.ok) throw new Error("Erro ao baixar modelo do servidor.");
-            const pdfBytesModelo = await resposta.arrayBuffer();
+            // RÉGUA PARA AJUSTE
+            for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 8, color: rulerColor }); }
+            for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 8, color: rulerColor }); }
 
-            // 2. Inicia a edição
-            const pdfDoc = await PDFLib.PDFDocument.load(pdfBytesModelo);
-            const pagina = pdfDoc.getPages()[0];
-            const cor = PDFLib.rgb(0, 0, 0);
-
-            // 3. ESCREVE OS DADOS (Coordenadas confirmadas)
-            pagina.drawText(dados.inc, { x: 123, y: 768, size: 10, color: cor });
-            if(dados.uniorg) pagina.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: cor });
-            if(dados.rua) pagina.drawText(dados.rua, { x: 79, y: 701, size: 10, color: cor });
-            if(dados.num) pagina.drawText(dados.num, { x: 300, y: 702, size: 11, color: cor });
+            // CARIMBOS
+            page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
+            if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
+            if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
+            if(dados.enderecoNum !== "---") page.drawText(dados.enderecoNum, { x: 300, y: 702, size: 11, color: fontColor });
             
-            // CIDADE (Ajuste que você passou: 338, 689)
-            if(dados.cidade) pagina.drawText(dados.cidade, { x: 338, y: 689, size: 11, color: cor });
-
-            // HORÁRIOS
-            pagina.drawText(dados.hPartida, { x: 91, y: 747, size: 11, color: cor });
-            pagina.drawText(dados.mPartida, { x: 110, y: 747, size: 11, color: cor });
-            pagina.drawText(dados.hChegada, { x: 91, y: 736, size: 11, color: cor });
-            pagina.drawText(dados.mChegada, { x: 110, y: 736, size: 11, color: cor });
-            
-            if(dados.hAtend !== '00') {
-                pagina.drawText(dados.hAtend, { x: 418, y: 749, size: 11, color: cor });
-                pagina.drawText(dados.mAtend, { x: 436, y: 749, size: 11, color: cor });
+            // --- AJUSTE A CIDADE AQUI ---
+            if(dados.cidade !== "---") {
+                page.drawText(dados.cidade, { 
+                    x: 79,  // <--- AJUSTAR X
+                    y: 688, // <--- AJUSTAR Y
+                    size: 11, color: fontColor 
+                });
             }
 
-            // 4. Finaliza e mostra
-            const pdfFinalBytes = await pdfDoc.save();
-            const blob = new Blob([pdfFinalBytes], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
+            // HORÁRIOS
+            page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
+            page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
+            page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
+            page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
 
-            document.getElementById('pdfVisualizador').src = url;
-            document.getElementById('linkDownload').href = url;
+            const pdfBytes = await pdfDoc.save();
+            const pdfUrl = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
+            document.getElementById('pdfIframe').src = pdfUrl;
             document.getElementById('previewContainer').style.display = 'block';
-            
-            msg("✅ RAT Gerada com Sucesso!", "#dcfce7", 3000);
-        } catch (erro) {
-            console.error(erro);
-            alert("ERRO CRÍTICO: " + erro.message);
-        }
+            mostrarStatus("✅ Use a régua para a Cidade!", "#dcfce7", 2000);
+        } catch (e) { alert(e.message); }
     }
 
-    function msg(texto, fundo, tempo = 0) {
+    function mostrarStatus(msg, cor, t=0) {
         const s = document.getElementById('status');
-        s.style.display = 'block'; s.style.background = fundo; s.innerText = texto;
-        if (tempo > 0) setTimeout(() => s.style.display = 'none', tempo);
+        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
+        if(t > 0) setTimeout(() => s.style.display = 'none', t);
     }
 
-    // Função do banco (ajustada para ser silenciosa se falhar)
-    async function salvarNoBanco() {
-        const texto = document.getElementById('textoBruto').value;
-        const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
-        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        msg("⌛ Salvando...", "#fef3c7");
-        const { error } = await client.from('chamados').insert([{
+    async function salvarAtendimento() {
+        const texto = document.getElementById('textoBruto').value.trim();
+        if(!texto) return;
+        mostrarStatus("⌛ Gravando...", "#e0f2fe");
+        try {
+            const { error } = await supabaseClient.from('chamados').insert([{ 
+                numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' 
+            }]);
+            if (error) throw error;
+            mostrarStatus("✅ Salvo!", "#dcfce7", 2000);
+        } catch (e) { alert(e.message); }
+    }
+</script>
+</body>
+</html>
