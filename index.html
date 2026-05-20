@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAT Visualizador - Willian</title>
+    <title>RAT Visualizador Pro - Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -11,10 +11,10 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; box-sizing: border-box; }
-        h2 { color: #1e293b; text-align: center; font-size: 1.1rem; }
+        h2 { color: #1e293b; text-align: center; font-size: 1.1rem; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; }
         textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
         
-        .info-painel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
+        .info-painel { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
         .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
         .info-value { font-size: 12px; color: #1e293b; font-weight: bold; }
 
@@ -24,34 +24,20 @@
         .btn-pdf { background: #10b981; color: white; }
         button:disabled { background: #cbd5e1; cursor: not-allowed; }
 
-        /* Estilo do Visualizador de Imagem */
-        #viewerContainer { 
-            display: none; 
-            width: 100%; 
-            margin-top: 10px; 
-            background: #525659; 
-            border-radius: 8px; 
-            padding: 10px; 
-            box-sizing: border-box;
-            text-align: center;
-        }
-        canvas { 
-            width: 100% !important; 
-            height: auto !important; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            border-radius: 4px;
-        }
-        .msg-view { color: white; font-size: 11px; margin-bottom: 8px; display: block; }
+        #viewerContainer { display: none; width: 100%; margin-top: 10px; background: #525659; border-radius: 8px; padding: 10px; box-sizing: border-box; text-align: center; }
+        canvas { width: 100% !important; height: auto !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 4px; }
+        .msg-view { color: white; font-size: 11px; margin-bottom: 8px; display: block; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Gerador de RAT (Visualização)</h2>
+    <h2>📄 Gerador de RAT Santander</h2>
     <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc">---</span></div>
+        <div class="info-item"><span class="info-label">Bairro</span><span id="pBairro">---</span></div>
         <div class="info-item"><span class="info-label">Patrimônio</span><span id="pPatri">---</span></div>
     </div>
 
@@ -61,13 +47,12 @@
     </div>
 
     <div id="viewerContainer">
-        <span class="msg-view">Visualização da RAT Gerada:</span>
+        <span class="msg-view">PRÉ-VISUALIZAÇÃO DA RAT:</span>
         <canvas id="pdfCanvas"></canvas>
     </div>
 </div>
 
 <script>
-    // Configura o motor de renderização
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
@@ -75,7 +60,7 @@
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', patri:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
+    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
     async function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
@@ -92,6 +77,13 @@
             dados.num = (/(\d+)/.exec(linhaEnd.replace(dados.rua, "")) || ["","---"])[1];
             dados.cid = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
             dados.uf = (/,\s*([A-Z]{2})/.exec(linhaEnd) || ["",""])[1];
+
+            // Busca CEP para o Bairro
+            const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
+            if (mCep && mCep[1] !== dados.cep) {
+                dados.cep = mCep[1];
+                buscarBairro(dados.cep);
+            }
         }
         
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
@@ -102,9 +94,19 @@
         document.getElementById('pPatri').innerText = dados.patri;
     }
 
+    async function buscarBairro(cep) {
+        try {
+            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            const data = await res.json();
+            if (!data.erro) {
+                dados.bai = data.bairro.toUpperCase();
+                document.getElementById('pBairro').innerText = dados.bai;
+            }
+        } catch (e) {}
+    }
+
     async function gerarERenderizar() {
         const btn = document.getElementById('btnGerar');
-        btn.innerHTML = "Processando...";
         btn.disabled = true;
 
         try {
@@ -115,42 +117,43 @@
 
             const txt = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
 
-            // Carimbos padronizados
+            // Cabeçalho e Bairro
             txt(dados.inc, 123, 768);
             txt(dados.uniorg, 64, 714);
             txt(dados.rua, 79, 701, 10);
             txt(dados.num, 300, 702);
             txt(dados.cid, 338, 689);
             txt(dados.uf, 43, 675); 
+            txt(dados.bai, 65, 688); // CARIMBO DO BAIRRO RESTAURADO
+
+            // Carimbos Fixos
             txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
             txt(dados.patri, 88, 485, 11);
 
+            // Horas
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
             txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
             txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
 
             const pdfBytes = await pdfDoc.save();
             
-            // CONVERTE PDF PARA IMAGEM (CANVAS)
+            // Renderização no Canvas (Visualização sem baixar)
             const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
             const pdf = await loadingTask.promise;
             const pdfPage = await pdf.getPage(1);
-            
-            const viewport = pdfPage.getViewport({scale: 2.0}); // Escala alta para nitidez
+            const viewport = pdfPage.getViewport({scale: 2.0}); 
             const canvas = document.getElementById('pdfCanvas');
             const context = canvas.getContext('2d');
             canvas.height = viewport.height;
             canvas.width = viewport.width;
 
             await pdfPage.render({canvasContext: context, viewport: viewport}).promise;
-            
             document.getElementById('viewerContainer').style.display = 'block';
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 
         } catch (e) {
             alert("Erro: " + e.message);
         } finally {
-            btn.innerHTML = "👁️ Visualizar RAT";
             btn.disabled = false;
         }
     }
@@ -161,7 +164,7 @@
         try {
             const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' }]);
             if (error) throw error;
-            alert("Salvo com sucesso!");
+            alert("Salvo!");
         } catch (e) { alert(e.message); }
     }
 </script>
