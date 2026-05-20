@@ -39,7 +39,7 @@
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Cidade</span><span id="pCidade" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Bairro</span><span id="pBairro" class="info-value" style="color: #3b82f6;">Buscando...</span></div>
+        <div class="info-item"><span class="info-label">Bairro</span><span id="pBairro" class="info-value" style="color: #3b82f6;">---</span></div>
         <div class="info-item"><span class="info-label">🕒 Atend.</span><span id="dispAtendimento" class="info-value">00:00</span></div>
     </div>
 
@@ -97,89 +97,4 @@
         }
         
         const buscarHora = (label) => {
-            const regex = new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
-            const match = regex.exec(texto);
-            return match ? { h: match[1], m: match[2] } : { h: '00', m: '00' };
-        };
-
-        dados.partida = buscarHora("Data de Início");
-        dados.chegada = buscarHora("Data de Chegada");
-        dados.atendimento = buscarHora("Data de Atendimento");
-
-        atualizarPainel();
-    }
-
-    async function buscarBairro(cep) {
-        try {
-            const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            const data = await response.json();
-            if (!data.erro) {
-                dados.bairro = data.bairro;
-                document.getElementById('pBairro').innerText = dados.bairro;
-            } else {
-                dados.bairro = "Não encontrado";
-                document.getElementById('pBairro').innerText = "---";
-            }
-        } catch (e) { console.error("Erro ao buscar CEP"); }
-    }
-
-    function atualizarPainel() {
-        document.getElementById('pInc').innerText = dados.inc;
-        document.getElementById('pCidade').innerText = dados.cidade;
-        document.getElementById('pBairro').innerText = dados.bairro || "---";
-        document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
-    }
-
-    async function visualizarRAT() {
-        try {
-            mostrarStatus("⌛ Gerando RAT...", "#e0f2fe");
-            const res = await fetch(URL_MODELO_PDF + '?t=' + new Date().getTime());
-            const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
-            const page = pdfDoc.getPages()[0];
-            const fontColor = PDFLib.rgb(0, 0, 0);
-
-            // Carimbos anteriores
-            page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
-            if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
-            if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
-            if(dados.enderecoNum !== "---") page.drawText(dados.enderecoNum, { x: 300, y: 702, size: 11, color: fontColor });
-            if(dados.cidade !== "---") page.drawText(dados.cidade, { x: 338, y: 689, size: 11, color: fontColor });
-
-            // BAIRRO (A definir coordenadas)
-            if(dados.bairro && dados.bairro !== "---") {
-                page.drawText(dados.bairro, { 
-                    x: 79,   // <--- AJUSTAR X DO BAIRRO
-                    y: 689,  // <--- AJUSTAR Y DO BAIRRO
-                    size: 11, color: fontColor 
-                });
-            }
-
-            // Horas
-            page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
-            page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
-            page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
-            page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
-            page.drawText(dados.atendimento.h, { x: 418, y: 749, size: 11, color: fontColor });
-            page.drawText(dados.atendimento.m, { x: 436, y: 749, size: 11, color: fontColor });
-
-            const pdfBytes = await pdfDoc.save();
-            const pdfUrl = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
-            document.getElementById('pdfIframe').src = pdfUrl;
-            document.getElementById('btnFallback').href = pdfUrl;
-            document.getElementById('previewContainer').style.display = 'block';
-            mostrarStatus("✅ Pronto!", "#dcfce7", 2000);
-        } catch (e) { alert("Erro: " + e.message); }
-    }
-
-    function mostrarStatus(msg, cor, t=0) {
-        const s = document.getElementById('status');
-        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
-        if(t > 0) setTimeout(() => s.style.display = 'none', t);
-    }
-
-    async function salvarAtendimento() {
-        // ... (lógica do supabase mantida)
-    }
-</script>
-</body>
-</html>
+            const regex = new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})",
