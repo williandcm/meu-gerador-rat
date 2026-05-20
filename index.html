@@ -9,14 +9,14 @@
     
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 850px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 900px; }
         h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
         textarea { width: 100%; height: 120px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
         
-        .info-painel { display: flex; gap: 15px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; justify-content: space-around; }
+        .info-painel { display: flex; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; justify-content: space-around; }
         .info-item { text-align: center; flex: 1; }
-        .info-label { display: block; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; }
-        .info-value { font-size: 16px; color: #1e293b; font-weight: bold; }
+        .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+        .info-value { font-size: 14px; color: #1e293b; font-weight: bold; }
 
         .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
         button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 15px; }
@@ -47,6 +47,10 @@
             <span class="info-label">🏁 Chegada</span>
             <span class="info-value" id="dispChegada">00:00</span>
         </div>
+        <div class="info-item" style="border-left: 1px solid #e2e8f0;">
+            <span class="info-label">🛠️ Atendim.</span>
+            <span class="info-value" id="dispAtendimento">00:00</span>
+        </div>
     </div>
 
     <div class="btn-group">
@@ -71,33 +75,32 @@
     let dados = { 
         inc: '', 
         partida: { h: '00', m: '00' },
-        chegada: { h: '00', m: '00' }
+        chegada: { h: '00', m: '00' },
+        atendimento: { h: '00', m: '00' }
     };
 
     function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         
-        // 1. Extrai INC
+        // 1. INC
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
         
-        // 2. Extrai Partida (Data de Início)
-        const mPartida = /Data de Início\s*:\s*\d{2}\/\d{2}\/\d{4}\s+(\d{2}):(\d{2})/i.exec(texto);
-        if (mPartida) {
-            dados.partida.h = mPartida[1];
-            dados.partida.m = mPartida[2];
-        }
+        // Função interna para facilitar a busca de horários
+        const buscarHora = (label) => {
+            const regex = new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
+            const match = regex.exec(texto);
+            return match ? { h: match[1], m: match[2] } : { h: '00', m: '00' };
+        };
 
-        // 3. Extrai Chegada (Data de Chegada)
-        const mChegada = /Data de Chegada\s*:\s*\d{2}\/\d{2}\/\d{4}\s+(\d{2}):(\d{2})/i.exec(texto);
-        if (mChegada) {
-            dados.chegada.h = mChegada[1];
-            dados.chegada.m = mChegada[2];
-        }
+        dados.partida = buscarHora("Data de Início");
+        dados.chegada = buscarHora("Data de Chegada");
+        dados.atendimento = buscarHora("Data de Atendimento");
 
         document.getElementById('pInc').innerText = dados.inc;
         document.getElementById('dispPartida').innerText = `${dados.partida.h}:${dados.partida.m}`;
         document.getElementById('dispChegada').innerText = `${dados.chegada.h}:${dados.chegada.m}`;
+        document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
     }
 
     async function salvarAtendimento() {
@@ -109,8 +112,8 @@
                 numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' 
             }]);
             if (error) throw error;
-            mostrarStatus("✅ Salvo no Supabase!", "#dcfce7", 2000);
-        } catch (e) { alert("Erro ao salvar: " + e.message); }
+            mostrarStatus("✅ Salvo!", "#dcfce7", 2000);
+        } catch (e) { alert(e.message); }
     }
 
     async function visualizarRAT() {
@@ -120,36 +123,36 @@
             const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
             const page = pdfDoc.getPages()[0];
 
-            // --- RÉGUA DE CALIBRAÇÃO (Remova quando terminar os ajustes) ---
-            for (let i = 0; i <= 600; i += 50) {
-                page.drawText(i.toString(), { x: i, y: 10, size: 8, color: PDFLib.rgb(0.7, 0.7, 0.7) });
-            }
-            for (let i = 0; i <= 850; i += 50) {
-                page.drawText(i.toString(), { x: 10, y: i, size: 8, color: PDFLib.rgb(0.7, 0.7, 0.7) });
-            }
+            // --- RÉGUA DE CALIBRAÇÃO (Remova quando terminar) ---
+            for (let i = 0; i <= 600; i += 50) page.drawText(i.toString(), { x: i, y: 10, size: 8, color: PDFLib.rgb(0.7, 0.7, 0.7) });
+            for (let i = 0; i <= 850; i += 50) page.drawText(i.toString(), { x: 10, y: i, size: 8, color: PDFLib.rgb(0.7, 0.7, 0.7) });
 
-            // 1. CARIMBO INC
+            // 1. INC
             page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: PDFLib.rgb(0,0,0) });
 
-            // 2. CARIMBO HORÁRIO DE PARTIDA (Data de Início)
+            // 2. PARTIDA (Data de Início)
             if(dados.partida.h !== "00") {
-                page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: PDFLib.rgb(0,0,0) });
-                page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: PDFLib.rgb(0,0,0) });
+                page.drawText(dados.partida.h, { x: 235, y: 690, size: 11, color: PDFLib.rgb(0,0,0) });
+                page.drawText(dados.partida.m, { x: 265, y: 690, size: 11, color: PDFLib.rgb(0,0,0) });
             }
 
-            // 3. CARIMBO HORÁRIO DE CHEGADA (Data de Chegada)
+            // 3. CHEGADA (Data de Chegada)
             if(dados.chegada.h !== "00") {
-                page.drawText(dados.chegada.h, { 
-                    x: 91, // <--- AJUSTAR X DA HORA DE CHEGADA
-                    y: 736, // <--- AJUSTAR Y DA HORA DE CHEGADA (Menor que o de partida para ficar abaixo)
-                    size: 11, 
-                    color: PDFLib.rgb(0,0,0) 
+                page.drawText(dados.chegada.h, { x: 235, y: 650, size: 11, color: PDFLib.rgb(0,0,0) });
+                page.drawText(dados.chegada.m, { x: 265, y: 650, size: 11, color: PDFLib.rgb(0,0,0) });
+            }
+
+            // 4. ATENDIMENTO (Data de Atendimento)
+            if(dados.atendimento.h !== "00") {
+                page.drawText(dados.atendimento.h, { 
+                    x: 235, // <--- AJUSTAR X HORA ATENDIMENTO
+                    y: 610, // <--- AJUSTAR Y HORA ATENDIMENTO
+                    size: 11, color: PDFLib.rgb(0,0,0) 
                 });
-                page.drawText(dados.chegada.m, { 
-                    x: 110, // <--- AJUSTAR X DO MINUTO DE CHEGADA
-                    y: 736, // <--- AJUSTAR Y DO MINUTO DE CHEGADA
-                    size: 11, 
-                    color: PDFLib.rgb(0,0,0) 
+                page.drawText(dados.atendimento.m, { 
+                    x: 265, // <--- AJUSTAR X MINUTO ATENDIMENTO
+                    y: 610, // <--- AJUSTAR Y MINUTO ATENDIMENTO
+                    size: 11, color: PDFLib.rgb(0,0,0) 
                 });
             }
 
@@ -157,14 +160,4 @@
             document.getElementById('pdfViewer').data = pdfUrl;
             document.getElementById('previewContainer').style.display = 'block';
             mostrarStatus("✅ Visualização com Régua Pronta!", "#dcfce7", 2000);
-        } catch (e) { alert("Erro ao processar PDF"); }
-    }
-
-    function mostrarStatus(msg, cor, t=0) {
-        const s = document.getElementById('status');
-        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
-        if(t > 0) setTimeout(() => s.style.display = 'none', t);
-    }
-</script>
-</body>
-</html>
+        }
