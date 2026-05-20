@@ -122,4 +122,58 @@
     async function visualizarRAT() {
         try {
             mostrarStatus("⌛ Gerando com Régua...", "#e0f2fe");
-            const res
+            const res = await fetch(URL_MODELO_PDF + '?t=' + new Date().getTime());
+            const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
+            const page = pdfDoc.getPages()[0];
+            const fontColor = PDFLib.rgb(0, 0, 0);
+            const rulerColor = PDFLib.rgb(0.7, 0.7, 0.7);
+
+            // --- RÉGUA (Mantida) ---
+            for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 8, color: rulerColor }); }
+            for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 8, color: rulerColor }); }
+
+            // 1. CHAMADO
+            page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
+
+            // 2. UNIORG
+            if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
+
+            // 3. RUA / AVENIDA (Fixo)
+            if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
+
+            // 4. NÚMERO (COORDENADAS ATUALIZADAS)
+            if(dados.enderecoNum !== "---") {
+                page.drawText(dados.enderecoNum, { x: 300, y: 702, size: 11, color: fontColor });
+            }
+
+            // 5. DATAS
+            if(dados.partida.h !== "00") {
+                page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
+                page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
+            }
+            if(dados.chegada.h !== "00") {
+                page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
+                page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
+            }
+            if(dados.atendimento.h !== "00") {
+                page.drawText(dados.atendimento.h, { x: 418, y: 749, size: 11, color: fontColor });
+                page.drawText(dados.atendimento.m, { x: 436, y: 749, size: 11, color: fontColor });
+            }
+
+            const pdfBytes = await pdfDoc.save();
+            const pdfUrl = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
+            document.getElementById('pdfIframe').src = pdfUrl;
+            document.getElementById('btnFallback').href = pdfUrl;
+            document.getElementById('previewContainer').style.display = 'block';
+            mostrarStatus("✅ Número posicionado!", "#dcfce7", 2000);
+        } catch (e) { alert("Erro: " + e.message); }
+    }
+
+    function mostrarStatus(msg, cor, t=0) {
+        const s = document.getElementById('status');
+        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
+        if(t > 0) setTimeout(() => s.style.display = 'none', t);
+    }
+</script>
+</body>
+</html>
