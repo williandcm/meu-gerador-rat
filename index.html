@@ -76,11 +76,9 @@
     function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         
-        // Extração INC
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
 
-        // Extração Uniorg (Pega os números após "Uniorg :")
         const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
         dados.uniorg = mUniorg ? mUniorg[1] : "---";
         
@@ -123,35 +121,31 @@
             const fontColor = PDFLib.rgb(0, 0, 0);
             const rulerColor = PDFLib.rgb(0.7, 0.7, 0.7);
 
-            // --- RÉGUA DE CALIBRAÇÃO ---
+            // --- RÉGUA DE CALIBRAÇÃO (MANTIDA) ---
             for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 8, color: rulerColor }); }
             for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 8, color: rulerColor }); }
 
-            // 1. CHAMADO (Fixo)
+            // 1. CHAMADO
             page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
 
-            // 2. UNIORG (Ajustar com a régua)
+            // 2. UNIORG (COORDENADAS ATUALIZADAS)
             if(dados.uniorg !== "---") {
-                page.drawText(dados.uniorg, { 
-                    x: 64, // <--- AJUSTAR X DO UNIORG
-                    y: 714, // <--- AJUSTAR Y DO UNIORG (Coloquei abaixo do INC como exemplo)
-                    size: 11, color: fontColor 
-                });
+                page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
             }
 
-            // 3. HORA PARTIDA (Fixo)
+            // 3. HORA PARTIDA
             if(dados.partida.h !== "00") {
                 page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
                 page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
             }
 
-            // 4. HORA CHEGADA (Fixo)
+            // 4. HORA CHEGADA
             if(dados.chegada.h !== "00") {
                 page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
                 page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
             }
 
-            // 5. HORA INICIO ATENDIMENTO (Fixo)
+            // 5. HORA INICIO ATENDIMENTO
             if(dados.atendimento.h !== "00") {
                 page.drawText(dados.atendimento.h, { x: 418, y: 749, size: 11, color: fontColor });
                 page.drawText(dados.atendimento.m, { x: 436, y: 749, size: 11, color: fontColor });
