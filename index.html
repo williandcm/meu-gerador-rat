@@ -117,15 +117,15 @@
             txt(dados.rua, 79, 701, 10);
             txt(dados.num, 300, 702);
             txt(dados.cid, 338, 689);
-            
-            // POSIÇÃO SOLICITADA PARA UF
             txt(dados.uf, 43, 675); 
-            
             txt(dados.bai, 65, 688);
+
+            // CARIMBO FIXO: DEFEITO / CAUSA
+            txt("Equipamento inoperante", 43, 555, 10);
 
             // Horas
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
-            txt(dados.c.h, 91, 736); txt(dados.c.m, 110, 736);
+            txt(dados.chegada ? dados.c.h : '00', 91, 736); txt(dados.chegada ? dados.c.m : '00', 110, 736);
             txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
 
             const pdfBytes = await pdfDoc.save();
