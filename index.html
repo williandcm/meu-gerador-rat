@@ -74,20 +74,16 @@
     function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         
-        // INC e Uniorg
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
         const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
         dados.uniorg = mUniorg ? mUniorg[1] : "---";
 
-        // Endereço Completo
         const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
         if (mFullEnd) {
             const linhaEnd = mFullEnd[1];
-            // Rua (antes do número)
             const mRua = /^([^0-9,]+)/.exec(linhaEnd);
             dados.enderecoRua = mRua ? mRua[1].trim() : "---";
-            // Número (primeira sequência de dígitos após a rua)
             const mNum = /(\d+)/.exec(linhaEnd.replace(dados.enderecoRua, ""));
             dados.enderecoNum = mNum ? mNum[1] : "---";
         }
@@ -126,62 +122,4 @@
     async function visualizarRAT() {
         try {
             mostrarStatus("⌛ Gerando com Régua...", "#e0f2fe");
-            const res = await fetch(URL_MODELO_PDF + '?t=' + new Date().getTime());
-            const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
-            const page = pdfDoc.getPages()[0];
-            const fontColor = PDFLib.rgb(0, 0, 0);
-            const rulerColor = PDFLib.rgb(0.7, 0.7, 0.7);
-
-            // --- RÉGUA ---
-            for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 8, color: rulerColor }); }
-            for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 8, color: rulerColor }); }
-
-            // 1. CHAMADO
-            page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
-
-            // 2. UNIORG
-            if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
-
-            // 3. RUA / AVENIDA (Fixo conforme seu ajuste)
-            if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 11, color: fontColor });
-
-            // 4. NÚMERO (AJUSTAR COM A RÉGUA)
-            if(dados.enderecoNum !== "---") {
-                page.drawText(dados.enderecoNum, { 
-                    x: 300, // <--- AJUSTAR X
-                    y: 702, // <--- AJUSTAR Y (Coloquei na mesma linha da rua por enquanto)
-                    size: 11, color: fontColor 
-                });
-            }
-
-            // 5. DATAS
-            if(dados.partida.h !== "00") {
-                page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
-                page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
-            }
-            if(dados.chegada.h !== "00") {
-                page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
-                page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
-            }
-            if(dados.atendimento.h !== "00") {
-                page.drawText(dados.atendimento.h, { x: 418, y: 749, size: 11, color: fontColor });
-                page.drawText(dados.atendimento.m, { x: 436, y: 749, size: 11, color: fontColor });
-            }
-
-            const pdfBytes = await pdfDoc.save();
-            const pdfUrl = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
-            document.getElementById('pdfIframe').src = pdfUrl;
-            document.getElementById('btnFallback').href = pdfUrl;
-            document.getElementById('previewContainer').style.display = 'block';
-            mostrarStatus("✅ Posicione o número!", "#dcfce7", 2000);
-        } catch (e) { alert("Erro: " + e.message); }
-    }
-
-    function mostrarStatus(msg, cor, t=0) {
-        const s = document.getElementById('status');
-        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
-        if(t > 0) setTimeout(() => s.style.display = 'none', t);
-    }
-</script>
-</body>
-</html>
+            const res
