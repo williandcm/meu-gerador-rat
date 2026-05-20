@@ -24,7 +24,8 @@
         .btn-pdf { background: #10b981; color: white; }
         
         #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; }
-        iframe { width: 100%; height: 800px; border: 2px solid #cbd5e1; border-radius: 8px; background: #cbd5e1; }
+        iframe { width: 100%; height: 600px; border: 2px solid #cbd5e1; border-radius: 8px; background: #cbd5e1; }
+        #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -36,14 +37,17 @@
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Cidade/UF</span><span id="pLocal" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Cidade / UF</span><span id="pLocal" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Bairro</span><span id="pBairro" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">🕒 Atend.</span><span id="dispAtendimento" class="info-value">00:00</span></div>
     </div>
 
     <div class="btn-group">
-        <button class="btn-save" onclick="salvarAtendimento()">1. Salvar no Banco</button>
-        <button class="btn-pdf" onclick="visualizarRAT()">2. Gerar e Abrir RAT</button>
+        <button class="btn-save" id="btnSalvar" onclick="salvarAtendimento()">1. Salvar no Banco</button>
+        <button class="btn-pdf" id="btnGerar" onclick="visualizarRAT()">2. Gerar e Abrir RAT</button>
     </div>
+
+    <div id="status"></div>
 
     <div id="previewContainer">
         <iframe id="pdfIframe"></iframe>
@@ -57,18 +61,114 @@
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let blobUrlAtual = null;
-    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
+    
+    let dados = { 
+        inc: '', uniorg: '', enderecoRua: '', enderecoNum: '', cidade: '', uf: '', bairro: '', cep: '',
+        partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} 
+    };
 
     async function extrairDados() {
-        const t = document.getElementById('textoBruto').value;
-        if(!t) return;
-        const mInc = /INC\d+/i.exec(t); dados.inc = mInc ? mInc[0].toUpperCase() : '---';
-        const mEnd = /Endereço\s*:\s*(.+)/i.exec(t);
-        if(mEnd) {
-            const linha = mEnd[1];
-            dados.rua = (/^([^0-9,]+)/.exec(linha) || ["","---"])[1].trim();
-            dados.num = (/(\d+)/.exec(linha.replace(dados.rua,"")) || ["","---"])[1];
-            dados.cid = (/-\s*([^,]+)/.exec(linha) || ["","---"])[1].trim();
-            dados.uf = (/,\s*([A-Z]{2})/.exec(linha) || ["",""])[1];
-            const mCep = /(\d{8})/.exec(linha.replace(/\s/g, ""));
-            if(mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep);
+        const texto = document.getElementById('textoBruto').value;
+        if(!texto) return;
+
+        const mInc = /(INC\d+)/i.exec(texto);
+        dados.inc = mInc ? mInc[1].toUpperCase() : "---";
+        
+        const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
+        dados.uniorg = mUniorg ? mUniorg[1] : "---";
+
+        const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
+        if (mFullEnd) {
+            const linhaEnd = mFullEnd[1];
+            dados.enderecoRua = (/^([^0-9,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
+            dados.enderecoNum = (/(\d+)/.exec(linhaEnd.replace(dados.enderecoRua, "")) || ["","---"])[1];
+            dados.cidade = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
+            
+            // Extração da UF
+            const mUf = /,\s*([A-Z]{2})/.exec(linhaEnd);
+            dados.uf = mUf ? mUf[1] : "";
+
+            const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
+            if (mCep && mCep[1] !== dados.cep) {
+                dados.cep = mCep[1];
+                buscarBairro(dados.cep);
+            }
+        }
+        
+        const regexHora = (label) => new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
+        const p = regexHora("Início").exec(texto); if(p) dados.partida = {h:p[1], m:p[2]};
+        const c = regexHora("Chegada").exec(texto); if(c) dados.chegada = {h:c[1], m:c[2]};
+        const a = regexHora("Atendimento").exec(texto); if(a) dados.atendimento = {h:a[1], m:a[2]};
+
+        atualizarPainel();
+    }
+
+    async function buscarBairro(cep) {
+        try {
+            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            const data = await res.json();
+            if (!data.erro) {
+                dados.bairro = data.bairro.toUpperCase();
+                document.getElementById('pBairro').innerText = dados.bairro;
+            }
+        } catch (e) { console.error("Erro CEP"); }
+    }
+
+    function atualizarPainel() {
+        document.getElementById('pInc').innerText = dados.inc;
+        document.getElementById('pLocal').innerText = dados.uf ? `${dados.cidade} / ${dados.uf}` : dados.cidade;
+        document.getElementById('pBairro').innerText = dados.bairro || "---";
+        document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
+    }
+
+    async function visualizarRAT() {
+        if(!document.getElementById('textoBruto').value) return alert("Cole o chamado primeiro!");
+        const btn = document.getElementById('btnGerar');
+        btn.disabled = true;
+        
+        try {
+            const response = await fetch(URL_MODELO_PDF + '?nocache=' + Date.now());
+            const pdfArrayBuffer = await response.arrayBuffer();
+            const pdfDoc = await PDFLib.PDFDocument.load(pdfArrayBuffer);
+            const page = pdfDoc.getPages()[0];
+            const fontColor = PDFLib.rgb(0, 0, 0);
+
+            const carimbar = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
+
+            // Carimbos Principais
+            carimbar(dados.inc, 123, 768);
+            carimbar(dados.uniorg, 64, 714);
+            carimbar(dados.enderecoRua, 79, 701, 10);
+            carimbar(dados.enderecoNum, 300, 702);
+            carimbar(dados.cidade, 338, 689);
+            carimbar(dados.uf, 480, 689); // UF Carimbada aqui
+            carimbar(dados.bairro, 65, 688);
+
+            // Horas
+            carimbar(dados.partida.h, 91, 747); carimbar(dados.partida.m, 110, 747);
+            carimbar(dados.chegada.h, 91, 736); carimbar(dados.chegada.m, 110, 736);
+            carimbar(dados.atendimento.h, 418, 749); carimbar(dados.atendimento.m, 436, 749);
+
+            const pdfBytes = await pdfDoc.save();
+            if (blobUrlAtual) URL.revokeObjectURL(blobUrlAtual);
+            blobUrlAtual = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
+
+            document.getElementById('pdfIframe').src = blobUrlAtual;
+            document.getElementById('previewContainer').style.display = 'block';
+            
+        } catch (e) { alert("Erro: " + e.message); }
+        finally { btn.disabled = false; }
+    }
+
+    async function salvarAtendimento() {
+        const texto = document.getElementById('textoBruto').value.trim();
+        if(!texto) return;
+        try {
+            const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' }]);
+            if (error) throw error;
+            alert("Salvo com sucesso!");
+        } catch (e) { alert("Erro Banco: " + e.message); }
+    }
+</script>
+</body>
+</html>
