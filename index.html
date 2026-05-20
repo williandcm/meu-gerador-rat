@@ -37,9 +37,8 @@
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Uniorg</span><span id="pUniorg" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Cidade</span><span id="pCidade" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Nº</span><span id="pNumero" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">CEP</span><span id="pCep" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">🕒 Partida</span><span id="dispPartida" class="info-value">00:00</span></div>
     </div>
 
@@ -63,7 +62,7 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
     let dados = { 
-        inc: '', uniorg: '', enderecoRua: '', enderecoNum: '', cidade: '',
+        inc: '', uniorg: '', enderecoRua: '', enderecoNum: '', cidade: '', cep: '',
         partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} 
     };
 
@@ -71,32 +70,25 @@
         const texto = document.getElementById('textoBruto').value;
         if(!texto) return;
 
-        // Extração INC
-        const mInc = /(INC\d+)/i.exec(texto);
-        dados.inc = mInc ? mInc[1].toUpperCase() : "---";
+        const mInc = /(INC\d+|SGPI:\s*\d+)/i.exec(texto);
+        dados.inc = mInc ? mInc[1].replace(/SGPI:\s*/i, "SGPI ").toUpperCase() : "---";
 
-        // Extração Uniorg
-        const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
-        dados.uniorg = mUniorg ? mUniorg[1] : "---";
+        const mUniorg = /(Uniorg\s*:\s*(\d+)|SN:\s*(\w+))/i.exec(texto);
+        dados.uniorg = mUniorg ? (mUniorg[2] || mUniorg[3]) : "---";
 
-        // --- NOVA LÓGICA DE ENDEREÇO ---
         const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
         if (mFullEnd) {
             const linhaEnd = mFullEnd[1];
-            
-            // 1. Rua: tudo antes do primeiro número
             const mRua = /^([^0-9,]+)/.exec(linhaEnd);
             dados.enderecoRua = mRua ? mRua[1].trim() : "---";
-            
-            // 2. Número: primeiro bloco de números após a rua
-            const restoAposRua = linhaEnd.replace(dados.enderecoRua, "");
-            const mNum = /(\d+)/.exec(restoAposRua);
+            const mNum = /(\d+)/.exec(linhaEnd.replace(dados.enderecoRua, ""));
             dados.enderecoNum = mNum ? mNum[1] : "---";
-            
-            // 3. Cidade: Entre o traço (-) e a vírgula (,)
-            // Ex: "980 - CAMPINAS, SP" -> Pega "CAMPINAS"
             const mCid = /-\s*([^,]+)/.exec(linhaEnd);
             dados.cidade = mCid ? mCid[1].trim() : "---";
+            
+            // Extração do CEP (última sequência de números da linha)
+            const mCep = /(\d{5}-?\d{3}|\d{8})$/.exec(linhaEnd.trim());
+            dados.cep = mCep ? mCep[1] : "---";
         }
 
         const buscarHora = (label) => {
@@ -107,78 +99,22 @@
 
         dados.partida = buscarHora("Data de Início");
         dados.chegada = buscarHora("Data de Chegada");
-        dados.atendimento = buscarHora("Data de Atendimento");
-
+        
         document.getElementById('pInc').innerText = dados.inc;
-        document.getElementById('pUniorg').innerText = dados.uniorg;
-        document.getElementById('pEndereco').innerText = dados.enderecoRua;
-        document.getElementById('pNumero').innerText = dados.enderecoNum;
         document.getElementById('pCidade').innerText = dados.cidade;
+        document.getElementById('pCep').innerText = dados.cep;
         document.getElementById('dispPartida').innerText = `${dados.partida.h}:${dados.partida.m}`;
     }
 
     async function visualizarRAT() {
         if(!document.getElementById('textoBruto').value) return;
-
         try {
-            mostrarStatus("⌛ Carimbando...", "#e0f2fe");
+            mostrarStatus("⌛ Gerando...", "#e0f2fe");
             const res = await fetch(`${URL_MODELO_PDF}?t=${new Date().getTime()}`);
             const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
             const page = pdfDoc.getPages()[0];
             const fontColor = PDFLib.rgb(0, 0, 0);
             const rulerColor = PDFLib.rgb(0.7, 0.7, 0.7);
 
-            // RÉGUA PARA AJUSTE
-            for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 8, color: rulerColor }); }
-            for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 8, color: rulerColor }); }
-
-            // CARIMBOS
-            page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
-            if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
-            if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
-            if(dados.enderecoNum !== "---") page.drawText(dados.enderecoNum, { x: 300, y: 702, size: 11, color: fontColor });
-            
-            // --- AJUSTE A CIDADE AQUI ---
-            if(dados.cidade !== "---") {
-                page.drawText(dados.cidade, { 
-                    x: 338,  // <--- AJUSTAR X
-                    y: 689, // <--- AJUSTAR Y
-                    size: 11, color: fontColor 
-                });
-            }
-
-            // HORÁRIOS
-            page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
-            page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
-            page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
-            page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
-
-            const pdfBytes = await pdfDoc.save();
-            const pdfUrl = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
-            document.getElementById('pdfIframe').src = pdfUrl;
-            document.getElementById('previewContainer').style.display = 'block';
-            mostrarStatus("✅ Use a régua para a Cidade!", "#dcfce7", 2000);
-        } catch (e) { alert(e.message); }
-    }
-
-    function mostrarStatus(msg, cor, t=0) {
-        const s = document.getElementById('status');
-        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
-        if(t > 0) setTimeout(() => s.style.display = 'none', t);
-    }
-
-    async function salvarAtendimento() {
-        const texto = document.getElementById('textoBruto').value.trim();
-        if(!texto) return;
-        mostrarStatus("⌛ Gravando...", "#e0f2fe");
-        try {
-            const { error } = await supabaseClient.from('chamados').insert([{ 
-                numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' 
-            }]);
-            if (error) throw error;
-            mostrarStatus("✅ Salvo!", "#dcfce7", 2000);
-        } catch (e) { alert(e.message); }
-    }
-</script>
-</body>
-</html>
+            // RÉGUA
+            for (let i = 0; i <= 600; i += 50) { page
