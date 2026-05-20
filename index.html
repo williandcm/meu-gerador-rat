@@ -2,335 +2,207 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>RAT Santander - ESTÁVEL</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de RAT - Willian</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #e5e7eb; padding: 30px; display: flex; justify-content: center; }
-        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 700px; }
-        h2 { color: #b91c1c; text-align: center; margin-top: 0; }
-        textarea { width: 100%; height: 120px; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; margin-bottom: 15px; resize: none; font-size: 14px; box-sizing: border-box; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #d1d5db; }
-        .label { font-size: 11px; color: #6b7280; font-weight: bold; text-transform: uppercase; }
-        .val { font-size: 14px; color: #111827; font-weight: bold; display: block; }
-        .btn-group { display: flex; gap: 10px; }
-        button { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; color: white; }
-        .btn-gerar { background: #059669; }
-        .btn-gerar:hover { background: #047857; }
-        .btn-gerar:active { transform: scale(0.98); }
-        #status { margin-bottom: 15px; padding: 10px; border-radius: 5px; text-align: center; font-weight: bold; display: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 950px; }
+        h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
+        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
+        
+        .info-painel { display: flex; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; justify-content: space-around; flex-wrap: wrap; }
+        .info-item { text-align: center; min-width: 80px; }
+        .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+        .info-value { font-size: 13px; color: #1e293b; font-weight: bold; }
+
+        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 15px; }
+        .btn-save { background: #3b82f6; color: white; }
+        .btn-pdf { background: #10b981; color: white; }
+        
+        #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; }
+        iframe { width: 100%; height: 600px; border: 2px solid #cbd5e1; border-radius: 8px; background: #cbd5e1; }
+        .fallback-link { display: inline-block; margin-top: 10px; padding: 12px 24px; background: #ef4444; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Gerador de RAT Santander</h2>
+    <h2>📄 Sistema de RAT Santander</h2>
     
-    <div id="status"></div>
-
-    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="processar()"></textarea>
+    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
-    <div class="info-grid">
-        <div><span class="label">Chamado</span><span id="vInc" class="val">---</span></div>
-        <div><span class="label">Bairro (Automático)</span><span id="vBai" class="val">---</span></div>
-        <div><span class="label">Cidade / UF</span><span id="vLoc" class="val">---</span></div>
-        <div><span class="label">CEP</span><span id="vCep" class="val">---</span></div>
+    <div class="info-painel">
+        <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Cidade</span><span id="pCidade" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Bairro</span><span id="pBairro" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">🕒 Atend.</span><span id="dispAtendimento" class="info-value">00:00</span></div>
     </div>
 
     <div class="btn-group">
-        <button class="btn-gerar" onclick="gerarPDF()">CARIMBAR E BAIXAR RAT (PDF)</button>
+        <button class="btn-save" id="btnSalvar" onclick="salvarAtendimento()">1. Salvar no Banco</button>
+        <button class="btn-pdf" id="btnGerar" onclick="visualizarRAT()">2. Gerar e Abrir RAT</button>
     </div>
-    
-    <p style="text-align: center; font-size: 11px; color: #9ca3af; margin-top: 15px;">
-        Versão com download direto para evitar travamento de visualização.
-    </p>
+
+    <div id="status"></div>
+
+    <div id="previewContainer">
+        <a id="btnFallback" class="fallback-link" target="_blank">Clique aqui se o PDF não carregar abaixo</a>
+        <br><br>
+        <iframe id="pdfIframe" name="pdfIframe"></iframe>
+    </div>
 </div>
 
 <script>
-    const MODELO_URL = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
+    const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
+    const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let blobUrlAtual = null;
     
-    let dados = { inc: '', rua: '', num: '', cid: '', uf: '', bai: '', cep: '', h:{} };
+    let dados = { 
+        inc: '', uniorg: '', enderecoRua: '', enderecoNum: '', cidade: '', bairro: '', cep: '',
+        partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} 
+    };
 
-    function processar() {
-        const t = document.getElementById('textoBruto').value;
-        if(!t) return;
+    async function extrairDados() {
+        const texto = document.getElementById('textoBruto').value;
+        if(!texto) return;
 
-        // Extração de dados
-        const mInc = /INC\d+/i.exec(t);
-        dados.inc = mInc ? mInc[0].toUpperCase() : '---';
+        const mInc = /(INC\d+)/i.exec(texto);
+        dados.inc = mInc ? mInc[1].toUpperCase() : "---";
+        const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
+        dados.uniorg = mUniorg ? mUniorg[1] : "---";
 
-        const mEnd = /Endereço\s*:\s*(.+)/i.exec(t);
-        if(mEnd) {
-            const linha = mEnd[1];
-            dados.rua = (/^([^0-9,]+)/.exec(linha) || ["","---"])[1].trim();
-            dados.num = (/(\d+)/.exec(linha.replace(dados.rua,"")) || ["","---"])[1];
-            dados.cid = (/-\s*([^,]+)/.exec(linha) || ["","---"])[1].trim();
-            dados.uf = (/,\s*([A-Z]{2})/.exec(linha) || ["",""])[1];
-            
-            const mCep = /(\d{8})/.exec(linha.replace(/\s/g, ""));
-            if(mCep && mCep[1] !== dados.cep) {
+        const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
+        if (mFullEnd) {
+            const linhaEnd = mFullEnd[1];
+            const mRua = /^([^0-9,]+)/.exec(linhaEnd);
+            dados.enderecoRua = mRua ? mRua[1].trim() : "---";
+            const mNum = /(\d+)/.exec(linhaEnd.replace(dados.enderecoRua, ""));
+            dados.enderecoNum = mNum ? mNum[1] : "---";
+            const mCid = /-\s*([^,]+)/.exec(linhaEnd);
+            dados.cidade = mCid ? mCid[1].trim() : "---";
+
+            const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
+            if (mCep && mCep[1] !== dados.cep) {
                 dados.cep = mCep[1];
                 buscarBairro(dados.cep);
             }
         }
+        
+        const regexHora = (label) => new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
+        const p = regexHora("Início").exec(texto); if(p) dados.partida = {h:p[1], m:p[2]};
+        const c = regexHora("Chegada").exec(texto); if(c) dados.chegada = {h:c[1], m:c[2]};
+        const a = regexHora("Atendimento").exec(texto); if(a) dados.atendimento = {h:a[1], m:a[2]};
 
-        // Extração de Horas
-        const getH = (l) => {
-            const r = new RegExp(l + ".+(\\d{2}):(\\d{2})").exec(t);
-            return r ? {h: r[1], m: r[2]} : {h: '00', m: '00'};
-        };
-        dados.h.p = getH("Início");
-        dados.h.c = getH("Chegada");
-        dados.h.a = getH("Atendimento");
-
-        // Atualiza Painel
-        document.getElementById('vInc').innerText = dados.inc;
-        document.getElementById('vLoc').innerText = dados.cid + " / " + dados.uf;
-        document.getElementById('vCep').innerText = dados.cep || "---";
+        atualizarPainel();
     }
 
     async function buscarBairro(cep) {
         try {
             const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            const d = await res.json();
-            if(!d.erro) {
-                dados.bai = d.bairro.toUpperCase();
-                document.getElementById('vBai').innerText = dados.bai;
+            const data = await res.json();
+            if (!data.erro) {
+                dados.bairro = data.bairro.toUpperCase();
+                document.getElementById('pBairro').innerText = dados.bairro;
             }
-        } catch(e) {}
+        } catch (e) { console.error("Erro CEP"); }
     }
 
-    async function gerarPDF() {
-        const btn = document.querySelector('.btn-gerar');
-        const st = document.getElementById('status');
+    function atualizarPainel() {
+        document.getElementById('pInc').innerText = dados.inc;
+        document.getElementById('pCidade').innerText = dados.cidade;
+        document.getElementById('pBairro').innerText = dados.bairro || "---";
+        document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
+    }
+
+    async function visualizarRAT() {
+        if(!document.getElementById('textoBruto').value) return alert("Cole o chamado primeiro!");
         
-        if(!document.getElementById('textoBruto').value) {
-            alert("Cole o chamado!");
-            return;
-        }
-
+        const btn = document.getElementById('btnGerar');
+        btn.disabled = true;
+        btn.innerText = "⌛ Processando...";
+        
         try {
-            btn.disabled = true;
-            btn.innerText = "⌛ GERANDO...";
-            st.style.display = "block";
-            st.style.background = "#dbeafe";
-            st.innerText = "Baixando modelo e carimbando...";
-
-            // 1. Carrega o modelo
-            const resp = await fetch(MODELO_URL + '?v=' + Date.now());
-            const arrayBuffer = await resp.buffer ? await resp.buffer() : await resp.arrayBuffer();
-
-            // 2. Inicia o PDF-LIB
-            const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
-            const page = pdfDoc.getPages()[0];
-            const cor = PDFLib.rgb(0, 0, 0);
-
-            // 3. Função de escrita
-            const escrever = (t, x, y, s = 11) => {
-                if(t && t !== '---') page.drawText(t, { x, y, size: s, color: cor });
-            };
-
-            // 4. Carimbos (Coordenadas confirmadas)
-            escrever(dados.inc, 123, 768);
-            escrever(dados.rua, 79, 701, 10);
-            escrever(dados.num, 300, 702);
-            escrever(dados.cid, 338, 689);
-            escrever(dados.uf, 480, 689);  // Posição Estado
-            escrever(dados.bai, 65, 688);  // Posição Bairro
-
-            // Horas
-            escrever(dados.h.p.h, 91, 747); escrever(dados.h.p.m, 110, 747);
-            escrever(dados.h.c.h, 91, 736); escrever(dados.h.c.m, 110, 736);
-            escrever(dados.h.a.h, 418, 749); escrever(dados.h.a.m, 436, 749);
-
-            // 5. Finaliza e faz o Download Direto
-            const pdfBytes = await pdfDoc.save();
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `RAT_${dados.inc || 'SANTANDER'}.pdf`;
-            link.click();
-
-            st.style.background = "#dcfce7";
-            st.innerText = "✅ PDF baixado com sucesso!";
-            setTimeout(() => { st.style.display = "none"; }, 3000);
-
-        } catch (e) {
-            console.error(e);
-            alert("Erro ao gerar PDF: " + e.message);
-            st.style.background = "#fee2e2";
-            st.innerText = "❌ Falha ao gerar.";
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "CARIMBAR E BAIXAR RAT (PDF)";
-        }
-    }
-</script>
-</body>
-</html><!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>RAT Santander - ESTÁVEL</title>
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #e5e7eb; padding: 30px; display: flex; justify-content: center; }
-        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 700px; }
-        h2 { color: #b91c1c; text-align: center; margin-top: 0; }
-        textarea { width: 100%; height: 120px; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; margin-bottom: 15px; resize: none; font-size: 14px; box-sizing: border-box; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #d1d5db; }
-        .label { font-size: 11px; color: #6b7280; font-weight: bold; text-transform: uppercase; }
-        .val { font-size: 14px; color: #111827; font-weight: bold; display: block; }
-        .btn-group { display: flex; gap: 10px; }
-        button { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; color: white; }
-        .btn-gerar { background: #059669; }
-        .btn-gerar:hover { background: #047857; }
-        .btn-gerar:active { transform: scale(0.98); }
-        #status { margin-bottom: 15px; padding: 10px; border-radius: 5px; text-align: center; font-weight: bold; display: none; }
-    </style>
-</head>
-<body>
-
-<div class="card">
-    <h2>📄 Gerador de RAT Santander</h2>
-    
-    <div id="status"></div>
-
-    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="processar()"></textarea>
-    
-    <div class="info-grid">
-        <div><span class="label">Chamado</span><span id="vInc" class="val">---</span></div>
-        <div><span class="label">Bairro (Automático)</span><span id="vBai" class="val">---</span></div>
-        <div><span class="label">Cidade / UF</span><span id="vLoc" class="val">---</span></div>
-        <div><span class="label">CEP</span><span id="vCep" class="val">---</span></div>
-    </div>
-
-    <div class="btn-group">
-        <button class="btn-gerar" onclick="gerarPDF()">CARIMBAR E BAIXAR RAT (PDF)</button>
-    </div>
-    
-    <p style="text-align: center; font-size: 11px; color: #9ca3af; margin-top: 15px;">
-        Versão com download direto para evitar travamento de visualização.
-    </p>
-</div>
-
-<script>
-    const MODELO_URL = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
-    
-    let dados = { inc: '', rua: '', num: '', cid: '', uf: '', bai: '', cep: '', h:{} };
-
-    function processar() {
-        const t = document.getElementById('textoBruto').value;
-        if(!t) return;
-
-        // Extração de dados
-        const mInc = /INC\d+/i.exec(t);
-        dados.inc = mInc ? mInc[0].toUpperCase() : '---';
-
-        const mEnd = /Endereço\s*:\s*(.+)/i.exec(t);
-        if(mEnd) {
-            const linha = mEnd[1];
-            dados.rua = (/^([^0-9,]+)/.exec(linha) || ["","---"])[1].trim();
-            dados.num = (/(\d+)/.exec(linha.replace(dados.rua,"")) || ["","---"])[1];
-            dados.cid = (/-\s*([^,]+)/.exec(linha) || ["","---"])[1].trim();
-            dados.uf = (/,\s*([A-Z]{2})/.exec(linha) || ["",""])[1];
+            mostrarStatus("⌛ Gerando PDF carimbado...", "#e0f2fe");
             
-            const mCep = /(\d{8})/.exec(linha.replace(/\s/g, ""));
-            if(mCep && mCep[1] !== dados.cep) {
-                dados.cep = mCep[1];
-                buscarBairro(dados.cep);
+            // 1. Limpeza de memória do PDF anterior
+            if (blobUrlAtual) {
+                URL.revokeObjectURL(blobUrlAtual);
+                document.getElementById('pdfIframe').src = 'about:blank';
             }
-        }
 
-        // Extração de Horas
-        const getH = (l) => {
-            const r = new RegExp(l + ".+(\\d{2}):(\\d{2})").exec(t);
-            return r ? {h: r[1], m: r[2]} : {h: '00', m: '00'};
-        };
-        dados.h.p = getH("Início");
-        dados.h.c = getH("Chegada");
-        dados.h.a = getH("Atendimento");
+            // 2. Busca o modelo com bypass de cache agressivo
+            const response = await fetch(URL_MODELO_PDF + '?nocache=' + Date.now(), { cache: "no-store" });
+            if (!response.ok) throw new Error("Não foi possível baixar o modelo da RAT.");
+            const pdfArrayBuffer = await response.arrayBuffer();
 
-        // Atualiza Painel
-        document.getElementById('vInc').innerText = dados.inc;
-        document.getElementById('vLoc').innerText = dados.cid + " / " + dados.uf;
-        document.getElementById('vCep').innerText = dados.cep || "---";
-    }
-
-    async function buscarBairro(cep) {
-        try {
-            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            const d = await res.json();
-            if(!d.erro) {
-                dados.bai = d.bairro.toUpperCase();
-                document.getElementById('vBai').innerText = dados.bai;
-            }
-        } catch(e) {}
-    }
-
-    async function gerarPDF() {
-        const btn = document.querySelector('.btn-gerar');
-        const st = document.getElementById('status');
-        
-        if(!document.getElementById('textoBruto').value) {
-            alert("Cole o chamado!");
-            return;
-        }
-
-        try {
-            btn.disabled = true;
-            btn.innerText = "⌛ GERANDO...";
-            st.style.display = "block";
-            st.style.background = "#dbeafe";
-            st.innerText = "Baixando modelo e carimbando...";
-
-            // 1. Carrega o modelo
-            const resp = await fetch(MODELO_URL + '?v=' + Date.now());
-            const arrayBuffer = await resp.buffer ? await resp.buffer() : await resp.arrayBuffer();
-
-            // 2. Inicia o PDF-LIB
-            const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+            // 3. Inicia PDF-LIB
+            const pdfDoc = await PDFLib.PDFDocument.load(pdfArrayBuffer);
             const page = pdfDoc.getPages()[0];
-            const cor = PDFLib.rgb(0, 0, 0);
+            const fontColor = PDFLib.rgb(0, 0, 0);
 
-            // 3. Função de escrita
-            const escrever = (t, x, y, s = 11) => {
-                if(t && t !== '---') page.drawText(t, { x, y, size: s, color: cor });
-            };
-
-            // 4. Carimbos (Coordenadas confirmadas)
-            escrever(dados.inc, 123, 768);
-            escrever(dados.rua, 79, 701, 10);
-            escrever(dados.num, 300, 702);
-            escrever(dados.cid, 338, 689);
-            escrever(dados.uf, 480, 689);  // Posição Estado
-            escrever(dados.bai, 65, 688);  // Posição Bairro
+            // 4. Carimbos de texto
+            page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
+            if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
+            if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
+            if(dados.enderecoNum !== "---") page.drawText(dados.enderecoNum, { x: 300, y: 702, size: 11, color: fontColor });
+            if(dados.cidade !== "---") page.drawText(dados.cidade, { x: 338, y: 689, size: 11, color: fontColor });
+            if(dados.bairro) page.drawText(dados.bairro, { x: 65, y: 688, size: 11, color: fontColor });
 
             // Horas
-            escrever(dados.h.p.h, 91, 747); escrever(dados.h.p.m, 110, 747);
-            escrever(dados.h.c.h, 91, 736); escrever(dados.h.c.m, 110, 736);
-            escrever(dados.h.a.h, 418, 749); escrever(dados.h.a.m, 436, 749);
+            page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
+            page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
+            page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
+            page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
+            page.drawText(dados.atendimento.h, { x: 418, y: 749, size: 11, color: fontColor });
+            page.drawText(dados.atendimento.m, { x: 436, y: 749, size: 11, color: fontColor });
 
-            // 5. Finaliza e faz o Download Direto
+            // 5. Salva e Gera URL
             const pdfBytes = await pdfDoc.save();
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `RAT_${dados.inc || 'SANTANDER'}.pdf`;
-            link.click();
+            const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+            blobUrlAtual = URL.createObjectURL(pdfBlob);
 
-            st.style.background = "#dcfce7";
-            st.innerText = "✅ PDF baixado com sucesso!";
-            setTimeout(() => { st.style.display = "none"; }, 3000);
+            // 6. Apresentação
+            document.getElementById('pdfIframe').src = blobUrlAtual;
+            document.getElementById('btnFallback').href = blobUrlAtual;
+            document.getElementById('previewContainer').style.display = 'block';
 
-        } catch (e) {
+            mostrarStatus("✅ RAT Gerada com Sucesso!", "#dcfce7", 3000);
+            
+        } catch (e) { 
             console.error(e);
-            alert("Erro ao gerar PDF: " + e.message);
-            st.style.background = "#fee2e2";
-            st.innerText = "❌ Falha ao gerar.";
+            alert("Erro Fatal: " + e.message);
+            mostrarStatus("❌ Erro ao gerar", "#fee2e2", 3000);
         } finally {
             btn.disabled = false;
-            btn.innerText = "CARIMBAR E BAIXAR RAT (PDF)";
+            btn.innerText = "2. Gerar e Abrir RAT";
         }
+    }
+
+    function mostrarStatus(msg, cor, t=0) {
+        const s = document.getElementById('status');
+        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
+        if(t > 0) setTimeout(() => s.style.display = 'none', t);
+    }
+
+    async function salvarAtendimento() {
+        const texto = document.getElementById('textoBruto').value.trim();
+        if(!texto) return;
+        mostrarStatus("⌛ Gravando no Supabase...", "#e0f2fe");
+        try {
+            const { error } = await supabaseClient.from('chamados').insert([{ 
+                numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' 
+            }]);
+            if (error) throw error;
+            mostrarStatus("✅ Salvo no Banco!", "#dcfce7", 2000);
+        } catch (e) { alert("Erro Banco: " + e.message); }
     }
 </script>
 </body>
