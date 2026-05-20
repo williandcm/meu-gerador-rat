@@ -9,12 +9,12 @@
     
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 900px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 950px; }
         h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
         textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
         
-        .info-painel { display: flex; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; justify-content: space-around; }
-        .info-item { text-align: center; flex: 1; }
+        .info-painel { display: flex; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; justify-content: space-around; flex-wrap: wrap; }
+        .info-item { text-align: center; min-width: 100px; }
         .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
         .info-value { font-size: 14px; color: #1e293b; font-weight: bold; }
 
@@ -34,13 +34,14 @@
 <div class="card">
     <h2>📄 Sistema de RAT Santander</h2>
     
-    <textarea id="textoBruto" placeholder="Cole o chamado completo aqui..." oninput="extrairDados()"></textarea>
+    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
-        <div class="info-item" style="border-left: 1px solid #e2e8f0;"><span class="info-label">🕒 Partida</span><span class="info-value" id="dispPartida">00:00</span></div>
-        <div class="info-item" style="border-left: 1px solid #e2e8f0;"><span class="info-label">🏁 Chegada</span><span class="info-value" id="dispChegada">00:00</span></div>
-        <div class="info-item" style="border-left: 1px solid #e2e8f0;"><span class="info-label">🛠️ Atendim.</span><span class="info-value" id="dispAtendimento">00:00</span></div>
+        <div class="info-item"><span class="info-label">Uniorg</span><span id="pUniorg" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">🕒 Partida</span><span id="dispPartida" class="info-value">00:00</span></div>
+        <div class="info-item"><span class="info-label">🏁 Chegada</span><span id="dispChegada" class="info-value">00:00</span></div>
+        <div class="info-item"><span class="info-label">🛠️ Atendim.</span><span id="dispAtendimento" class="info-value">00:00</span></div>
     </div>
 
     <div class="btn-group">
@@ -64,12 +65,24 @@
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    let dados = { inc: '', partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} };
+    let dados = { 
+        inc: '', 
+        uniorg: '',
+        partida: {h:'00',m:'00'}, 
+        chegada: {h:'00',m:'00'}, 
+        atendimento: {h:'00',m:'00'} 
+    };
 
     function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
+        
+        // Extração INC
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
+
+        // Extração Uniorg (Pega os números após "Uniorg :")
+        const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
+        dados.uniorg = mUniorg ? mUniorg[1] : "---";
         
         const buscarHora = (label) => {
             const regex = new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
@@ -82,6 +95,7 @@
         dados.atendimento = buscarHora("Data de Atendimento");
 
         document.getElementById('pInc').innerText = dados.inc;
+        document.getElementById('pUniorg').innerText = dados.uniorg;
         document.getElementById('dispPartida').innerText = `${dados.partida.h}:${dados.partida.m}`;
         document.getElementById('dispChegada').innerText = `${dados.chegada.h}:${dados.chegada.m}`;
         document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
@@ -109,26 +123,35 @@
             const fontColor = PDFLib.rgb(0, 0, 0);
             const rulerColor = PDFLib.rgb(0.7, 0.7, 0.7);
 
-            // --- RÉGUA DE CALIBRAÇÃO (MANTIDA) ---
+            // --- RÉGUA DE CALIBRAÇÃO ---
             for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 8, color: rulerColor }); }
             for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 8, color: rulerColor }); }
 
-            // 1. CHAMADO
+            // 1. CHAMADO (Fixo)
             page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
 
-            // 2. HORA PARTIDA
+            // 2. UNIORG (Ajustar com a régua)
+            if(dados.uniorg !== "---") {
+                page.drawText(dados.uniorg, { 
+                    x: 123, // <--- AJUSTAR X DO UNIORG
+                    y: 757, // <--- AJUSTAR Y DO UNIORG (Coloquei abaixo do INC como exemplo)
+                    size: 11, color: fontColor 
+                });
+            }
+
+            // 3. HORA PARTIDA (Fixo)
             if(dados.partida.h !== "00") {
                 page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
                 page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
             }
 
-            // 3. HORA CHEGADA
+            // 4. HORA CHEGADA (Fixo)
             if(dados.chegada.h !== "00") {
                 page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
                 page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
             }
 
-            // 4. HORA INICIO ATENDIMENTO (Novas Coordenadas)
+            // 5. HORA INICIO ATENDIMENTO (Fixo)
             if(dados.atendimento.h !== "00") {
                 page.drawText(dados.atendimento.h, { x: 418, y: 749, size: 11, color: fontColor });
                 page.drawText(dados.atendimento.m, { x: 436, y: 749, size: 11, color: fontColor });
