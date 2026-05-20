@@ -69,7 +69,7 @@
 
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
-        dados.sn = (/SN\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase(); // Captura o SN
+        dados.sn = (/SN\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         dados.uniorg = (/Uniorg\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
         const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
@@ -96,79 +96,4 @@
         document.getElementById('pSn').innerText = dados.sn;
     }
 
-    async function buscarBairro(cep) {
-        try {
-            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            const data = await res.json();
-            if (!data.erro) {
-                dados.bai = data.bairro.toUpperCase();
-                document.getElementById('pBairro').innerText = dados.bai;
-            }
-        } catch (e) {}
-    }
-
-    async function gerarERenderizar() {
-        const btn = document.getElementById('btnGerar');
-        btn.disabled = true;
-
-        try {
-            const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
-            const pdfDoc = await PDFLib.PDFDocument.load(await response.arrayBuffer());
-            const page = pdfDoc.getPages()[0];
-            const fontColor = PDFLib.rgb(0, 0, 0);
-
-            const txt = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
-
-            // Cabeçalho
-            txt(dados.inc, 123, 768);
-            txt(dados.uniorg, 64, 714);
-            txt(dados.rua, 79, 701, 10);
-            txt(dados.num, 300, 702);
-            txt(dados.cid, 338, 689);
-            txt(dados.uf, 43, 675); 
-            txt(dados.bai, 65, 688);
-
-            // Carimbos Fixos e Equipamento Atual
-            txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
-            txt(dados.patri, 88, 485, 11); // Patrimônio
-            txt(dados.sn, 110, 471, 11);    // Número de Série (SN)
-
-            // Horas
-            txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
-            txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
-            txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
-
-            const pdfBytes = await pdfDoc.save();
-            
-            const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
-            const pdf = await loadingTask.promise;
-            const pdfPage = await pdf.getPage(1);
-            const viewport = pdfPage.getViewport({scale: 2.0}); 
-            const canvas = document.getElementById('pdfCanvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-
-            await pdfPage.render({canvasContext: context, viewport: viewport}).promise;
-            document.getElementById('viewerContainer').style.display = 'block';
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-
-        } catch (e) {
-            alert("Erro: " + e.message);
-        } finally {
-            btn.disabled = false;
-        }
-    }
-
-    async function salvarAtendimento() {
-        const texto = document.getElementById('textoBruto').value.trim();
-        if(!texto) return;
-        try {
-            const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' }]);
-            if (error) throw error;
-            alert("Salvo!");
-        } catch (e) { alert(e.message); }
-    }
-</script>
-</body>
-</html>
+    async function buscarBairro
