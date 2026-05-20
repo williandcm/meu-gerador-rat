@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de RAT - Willian</title>
+    <title>Gerador de RAT - Willian (Com Régua)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     
@@ -23,21 +23,31 @@
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
         
-        #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; }
-        iframe { width: 100%; height: 600px; border: 2px solid #cbd5e1; border-radius: 8px; background: #cbd5e1; }
-        #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
+        #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; position: relative; }
+        iframe { width: 100%; height: 750px; border: 2px solid #cbd5e1; border-radius: 8px; background: #cbd5e1; }
+        
+        /* ESTILO DA RÉGUA */
+        #regua { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            pointer-events: none; border-radius: 8px; overflow: hidden;
+        }
+        .coordenadas-mouse {
+            position: fixed; bottom: 20px; right: 20px; background: #1e293b; 
+            color: white; padding: 10px; border-radius: 5px; font-family: monospace; 
+            z-index: 9999; font-size: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Sistema de RAT Santander</h2>
+    <h2>📄 Sistema de RAT - Modo Ajuste</h2>
     
     <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Cidade / UF</span><span id="pLocal" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Cidade/UF</span><span id="pLocal" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Bairro</span><span id="pBairro" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">🕒 Atend.</span><span id="dispAtendimento" class="info-value">00:00</span></div>
     </div>
@@ -50,9 +60,12 @@
     <div id="status"></div>
 
     <div id="previewContainer">
-        <iframe id="pdfIframe"></iframe>
+        <div id="regua"></div>
+        <iframe id="pdfIframe" name="pdfIframe"></iframe>
     </div>
 </div>
+
+<div class="coordenadas-mouse" id="cord">X: 0 | Y: 0</div>
 
 <script>
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
@@ -67,13 +80,26 @@
         partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} 
     };
 
+    // Lógica da Régua (Rastreio do Mouse)
+    const previewContainer = document.getElementById('previewContainer');
+    const cordDiv = document.getElementById('cord');
+
+    previewContainer.addEventListener('mousemove', (e) => {
+        const rect = previewContainer.getBoundingClientRect();
+        const x = Math.round(e.clientX - rect.left);
+        const y = Math.round(e.clientY - rect.top);
+        
+        // Conversão aproximada para escala PDF-LIB (842pt altura)
+        const pdfY = Math.round(750 - y); 
+        cordDiv.innerText = `X: ${x} | Y (PDF-LIB): ${pdfY}`;
+    });
+
     async function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         if(!texto) return;
 
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
-        
         const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
         dados.uniorg = mUniorg ? mUniorg[1] : "---";
 
@@ -83,10 +109,7 @@
             dados.enderecoRua = (/^([^0-9,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
             dados.enderecoNum = (/(\d+)/.exec(linhaEnd.replace(dados.enderecoRua, "")) || ["","---"])[1];
             dados.cidade = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
-            
-            // Extração da UF
-            const mUf = /,\s*([A-Z]{2})/.exec(linhaEnd);
-            dados.uf = mUf ? mUf[1] : "";
+            dados.uf = (/,\s*([A-Z]{2})/.exec(linhaEnd) || ["",""])[1];
 
             const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
             if (mCep && mCep[1] !== dados.cep) {
@@ -95,10 +118,11 @@
             }
         }
         
-        const regexHora = (label) => new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
-        const p = regexHora("Início").exec(texto); if(p) dados.partida = {h:p[1], m:p[2]};
-        const c = regexHora("Chegada").exec(texto); if(c) dados.chegada = {h:c[1], m:c[2]};
-        const a = regexHora("Atendimento").exec(texto); if(a) dados.atendimento = {h:a[1], m:a[2]};
+        const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
+        const p = reg("Início"), c = reg("Chegada"), a = reg("Atendimento");
+        if(p) dados.partida = {h:p[1], m:p[2]};
+        if(c) dados.chegada = {h:c[1], m:c[2]};
+        if(a) dados.atendimento = {h:a[1], m:a[2]};
 
         atualizarPainel();
     }
@@ -111,37 +135,39 @@
                 dados.bairro = data.bairro.toUpperCase();
                 document.getElementById('pBairro').innerText = dados.bairro;
             }
-        } catch (e) { console.error("Erro CEP"); }
+        } catch (e) {}
     }
 
     function atualizarPainel() {
         document.getElementById('pInc').innerText = dados.inc;
-        document.getElementById('pLocal').innerText = dados.uf ? `${dados.cidade} / ${dados.uf}` : dados.cidade;
+        document.getElementById('pLocal').innerText = `${dados.cidade} / ${dados.uf}`;
         document.getElementById('pBairro').innerText = dados.bairro || "---";
         document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
     }
 
     async function visualizarRAT() {
-        if(!document.getElementById('textoBruto').value) return alert("Cole o chamado primeiro!");
         const btn = document.getElementById('btnGerar');
         btn.disabled = true;
         
         try {
-            const response = await fetch(URL_MODELO_PDF + '?nocache=' + Date.now());
-            const pdfArrayBuffer = await response.arrayBuffer();
-            const pdfDoc = await PDFLib.PDFDocument.load(pdfArrayBuffer);
+            if (blobUrlAtual) URL.revokeObjectURL(blobUrlAtual);
+
+            const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
+            const pdfDoc = await PDFLib.PDFDocument.load(await response.arrayBuffer());
             const page = pdfDoc.getPages()[0];
             const fontColor = PDFLib.rgb(0, 0, 0);
 
-            const carimbar = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
+            const carimbar = (t, x, y, s=11) => { if(t && t!=='---') page.drawText(t, {x, y, size:s, color:fontColor}); };
 
-            // Carimbos Principais
             carimbar(dados.inc, 123, 768);
             carimbar(dados.uniorg, 64, 714);
             carimbar(dados.enderecoRua, 79, 701, 10);
             carimbar(dados.enderecoNum, 300, 702);
             carimbar(dados.cidade, 338, 689);
-            carimbar(dados.uf, 480, 689); // UF Carimbada aqui
+            
+            // UF (ESTADO) - Posição provisória para você ajustar
+            carimbar(dados.uf, 480, 689); 
+            
             carimbar(dados.bairro, 65, 688);
 
             // Horas
@@ -150,13 +176,12 @@
             carimbar(dados.atendimento.h, 418, 749); carimbar(dados.atendimento.m, 436, 749);
 
             const pdfBytes = await pdfDoc.save();
-            if (blobUrlAtual) URL.revokeObjectURL(blobUrlAtual);
             blobUrlAtual = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
 
             document.getElementById('pdfIframe').src = blobUrlAtual;
             document.getElementById('previewContainer').style.display = 'block';
             
-        } catch (e) { alert("Erro: " + e.message); }
+        } catch (e) { alert(e.message); }
         finally { btn.disabled = false; }
     }
 
@@ -166,8 +191,8 @@
         try {
             const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' }]);
             if (error) throw error;
-            alert("Salvo com sucesso!");
-        } catch (e) { alert("Erro Banco: " + e.message); }
+            alert("Salvo!");
+        } catch (e) { alert(e.message); }
     }
 </script>
 </body>
