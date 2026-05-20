@@ -73,16 +73,13 @@
     function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         
-        // INC
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
 
-        // Uniorg
         const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
         dados.uniorg = mUniorg ? mUniorg[1] : "---";
 
-        // Endereço (Extrai apenas o que vem antes do primeiro número)
-        // Ex: "AV. BARAO DE ITAPURA 980" -> "AV. BARAO DE ITAPURA"
+        // Extrai apenas o logradouro (antes do número)
         const mEnd = /Endereço\s*:\s*([^0-9,]+)/i.exec(texto);
         dados.enderecoRua = mEnd ? mEnd[1].trim() : "---";
         
@@ -125,7 +122,7 @@
             const fontColor = PDFLib.rgb(0, 0, 0);
             const rulerColor = PDFLib.rgb(0.7, 0.7, 0.7);
 
-            // --- RÉGUA ---
+            // --- RÉGUA (Mantida para o resto do endereço) ---
             for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 8, color: rulerColor }); }
             for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 8, color: rulerColor }); }
 
@@ -135,13 +132,9 @@
             // 2. UNIORG
             if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
 
-            // 3. RUA / AVENIDA (AJUSTAR COM A RÉGUA)
+            // 3. RUA / AVENIDA (COORDENADAS ATUALIZADAS)
             if(dados.enderecoRua !== "---") {
-                page.drawText(dados.enderecoRua, { 
-                    x: 79,  // <--- AJUSTAR X
-                    y: 701, // <--- AJUSTAR Y
-                    size: 10, color: fontColor 
-                });
+                page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
             }
 
             // 4. DATAS
@@ -163,7 +156,7 @@
             document.getElementById('pdfIframe').src = pdfUrl;
             document.getElementById('btnFallback').href = pdfUrl;
             document.getElementById('previewContainer').style.display = 'block';
-            mostrarStatus("✅ Use a régua para o endereço!", "#dcfce7", 2000);
+            mostrarStatus("✅ Rua posicionada!", "#dcfce7", 2000);
         } catch (e) { alert("Erro: " + e.message); }
     }
 
