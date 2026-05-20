@@ -23,10 +23,8 @@
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
         
-        #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; }
-        iframe { width: 100%; height: 650px; border: 2px solid #cbd5e1; border-radius: 8px; background: #fff; }
-        .btn-link { display: inline-block; margin-top: 10px; padding: 10px 20px; background: #ef4444; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; }
         #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
+        .instrucao { font-size: 12px; color: #64748b; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -45,17 +43,90 @@
 
     <div class="btn-group">
         <button class="btn-save" onclick="salvarAtendimento()">1. Salvar no Banco</button>
-        <button class="btn-pdf" onclick="visualizarRAT()">2. Visualizar RAT Carimbada</button>
+        <button class="btn-pdf" onclick="visualizarRAT()">2. Gerar e Abrir RAT</button>
     </div>
 
     <div id="status"></div>
-
-    <div id="previewContainer">
-        <a id="downloadLink" class="btn-link" target="_blank">⚠️ Clique aqui se o PDF não abrir abaixo</a>
-        <br><br>
-        <iframe id="pdfIframe"></iframe>
-    </div>
+    <p class="instrucao">Ao clicar em "Gerar", uma nova aba abrirá com o PDF carimbado.</p>
 </div>
 
 <script>
-    const SUPABASE
+    const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
+    const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    let dados = { 
+        inc: '', uniorg: '', enderecoRua: '', enderecoNum: '', cidade: '',
+        partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} 
+    };
+
+    function extrairDados() {
+        const texto = document.getElementById('textoBruto').value;
+        if(!texto) return;
+
+        const mInc = /(INC\d+|SGPI:\s*\d+)/i.exec(texto);
+        dados.inc = mInc ? mInc[1].replace(/SGPI:\s*/i, "SGPI ").toUpperCase() : "---";
+
+        const mUniorg = /(Uniorg\s*:\s*(\d+)|SN:\s*(\w+))/i.exec(texto);
+        dados.uniorg = mUniorg ? (mUniorg[2] || mUniorg[3]) : "---";
+
+        const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
+        if (mFullEnd) {
+            const linhaEnd = mFullEnd[1];
+            const mRua = /^([^0-9,]+)/.exec(linhaEnd);
+            dados.enderecoRua = mRua ? mRua[1].trim() : "---";
+            const mNum = /(\d+)/.exec(linhaEnd.replace(dados.enderecoRua, ""));
+            dados.enderecoNum = mNum ? mNum[1] : "---";
+            const mCid = /-\s*([^,]+)/.exec(linhaEnd);
+            dados.cidade = mCid ? mCid[1].trim() : "---";
+        }
+
+        const buscarHora = (label) => {
+            const regex = new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
+            const match = regex.exec(texto);
+            return match ? { h: match[1], m: match[2] } : { h: '00', m: '00' };
+        };
+
+        dados.partida = buscarHora("Data de Início");
+        dados.chegada = buscarHora("Data de Chegada");
+        dados.atendimento = buscarHora("Data de Atendimento");
+        
+        document.getElementById('pInc').innerText = dados.inc;
+        document.getElementById('pUniorg').innerText = dados.uniorg;
+        document.getElementById('pCidade').innerText = dados.cidade;
+        document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
+    }
+
+    async function visualizarRAT() {
+        if(!document.getElementById('textoBruto').value) {
+            alert("Por favor, cole o chamado primeiro.");
+            return;
+        }
+        try {
+            mostrarStatus("⌛ Gerando PDF...", "#e0f2fe");
+            const res = await fetch(`${URL_MODELO_PDF}?t=${new Date().getTime()}`);
+            const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
+            const page = pdfDoc.getPages()[0];
+            const fontColor = PDFLib.rgb(0, 0, 0);
+            const rulerColor = PDFLib.rgb(0.8, 0.8, 0.8);
+
+            // RÉGUA ATIVA
+            for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 7, color: rulerColor }); }
+            for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 7, color: rulerColor }); }
+
+            // CARIMBOS
+            page.drawText(dados.inc, { x: 123, y: 768, size: 10, color: fontColor });
+            if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
+            if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
+            if(dados.enderecoNum !== "---") page.drawText(dados.enderecoNum, { x: 300, y: 702, size: 11, color: fontColor });
+            if(dados.cidade !== "---") page.drawText(dados.cidade, { x: 338, y: 689, size: 11, color: fontColor });
+
+            // HORAS
+            page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
+            page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
+            page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
+            page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
+            if(dados.atendimento.h !== "00") {
+                page.drawText(dados.
