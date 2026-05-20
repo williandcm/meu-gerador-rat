@@ -15,8 +15,10 @@
         textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
         
         .info-painel { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
+        .info-item { text-align: center; border-right: 1px solid #e2e8f0; }
+        .info-item:last-child { border-right: none; }
         .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
-        .info-value { font-size: 12px; color: #1e293b; font-weight: bold; }
+        .info-value { font-size: 11px; color: #1e293b; font-weight: bold; }
 
         .btn-group { display: flex; gap: 8px; margin-bottom: 15px; }
         button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; }
@@ -37,9 +39,8 @@
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc">---</span></div>
-        <div class="info-item"><span class="info-label">Bairro</span><span id="pBairro">---</span></div>
-        <div class="info-item"><span class="info-label">Patrimônio</span><span id="pPatri">---</span></div>
         <div class="info-item"><span class="info-label">Série (SN)</span><span id="pSn">---</span></div>
+        <div class="info-item"><span class="info-label">Modelo</span><span id="pModelo">---</span></div>
     </div>
 
     <div class="btn-group">
@@ -61,7 +62,7 @@
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
+    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
     async function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
@@ -69,7 +70,19 @@
 
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
-        dados.sn = (/SN\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
+        
+        // Extração SN e Definição de Modelo
+        const mSn = (/SN\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
+        dados.sn = mSn;
+
+        if (mSn.startsWith('P')) {
+            dados.modelo = "LENOVO T14";
+        } else if (mSn.startsWith('B')) {
+            dados.modelo = "HP ELITEBOOK 640 G9";
+        } else {
+            dados.modelo = "---";
+        }
+
         dados.uniorg = (/Uniorg\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
         const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
@@ -92,8 +105,8 @@
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
 
         document.getElementById('pInc').innerText = dados.inc;
-        document.getElementById('pPatri').innerText = dados.patri;
         document.getElementById('pSn').innerText = dados.sn;
+        document.getElementById('pModelo').innerText = dados.modelo;
     }
 
     async function buscarBairro(cep) {
@@ -102,7 +115,6 @@
             const data = await res.json();
             if (!data.erro) {
                 dados.bai = data.bairro.toUpperCase();
-                document.getElementById('pBairro').innerText = dados.bai;
             }
         } catch (e) {}
     }
@@ -119,6 +131,7 @@
 
             const txt = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
 
+            // Cabeçalho e Bairro
             txt(dados.inc, 123, 768);
             txt(dados.uniorg, 64, 714);
             txt(dados.rua, 79, 701, 10);
@@ -127,10 +140,13 @@
             txt(dados.uf, 43, 675); 
             txt(dados.bai, 65, 688);
 
+            // Carimbos Fixos e Equipamento Atual
             txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
+            txt(dados.modelo, 88, 497, 11); // Carimbo do Modelo Automático
             txt(dados.patri, 88, 485, 11); 
-            txt(dados.sn, 110, 471, 11); // SN com as novas coordenadas
+            txt(dados.sn, 110, 471, 11);
 
+            // Horas
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
             txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
             txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
