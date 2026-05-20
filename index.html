@@ -38,8 +38,8 @@
     <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
-        <div class="info-item"><span class="info-label">Chamado</span><span id="pInc">---</span></div>
-        <div class="info-item"><span class="info-label">Série (SN)</span><span id="pSn">---</span></div>
+        <div class="info-item"><span class="info-label">INC / SN</span><span id="pIncSn">---</span></div>
+        <div class="info-item"><span class="info-label">Hostname</span><span id="pHost">---</span></div>
         <div class="info-item"><span class="info-label">Modelo</span><span id="pModelo">---</span></div>
     </div>
 
@@ -62,7 +62,7 @@
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
+    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
     async function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
@@ -70,6 +70,7 @@
 
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+        dados.host = (/Hostname\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         
         const mSn = (/SN\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         dados.sn = mSn;
@@ -103,8 +104,8 @@
         const p = reg("Início"), c = reg("Chegada"), a = reg("Atendimento");
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
 
-        document.getElementById('pInc').innerText = dados.inc;
-        document.getElementById('pSn').innerText = dados.sn;
+        document.getElementById('pIncSn').innerText = `${dados.inc} / ${dados.sn}`;
+        document.getElementById('pHost').innerText = dados.host;
         document.getElementById('pModelo').innerText = dados.modelo;
     }
 
@@ -139,7 +140,8 @@
             txt(dados.bai, 65, 688);
 
             txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
-            txt(dados.modelo, 69, 457, 11); // Nova posição do modelo
+            txt(dados.modelo, 69, 457, 11); 
+            txt(dados.host, 69, 443, 11); // Carimbo do Hostname
             txt(dados.patri, 88, 485, 11); 
             txt(dados.sn, 110, 471, 11);
 
