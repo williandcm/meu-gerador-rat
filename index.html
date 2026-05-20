@@ -71,7 +71,6 @@
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
         
-        // Extração SN e Definição de Modelo
         const mSn = (/SN\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         dados.sn = mSn;
 
@@ -131,7 +130,6 @@
 
             const txt = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
 
-            // Cabeçalho e Bairro
             txt(dados.inc, 123, 768);
             txt(dados.uniorg, 64, 714);
             txt(dados.rua, 79, 701, 10);
@@ -140,13 +138,11 @@
             txt(dados.uf, 43, 675); 
             txt(dados.bai, 65, 688);
 
-            // Carimbos Fixos e Equipamento Atual
             txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
-            txt(dados.modelo, 69, 457, 11); // Carimbo do Modelo Automático
+            txt(dados.modelo, 69, 457, 11); // Nova posição do modelo
             txt(dados.patri, 88, 485, 11); 
             txt(dados.sn, 110, 471, 11);
 
-            // Horas
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
             txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
             txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
