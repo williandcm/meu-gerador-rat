@@ -3,64 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de RAT - Willian</title>
+    <title>RAT Visualizador - Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 950px; box-sizing: border-box; }
-        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; font-size: 16px; box-sizing: border-box; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; box-sizing: border-box; }
+        h2 { color: #1e293b; text-align: center; font-size: 1.1rem; }
+        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
         
-        .info-painel { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
-        .info-item { text-align: center; }
-        .info-label { display: block; font-size: 10px; color: #64748b; font-weight: bold; }
-        .info-value { font-size: 13px; color: #1e293b; font-weight: bold; }
+        .info-painel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
+        .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+        .info-value { font-size: 12px; color: #1e293b; font-weight: bold; }
 
-        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
-        button { flex: 1; min-width: 140px; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; font-size: 15px; }
+        .btn-group { display: flex; gap: 8px; margin-bottom: 15px; }
+        button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; }
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
+        button:disabled { background: #cbd5e1; cursor: not-allowed; }
 
-        /* Estilo do Visualizador */
-        #canvasContainer { 
+        /* Estilo do Visualizador de Imagem */
+        #viewerContainer { 
             display: none; 
             width: 100%; 
-            border: 2px solid #cbd5e1; 
-            border-radius: 8px; 
+            margin-top: 10px; 
             background: #525659; 
-            overflow-y: auto; 
-            max-height: 70vh; 
+            border-radius: 8px; 
+            padding: 10px; 
+            box-sizing: border-box;
             text-align: center;
-            padding: 10px 0;
         }
-        canvas { max-width: 100%; height: auto; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        canvas { 
+            width: 100% !important; 
+            height: auto !important; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border-radius: 4px;
+        }
+        .msg-view { color: white; font-size: 11px; margin-bottom: 8px; display: block; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Sistema de RAT - Visualização Direta</h2>
+    <h2>📄 Gerador de RAT (Visualização)</h2>
     <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc">---</span></div>
         <div class="info-item"><span class="info-label">Patrimônio</span><span id="pPatri">---</span></div>
-        <div class="info-item"><span class="info-label">Cidade</span><span id="pLocal">---</span></div>
     </div>
 
     <div class="btn-group">
-        <button class="btn-save" onclick="salvarAtendimento()">Salvar Banco</button>
-        <button class="btn-pdf" id="btnGerar" onclick="gerarERenderizar()">Gerar e Visualizar</button>
+        <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar</button>
+        <button class="btn-pdf" id="btnGerar" onclick="gerarERenderizar()">👁️ Visualizar RAT</button>
     </div>
 
-    <div id="canvasContainer">
+    <div id="viewerContainer">
+        <span class="msg-view">Visualização da RAT Gerada:</span>
         <canvas id="pdfCanvas"></canvas>
     </div>
 </div>
 
 <script>
+    // Configura o motor de renderização
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
@@ -93,12 +100,13 @@
 
         document.getElementById('pInc').innerText = dados.inc;
         document.getElementById('pPatri').innerText = dados.patri;
-        document.getElementById('pLocal').innerText = dados.cid;
     }
 
     async function gerarERenderizar() {
         const btn = document.getElementById('btnGerar');
+        btn.innerHTML = "Processando...";
         btn.disabled = true;
+
         try {
             const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
             const pdfDoc = await PDFLib.PDFDocument.load(await response.arrayBuffer());
@@ -107,7 +115,7 @@
 
             const txt = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
 
-            // Carimbos
+            // Carimbos padronizados
             txt(dados.inc, 123, 768);
             txt(dados.uniorg, 64, 714);
             txt(dados.rua, 79, 701, 10);
@@ -122,27 +130,29 @@
             txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
 
             const pdfBytes = await pdfDoc.save();
-            renderPdfCanvas(pdfBytes);
+            
+            // CONVERTE PDF PARA IMAGEM (CANVAS)
+            const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
+            const pdf = await loadingTask.promise;
+            const pdfPage = await pdf.getPage(1);
+            
+            const viewport = pdfPage.getViewport({scale: 2.0}); // Escala alta para nitidez
+            const canvas = document.getElementById('pdfCanvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
 
-        } catch (e) { alert(e.message); }
-        finally { btn.disabled = false; }
-    }
+            await pdfPage.render({canvasContext: context, viewport: viewport}).promise;
+            
+            document.getElementById('viewerContainer').style.display = 'block';
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 
-    // Função que desenha o PDF na tela como uma imagem
-    async function renderPdfCanvas(pdfBytes) {
-        const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
-        const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(1);
-        
-        const viewport = page.getViewport({scale: 1.5}); // Ajuste de qualidade
-        const canvas = document.getElementById('pdfCanvas');
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-
-        await page.render({canvasContext: context, viewport: viewport}).promise;
-        document.getElementById('canvasContainer').style.display = 'block';
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        } catch (e) {
+            alert("Erro: " + e.message);
+        } finally {
+            btn.innerHTML = "👁️ Visualizar RAT";
+            btn.disabled = false;
+        }
     }
 
     async function salvarAtendimento() {
@@ -151,7 +161,7 @@
         try {
             const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' }]);
             if (error) throw error;
-            alert("Salvo!");
+            alert("Salvo com sucesso!");
         } catch (e) { alert(e.message); }
     }
 </script>
