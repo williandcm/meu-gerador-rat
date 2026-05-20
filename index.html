@@ -24,7 +24,8 @@
         .btn-pdf { background: #10b981; color: white; }
         
         #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; }
-        iframe { width: 100%; height: 650px; border: 2px solid #cbd5e1; border-radius: 8px; background: #eee; }
+        iframe { width: 100%; height: 650px; border: 2px solid #cbd5e1; border-radius: 8px; background: #fff; }
+        .btn-link { display: inline-block; margin-top: 10px; padding: 10px 20px; background: #ef4444; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; }
         #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
     </style>
 </head>
@@ -38,7 +39,6 @@
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Cidade</span><span id="pCidade" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">CEP</span><span id="pCep" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">🕒 Partida</span><span id="dispPartida" class="info-value">00:00</span></div>
     </div>
 
@@ -50,6 +50,8 @@
     <div id="status"></div>
 
     <div id="previewContainer">
+        <a id="downloadLink" class="btn-link" target="_blank">⚠️ Clique aqui se o PDF não abrir abaixo</a>
+        <br><br>
         <iframe id="pdfIframe"></iframe>
     </div>
 </div>
@@ -63,7 +65,7 @@
     
     let dados = { 
         inc: '', uniorg: '', enderecoRua: '', enderecoNum: '', cidade: '', cep: '',
-        partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} 
+        partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}
     };
 
     function extrairDados() {
@@ -85,10 +87,6 @@
             dados.enderecoNum = mNum ? mNum[1] : "---";
             const mCid = /-\s*([^,]+)/.exec(linhaEnd);
             dados.cidade = mCid ? mCid[1].trim() : "---";
-            
-            // Extração do CEP (última sequência de números da linha)
-            const mCep = /(\d{5}-?\d{3}|\d{8})$/.exec(linhaEnd.trim());
-            dados.cep = mCep ? mCep[1] : "---";
         }
 
         const buscarHora = (label) => {
@@ -102,14 +100,13 @@
         
         document.getElementById('pInc').innerText = dados.inc;
         document.getElementById('pCidade').innerText = dados.cidade;
-        document.getElementById('pCep').innerText = dados.cep;
         document.getElementById('dispPartida').innerText = `${dados.partida.h}:${dados.partida.m}`;
     }
 
     async function visualizarRAT() {
         if(!document.getElementById('textoBruto').value) return;
         try {
-            mostrarStatus("⌛ Gerando...", "#e0f2fe");
+            mostrarStatus("⌛ Gerando PDF...", "#e0f2fe");
             const res = await fetch(`${URL_MODELO_PDF}?t=${new Date().getTime()}`);
             const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
             const page = pdfDoc.getPages()[0];
@@ -117,4 +114,53 @@
             const rulerColor = PDFLib.rgb(0.7, 0.7, 0.7);
 
             // RÉGUA
-            for (let i = 0; i <= 600; i += 50) { page
+            for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 8, color: rulerColor }); }
+            for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 8, color: rulerColor }); }
+
+            // CARIMBOS
+            page.drawText(dados.inc, { x: 123, y: 768, size: 10, color: fontColor });
+            if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 10, color: fontColor });
+            if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
+            if(dados.enderecoNum !== "---") page.drawText(dados.enderecoNum, { x: 300, y: 702, size: 11, color: fontColor });
+            if(dados.cidade !== "---") page.drawText(dados.cidade, { x: 338, y: 689, size: 11, color: fontColor });
+
+            // HORAS
+            page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
+            page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
+            page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
+            page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
+
+            const pdfBytes = await pdfDoc.save();
+            const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            
+            // Atualiza visualização
+            document.getElementById('pdfIframe').src = pdfUrl;
+            document.getElementById('downloadLink').href = pdfUrl;
+            document.getElementById('previewContainer').style.display = 'block';
+            
+            mostrarStatus("✅ RAT Gerada!", "#dcfce7", 2000);
+        } catch (e) { alert("Erro ao gerar: " + e.message); }
+    }
+
+    function mostrarStatus(msg, cor, t=0) {
+        const s = document.getElementById('status');
+        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
+        if(t > 0) setTimeout(() => s.style.display = 'none', t);
+    }
+
+    async function salvarAtendimento() {
+        const texto = document.getElementById('textoBruto').value.trim();
+        if(!texto) return;
+        mostrarStatus("⌛ Gravando...", "#e0f2fe");
+        try {
+            const { error } = await supabaseClient.from('chamados').insert([{ 
+                numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' 
+            }]);
+            if (error) throw error;
+            mostrarStatus("✅ Salvo!", "#dcfce7", 2000);
+        } catch (e) { alert(e.message); }
+    }
+</script>
+</body>
+</html>
