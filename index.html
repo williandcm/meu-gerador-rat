@@ -120,12 +120,12 @@
             txt(dados.uf, 43, 675); 
             txt(dados.bai, 65, 688);
 
-            // CARIMBO DEFEITO / CAUSA AJUSTADO
-            txt("Equipamento inoperante", 30, 555, 11);
+            // CARIMBO DEFEITO EM MAIÚSCULA
+            txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
 
             // Horas
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
-            txt(dados.c.h, 91, 736); txt(dados.c.m, 110, 736);
+            txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
             txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
 
             const pdfBytes = await pdfDoc.save();
