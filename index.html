@@ -132,7 +132,7 @@
             // 4. ATENDIMENTO (Para ajustar com a régua)
             if(dados.atendimento.h !== "00") {
                 page.drawText(dados.atendimento.h, { x: 418, y: 737, size: 11, color: fontColor });
-                page.drawText(dados.atendimento.m, { x: 110, y: 737, size: 11, color: fontColor });
+                page.drawText(dados.atendimento.m, { x: 430, y: 737, size: 11, color: fontColor });
             }
 
             const pdfBytes = await pdfDoc.save();
