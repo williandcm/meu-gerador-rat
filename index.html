@@ -8,26 +8,108 @@
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 950px; }
-        h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
-        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
-        .info-painel { display: flex; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; justify-content: space-around; flex-wrap: wrap; }
-        .info-item { text-align: center; min-width: 80px; }
-        .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+        /* BASE RESPONSIVA */
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: #f0f2f5; 
+            margin: 0; 
+            padding: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
+        
+        .card { 
+            background: white; 
+            padding: 15px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            width: 100%; 
+            max-width: 950px; 
+            box-sizing: border-box;
+        }
+
+        h2 { color: #1e293b; text-align: center; font-size: 1.2rem; margin-bottom: 15px; }
+
+        textarea { 
+            width: 100%; 
+            height: 120px; 
+            padding: 12px; 
+            border: 2px solid #e2e8f0; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            resize: vertical; 
+            box-sizing: border-box; 
+            font-size: 16px; /* Evita zoom automático no iOS */
+        }
+
+        /* PAINEL DE INFO ADAPTÁVEL */
+        .info-painel { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); 
+            gap: 10px; 
+            background: #f8fafc; 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: 1px solid #e2e8f0; 
+            margin-bottom: 20px; 
+        }
+
+        .info-item { text-align: center; }
+        .info-label { display: block; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; }
         .info-value { font-size: 13px; color: #1e293b; font-weight: bold; }
-        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        button { flex: 1; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; font-size: 15px; }
+
+        /* BOTÕES LADO A LADO OU EMPILHADOS */
+        .btn-group { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 20px; 
+            flex-wrap: wrap;
+        }
+
+        button { 
+            flex: 1; 
+            min-width: 150px; 
+            padding: 14px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            border: none; 
+            transition: 0.3s; 
+            font-size: 15px; 
+        }
+
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
-        #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; }
-        iframe { width: 100%; height: 600px; border: 2px solid #cbd5e1; border-radius: 8px; background: #cbd5e1; }
+
+        /* CONTAINER DO PDF RESPONSIVO */
+        #previewContainer { 
+            display: none; 
+            width: 100%; 
+            margin-top: 10px; 
+            height: 75vh; /* Ocupa 75% da altura da tela do celular/tablet */
+            border: 2px solid #cbd5e1; 
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        iframe { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+            background: #f1f5f9; 
+        }
+
+        @media (max-width: 600px) {
+            .card { padding: 10px; }
+            button { width: 100%; }
+        }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Sistema de RAT Santander</h2>
+    <h2>📄 RAT Santander - Mobile Ready</h2>
     <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
@@ -38,8 +120,8 @@
     </div>
 
     <div class="btn-group">
-        <button class="btn-save" onclick="salvarAtendimento()">1. Salvar no Banco</button>
-        <button class="btn-pdf" id="btnGerar" onclick="visualizarRAT()">2. Gerar e Abrir RAT</button>
+        <button class="btn-save" onclick="salvarAtendimento()">1. Salvar Banco</button>
+        <button class="btn-pdf" id="btnGerar" onclick="visualizarRAT()">2. Gerar RAT</button>
     </div>
 
     <div id="previewContainer">
@@ -62,10 +144,8 @@
 
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
-        
         const mPatri = /SGPI\s*:\s*(\d+)/i.exec(texto);
         dados.patri = mPatri ? mPatri[1] : "---";
-
         const mUniorg = /Uniorg\s*:\s*(\d+)/i.exec(texto);
         dados.uniorg = mUniorg ? mUniorg[1] : "---";
 
@@ -98,23 +178,18 @@
             const page = pdfDoc.getPages()[0];
             const fontColor = PDFLib.rgb(0, 0, 0);
 
-            // FUNÇÃO DE CARIMBO PADRONIZADA (SIZE 11)
             const txt = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
 
-            // Cabeçalho
             txt(dados.inc, 123, 768);
             txt(dados.uniorg, 64, 714);
-            txt(dados.rua, 79, 701, 10); // Endereço um pouco menor para caber
+            txt(dados.rua, 79, 701, 10);
             txt(dados.num, 300, 702);
             txt(dados.cid, 338, 689);
             txt(dados.uf, 43, 675); 
-            txt(dados.bai, 65, 688);
 
-            // Carimbos Fixos e Ajustados (Tamanho 11)
             txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
-            txt(dados.patri, 88, 485, 11); // Patrimônio Atual Ajustado
+            txt(dados.patri, 88, 485, 11);
 
-            // Horas
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
             txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
             txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
@@ -122,9 +197,14 @@
             const pdfBytes = await pdfDoc.save();
             if (blobUrlAtual) URL.revokeObjectURL(blobUrlAtual);
             blobUrlAtual = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
+            
             document.getElementById('pdfIframe').src = blobUrlAtual;
             document.getElementById('previewContainer').style.display = 'block';
-        } catch (e) { alert(e.message); }
+            
+            // Scroll suave até o PDF para facilitar visualização no celular
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+
+        } catch (e) { alert("Erro: " + e.message); }
         finally { btn.disabled = false; }
     }
 
@@ -134,8 +214,8 @@
         try {
             const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' }]);
             if (error) throw error;
-            alert("Salvo!");
-        } catch (e) { alert(e.message); }
+            alert("✅ Salvo!");
+        } catch (e) { alert("Erro Banco: " + e.message); }
     }
 </script>
 </body>
