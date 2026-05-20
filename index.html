@@ -39,10 +39,10 @@
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Uniorg</span><span id="pUniorg" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Cidade</span><span id="pCidade" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Rua/Av</span><span id="pEndereco" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Nº</span><span id="pNumero" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">🕒 Partida</span><span id="dispPartida" class="info-value">00:00</span></div>
-        <div class="info-item"><span class="info-label">🏁 Chegada</span><span id="dispChegada" class="info-value">00:00</span></div>
+        <div class="info-item"><span class="info-label">🕒 Atend.</span><span id="dispAtendimento" class="info-value">00:00</span></div>
     </div>
 
     <div class="btn-group">
@@ -67,7 +67,7 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
     let dados = { 
-        inc: '', uniorg: '', enderecoRua: '', enderecoNum: '',
+        inc: '', uniorg: '', enderecoRua: '', enderecoNum: '', cidade: '',
         partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} 
     };
 
@@ -82,10 +82,15 @@
         const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
         if (mFullEnd) {
             const linhaEnd = mFullEnd[1];
+            // Rua
             const mRua = /^([^0-9,]+)/.exec(linhaEnd);
             dados.enderecoRua = mRua ? mRua[1].trim() : "---";
+            // Número
             const mNum = /(\d+)/.exec(linhaEnd.replace(dados.enderecoRua, ""));
             dados.enderecoNum = mNum ? mNum[1] : "---";
+            // Cidade (entre - e ,)
+            const mCid = /-\s*([^,]+)/.exec(linhaEnd);
+            dados.cidade = mCid ? mCid[1].trim() : "---";
         }
         
         const buscarHora = (label) => {
@@ -100,10 +105,10 @@
 
         document.getElementById('pInc').innerText = dados.inc;
         document.getElementById('pUniorg').innerText = dados.uniorg;
+        document.getElementById('pCidade').innerText = dados.cidade;
         document.getElementById('pEndereco').innerText = dados.enderecoRua;
         document.getElementById('pNumero').innerText = dados.enderecoNum;
-        document.getElementById('dispPartida').innerText = `${dados.partida.h}:${dados.partida.m}`;
-        document.getElementById('dispChegada').innerText = `${dados.chegada.h}:${dados.chegada.m}`;
+        document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
     }
 
     async function salvarAtendimento() {
@@ -121,14 +126,14 @@
 
     async function visualizarRAT() {
         try {
-            mostrarStatus("⌛ Gerando com Régua...", "#e0f2fe");
+            mostrarStatus("⌛ Gerando RAT...", "#e0f2fe");
             const res = await fetch(URL_MODELO_PDF + '?t=' + new Date().getTime());
             const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
             const page = pdfDoc.getPages()[0];
             const fontColor = PDFLib.rgb(0, 0, 0);
             const rulerColor = PDFLib.rgb(0.7, 0.7, 0.7);
 
-            // --- RÉGUA (Mantida) ---
+            // RÉGUA (Para apoio)
             for (let i = 0; i <= 600; i += 50) { page.drawText(i.toString(), { x: i, y: 10, size: 8, color: rulerColor }); }
             for (let i = 0; i <= 850; i += 50) { page.drawText(i.toString(), { x: 10, y: i, size: 8, color: rulerColor }); }
 
@@ -138,15 +143,16 @@
             // 2. UNIORG
             if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
 
-            // 3. RUA / AVENIDA (Fixo)
+            // 3. ENDEREÇO (Rua e Número)
             if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
+            if(dados.enderecoNum !== "---") page.drawText(dados.enderecoNum, { x: 300, y: 702, size: 11, color: fontColor });
 
-            // 4. NÚMERO (COORDENADAS ATUALIZADAS)
-            if(dados.enderecoNum !== "---") {
-                page.drawText(dados.enderecoNum, { x: 300, y: 702, size: 11, color: fontColor });
+            // 4. CIDADE (COORDENADAS SOLICITADAS)
+            if(dados.cidade !== "---") {
+                page.drawText(dados.cidade, { x: 338, y: 689, size: 11, color: fontColor });
             }
 
-            // 5. DATAS
+            // 5. DATAS / HORAS
             if(dados.partida.h !== "00") {
                 page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
                 page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
@@ -165,7 +171,7 @@
             document.getElementById('pdfIframe').src = pdfUrl;
             document.getElementById('btnFallback').href = pdfUrl;
             document.getElementById('previewContainer').style.display = 'block';
-            mostrarStatus("✅ Número posicionado!", "#dcfce7", 2000);
+            mostrarStatus("✅ Cidade adicionada!", "#dcfce7", 2000);
         } catch (e) { alert("Erro: " + e.message); }
     }
 
