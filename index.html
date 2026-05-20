@@ -11,7 +11,7 @@
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 900px; }
         h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
-        textarea { width: 100%; height: 120px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
+        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; resize: none; box-sizing: border-box; }
         
         .info-painel { display: flex; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; justify-content: space-around; }
         .info-item { text-align: center; flex: 1; }
@@ -23,11 +23,9 @@
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
         
-        /* Ajuste do Visualizador */
         #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; }
-        iframe { width: 100%; height: 600px; border: 2px solid #cbd5e1; border-radius: 8px; background: #eee; }
-        .fallback-link { display: inline-block; margin-top: 10px; padding: 10px 20px; background: #64748b; color: white; text-decoration: none; border-radius: 5px; font-size: 14px; }
-        
+        iframe { width: 100%; height: 600px; border: 2px solid #cbd5e1; border-radius: 8px; }
+        .fallback-link { display: inline-block; margin-top: 10px; padding: 10px 20px; background: #64748b; color: white; text-decoration: none; border-radius: 5px; font-size: 13px; }
         #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
     </style>
 </head>
@@ -51,10 +49,6 @@
             <span class="info-label">🏁 Chegada</span>
             <span class="info-value" id="dispChegada">00:00</span>
         </div>
-        <div class="info-item" style="border-left: 1px solid #e2e8f0;">
-            <span class="info-label">🛠️ Atendim.</span>
-            <span class="info-value" id="dispAtendimento">00:00</span>
-        </div>
     </div>
 
     <div class="btn-group">
@@ -65,10 +59,9 @@
     <div id="status"></div>
 
     <div id="previewContainer">
-        <h3 style="font-size: 14px; color: #64748b; margin-bottom: 10px;">Visualização do Documento:</h3>
         <iframe id="pdfIframe"></iframe>
         <br>
-        <a id="btnFallback" class="fallback-link" target="_blank">Não abriu? Clique aqui para abrir em tela cheia</a>
+        <a id="btnFallback" class="fallback-link" target="_blank">Abrir PDF em tela cheia</a>
     </div>
 </div>
 
@@ -79,7 +72,7 @@
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    let dados = { inc: '', partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} };
+    let dados = { inc: '', partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'} };
 
     function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
@@ -94,12 +87,10 @@
 
         dados.partida = buscarHora("Data de Início");
         dados.chegada = buscarHora("Data de Chegada");
-        dados.atendimento = buscarHora("Data de Atendimento");
 
         document.getElementById('pInc').innerText = dados.inc;
         document.getElementById('dispPartida').innerText = `${dados.partida.h}:${dados.partida.m}`;
         document.getElementById('dispChegada').innerText = `${dados.chegada.h}:${dados.chegada.m}`;
-        document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
     }
 
     async function salvarAtendimento() {
@@ -117,51 +108,36 @@
 
     async function visualizarRAT() {
         try {
-            mostrarStatus("⌛ Processando PDF...", "#e0f2fe");
-            
-            // Adicionado carimbo de tempo para evitar cache do navegador
+            mostrarStatus("⌛ Gerando RAT...", "#e0f2fe");
             const res = await fetch(URL_MODELO_PDF + '?t=' + new Date().getTime());
-            if (!res.ok) throw new Error("Não foi possível carregar o modelo do PDF. Verifique se o arquivo no Supabase está Público.");
-            
             const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
             const page = pdfDoc.getPages()[0];
+            const fontColor = PDFLib.rgb(0, 0, 0);
 
-            // 1. INC
-            page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: PDFLib.rgb(0,0,0) });
+            // 1. CARIMBO CHAMADO (INC)
+            page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
 
-            // 2. PARTIDA
+            // 2. CARIMBO HORA PARTIDA
             if(dados.partida.h !== "00") {
-                page.drawText(dados.partida.h, { x: 235, y: 690, size: 11, color: PDFLib.rgb(0,0,0) });
-                page.drawText(dados.partida.m, { x: 265, y: 690, size: 11, color: PDFLib.rgb(0,0,0) });
+                page.drawText(dados.partida.h, { x: 91, y: 747, size: 11, color: fontColor });
+                page.drawText(dados.partida.m, { x: 110, y: 747, size: 11, color: fontColor });
             }
 
-            // 3. CHEGADA
+            // 3. CARIMBO HORA CHEGADA
             if(dados.chegada.h !== "00") {
-                page.drawText(dados.chegada.h, { x: 235, y: 650, size: 11, color: PDFLib.rgb(0,0,0) });
-                page.drawText(dados.chegada.m, { x: 265, y: 650, size: 11, color: PDFLib.rgb(0,0,0) });
-            }
-
-            // 4. ATENDIMENTO
-            if(dados.atendimento.h !== "00") {
-                page.drawText(dados.atendimento.h, { x: 235, y: 610, size: 11, color: PDFLib.rgb(0,0,0) });
-                page.drawText(dados.atendimento.m, { x: 265, y: 610, size: 11, color: PDFLib.rgb(0,0,0) });
+                page.drawText(dados.chegada.h, { x: 91, y: 736, size: 11, color: fontColor });
+                page.drawText(dados.chegada.m, { x: 110, y: 736, size: 11, color: fontColor });
             }
 
             const pdfBytes = await pdfDoc.save();
-            const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const pdfUrl = URL.createObjectURL(pdfBlob);
+            const pdfUrl = URL.createObjectURL(new Blob([pdfBytes], { type: 'application/pdf' }));
 
-            // Atualiza o Visualizador
-            const iframe = document.getElementById('pdfIframe');
-            iframe.src = pdfUrl;
+            document.getElementById('pdfIframe').src = pdfUrl;
             document.getElementById('btnFallback').href = pdfUrl;
             document.getElementById('previewContainer').style.display = 'block';
 
-            mostrarStatus("✅ Visualização gerada!", "#dcfce7", 2000);
-        } catch (e) { 
-            console.error(e);
-            alert("Erro: " + e.message); 
-        }
+            mostrarStatus("✅ RAT Gerada com Sucesso!", "#dcfce7", 2000);
+        } catch (e) { alert("Erro: " + e.message); }
     }
 
     function mostrarStatus(msg, cor, t=0) {
