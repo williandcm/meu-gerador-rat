@@ -23,7 +23,11 @@
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
         
-        #pdfViewer { width: 100%; height: 600px; border: 1px solid #cbd5e1; border-radius: 8px; margin-top: 10px; }
+        /* Ajuste do Visualizador */
+        #previewContainer { display: none; width: 100%; margin-top: 20px; text-align: center; }
+        iframe { width: 100%; height: 600px; border: 2px solid #cbd5e1; border-radius: 8px; background: #eee; }
+        .fallback-link { display: inline-block; margin-top: 10px; padding: 10px 20px; background: #64748b; color: white; text-decoration: none; border-radius: 5px; font-size: 14px; }
+        
         #status { margin-top: 15px; padding: 12px; border-radius: 6px; display: none; text-align: center; font-weight: bold; }
     </style>
 </head>
@@ -60,8 +64,11 @@
 
     <div id="status"></div>
 
-    <div id="previewContainer" style="display:none; width: 100%;">
-        <object id="pdfViewer" data="" type="application/pdf"></object>
+    <div id="previewContainer">
+        <h3 style="font-size: 14px; color: #64748b; margin-bottom: 10px;">Visualização do Documento:</h3>
+        <iframe id="pdfIframe"></iframe>
+        <br>
+        <a id="btnFallback" class="fallback-link" target="_blank">Não abriu? Clique aqui para abrir em tela cheia</a>
     </div>
 </div>
 
@@ -72,21 +79,13 @@
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    let dados = { 
-        inc: '', 
-        partida: { h: '00', m: '00' },
-        chegada: { h: '00', m: '00' },
-        atendimento: { h: '00', m: '00' }
-    };
+    let dados = { inc: '', partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} };
 
     function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
-        
-        // 1. INC
         const mInc = /(INC\d+)/i.exec(texto);
         dados.inc = mInc ? mInc[1].toUpperCase() : "---";
         
-        // Função interna para facilitar a busca de horários
         const buscarHora = (label) => {
             const regex = new RegExp(label + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i");
             const match = regex.exec(texto);
@@ -118,49 +117,51 @@
 
     async function visualizarRAT() {
         try {
-            mostrarStatus("⌛ Gerando Preview...", "#e0f2fe");
-            const res = await fetch(URL_MODELO_PDF);
+            mostrarStatus("⌛ Processando PDF...", "#e0f2fe");
+            
+            // Adicionado carimbo de tempo para evitar cache do navegador
+            const res = await fetch(URL_MODELO_PDF + '?t=' + new Date().getTime());
+            if (!res.ok) throw new Error("Não foi possível carregar o modelo do PDF. Verifique se o arquivo no Supabase está Público.");
+            
             const pdfDoc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
             const page = pdfDoc.getPages()[0];
-
-            // --- RÉGUA DE CALIBRAÇÃO (Remova quando terminar) ---
-            for (let i = 0; i <= 600; i += 50) page.drawText(i.toString(), { x: i, y: 10, size: 8, color: PDFLib.rgb(0.7, 0.7, 0.7) });
-            for (let i = 0; i <= 850; i += 50) page.drawText(i.toString(), { x: 10, y: i, size: 8, color: PDFLib.rgb(0.7, 0.7, 0.7) });
 
             // 1. INC
             page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: PDFLib.rgb(0,0,0) });
 
-            // 2. PARTIDA (Data de Início)
+            // 2. PARTIDA
             if(dados.partida.h !== "00") {
                 page.drawText(dados.partida.h, { x: 235, y: 690, size: 11, color: PDFLib.rgb(0,0,0) });
                 page.drawText(dados.partida.m, { x: 265, y: 690, size: 11, color: PDFLib.rgb(0,0,0) });
             }
 
-            // 3. CHEGADA (Data de Chegada)
+            // 3. CHEGADA
             if(dados.chegada.h !== "00") {
                 page.drawText(dados.chegada.h, { x: 235, y: 650, size: 11, color: PDFLib.rgb(0,0,0) });
                 page.drawText(dados.chegada.m, { x: 265, y: 650, size: 11, color: PDFLib.rgb(0,0,0) });
             }
 
-            // 4. ATENDIMENTO (Data de Atendimento)
+            // 4. ATENDIMENTO
             if(dados.atendimento.h !== "00") {
-                page.drawText(dados.atendimento.h, { 
-                    x: 235, // <--- AJUSTAR X HORA ATENDIMENTO
-                    y: 610, // <--- AJUSTAR Y HORA ATENDIMENTO
-                    size: 11, color: PDFLib.rgb(0,0,0) 
-                });
-                page.drawText(dados.atendimento.m, { 
-                    x: 265, // <--- AJUSTAR X MINUTO ATENDIMENTO
-                    y: 610, // <--- AJUSTAR Y MINUTO ATENDIMENTO
-                    size: 11, color: PDFLib.rgb(0,0,0) 
-                });
+                page.drawText(dados.atendimento.h, { x: 235, y: 610, size: 11, color: PDFLib.rgb(0,0,0) });
+                page.drawText(dados.atendimento.m, { x: 265, y: 610, size: 11, color: PDFLib.rgb(0,0,0) });
             }
 
-            const pdfUrl = URL.createObjectURL(new Blob([await pdfDoc.save()], {type:'application/pdf'}));
-            document.getElementById('pdfViewer').data = pdfUrl;
+            const pdfBytes = await pdfDoc.save();
+            const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+
+            // Atualiza o Visualizador
+            const iframe = document.getElementById('pdfIframe');
+            iframe.src = pdfUrl;
+            document.getElementById('btnFallback').href = pdfUrl;
             document.getElementById('previewContainer').style.display = 'block';
-            mostrarStatus("✅ Visualização com Régua Pronta!", "#dcfce7", 2000);
-        } catch (e) { alert("Erro ao processar PDF"); }
+
+            mostrarStatus("✅ Visualização gerada!", "#dcfce7", 2000);
+        } catch (e) { 
+            console.error(e);
+            alert("Erro: " + e.message); 
+        }
     }
 
     function mostrarStatus(msg, cor, t=0) {
