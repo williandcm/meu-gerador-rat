@@ -160,4 +160,14 @@
             document.getElementById('pdfViewer').data = pdfUrl;
             document.getElementById('previewContainer').style.display = 'block';
             mostrarStatus("✅ Visualização com Régua Pronta!", "#dcfce7", 2000);
-        }
+        } catch (e) { alert("Erro ao processar PDF"); }
+    }
+
+    function mostrarStatus(msg, cor, t=0) {
+        const s = document.getElementById('status');
+        s.style.display = 'block'; s.style.background = cor; s.innerText = msg;
+        if(t > 0) setTimeout(() => s.style.display = 'none', t);
+    }
+</script>
+</body>
+</html>
