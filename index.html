@@ -38,7 +38,7 @@
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="pInc" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Cidade</span><span id="pCidade" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Cidade/UF</span><span id="pLocal" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Bairro</span><span id="pBairro" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">🕒 Atend.</span><span id="dispAtendimento" class="info-value">00:00</span></div>
     </div>
@@ -66,7 +66,7 @@
     let blobUrlAtual = null;
     
     let dados = { 
-        inc: '', uniorg: '', enderecoRua: '', enderecoNum: '', cidade: '', bairro: '', cep: '',
+        inc: '', uniorg: '', enderecoRua: '', enderecoNum: '', cidade: '', uf: '', bairro: '', cep: '',
         partida: {h:'00',m:'00'}, chegada: {h:'00',m:'00'}, atendimento: {h:'00',m:'00'} 
     };
 
@@ -88,6 +88,10 @@
             dados.enderecoNum = mNum ? mNum[1] : "---";
             const mCid = /-\s*([^,]+)/.exec(linhaEnd);
             dados.cidade = mCid ? mCid[1].trim() : "---";
+
+            // Extração da UF (Estado)
+            const mUf = /,\s*([A-Z]{2})/.exec(linhaEnd);
+            dados.uf = mUf ? mUf[1] : "";
 
             const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
             if (mCep && mCep[1] !== dados.cep) {
@@ -117,7 +121,7 @@
 
     function atualizarPainel() {
         document.getElementById('pInc').innerText = dados.inc;
-        document.getElementById('pCidade').innerText = dados.cidade;
+        document.getElementById('pLocal').innerText = dados.uf ? `${dados.cidade} / ${dados.uf}` : dados.cidade;
         document.getElementById('pBairro').innerText = dados.bairro || "---";
         document.getElementById('dispAtendimento').innerText = `${dados.atendimento.h}:${dados.atendimento.m}`;
     }
@@ -132,28 +136,29 @@
         try {
             mostrarStatus("⌛ Gerando PDF carimbado...", "#e0f2fe");
             
-            // 1. Limpeza de memória do PDF anterior
             if (blobUrlAtual) {
                 URL.revokeObjectURL(blobUrlAtual);
                 document.getElementById('pdfIframe').src = 'about:blank';
             }
 
-            // 2. Busca o modelo com bypass de cache agressivo
             const response = await fetch(URL_MODELO_PDF + '?nocache=' + Date.now(), { cache: "no-store" });
             if (!response.ok) throw new Error("Não foi possível baixar o modelo da RAT.");
             const pdfArrayBuffer = await response.arrayBuffer();
 
-            // 3. Inicia PDF-LIB
             const pdfDoc = await PDFLib.PDFDocument.load(pdfArrayBuffer);
             const page = pdfDoc.getPages()[0];
             const fontColor = PDFLib.rgb(0, 0, 0);
 
-            // 4. Carimbos de texto
+            // Carimbos de texto
             page.drawText(dados.inc, { x: 123, y: 768, size: 11, color: fontColor });
             if(dados.uniorg !== "---") page.drawText(dados.uniorg, { x: 64, y: 714, size: 11, color: fontColor });
             if(dados.enderecoRua !== "---") page.drawText(dados.enderecoRua, { x: 79, y: 701, size: 10, color: fontColor });
             if(dados.enderecoNum !== "---") page.drawText(dados.enderecoNum, { x: 300, y: 702, size: 11, color: fontColor });
             if(dados.cidade !== "---") page.drawText(dados.cidade, { x: 338, y: 689, size: 11, color: fontColor });
+            
+            // ESTADO (UF) - Posição padrão sugerida
+            if(dados.uf) page.drawText(dados.uf, { x: 480, y: 689, size: 11, color: fontColor });
+            
             if(dados.bairro) page.drawText(dados.bairro, { x: 65, y: 688, size: 11, color: fontColor });
 
             // Horas
@@ -164,12 +169,10 @@
             page.drawText(dados.atendimento.h, { x: 418, y: 749, size: 11, color: fontColor });
             page.drawText(dados.atendimento.m, { x: 436, y: 749, size: 11, color: fontColor });
 
-            // 5. Salva e Gera URL
             const pdfBytes = await pdfDoc.save();
             const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
             blobUrlAtual = URL.createObjectURL(pdfBlob);
 
-            // 6. Apresentação
             document.getElementById('pdfIframe').src = blobUrlAtual;
             document.getElementById('btnFallback').href = blobUrlAtual;
             document.getElementById('previewContainer').style.display = 'block';
