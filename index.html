@@ -174,4 +174,14 @@
     }
 
     async function salvarAtendimento() {
-        const texto = document
+        const texto = document.getElementById('textoBruto').value.trim();
+        if(!texto) return;
+        try {
+            const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' }]);
+            if (error) throw error;
+            alert("Salvo!");
+        } catch (e) { alert(e.message); }
+    }
+</script>
+</body>
+</html>
