@@ -15,10 +15,10 @@
         textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
         
         .info-painel { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
-        .info-item { text-align: center; border-right: 1px solid #e2e8f0; }
+        .info-item { text-align: center; border-right: 1px solid #e2e8f0; padding: 2px; }
         .info-item:last-child { border-right: none; }
         .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
-        .info-value { font-size: 11px; color: #1e293b; font-weight: bold; }
+        .info-value { font-size: 11px; color: #1e293b; font-weight: bold; word-break: break-all; }
 
         .btn-group { display: flex; gap: 8px; margin-bottom: 15px; }
         button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; }
@@ -38,9 +38,9 @@
     <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
-        <div class="info-item"><span class="info-label">INC / SN</span><span id="pIncSn">---</span></div>
-        <div class="info-item"><span class="info-label">Hostname</span><span id="pHost">---</span></div>
-        <div class="info-item"><span class="info-label">Modelo</span><span id="pModelo">---</span></div>
+        <div class="info-item"><span class="info-label">INC / SN</span><span id="pIncSn" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Modelo</span><span id="pModelo" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Solução Detectada</span><span id="pSolucao" class="info-value">---</span></div>
     </div>
 
     <div class="btn-group">
@@ -62,7 +62,7 @@
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
+    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
     async function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
@@ -72,17 +72,21 @@
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
         dados.host = (/Hostname\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         
-        // Regex para capturar SN ou Serial
         const mSn = (/(?:SN|Serial)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         dados.sn = mSn;
 
-        // Lógica de Modelo por Prefixo
-        if (mSn.startsWith('P')) {
-            dados.modelo = "LENOVO T14";
-        } else if (mSn.startsWith('B')) {
-            dados.modelo = "HP ELITEBOOK 640 G9";
+        if (mSn.startsWith('P')) dados.modelo = "LENOVO T14";
+        else if (mSn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
+        else dados.modelo = "---";
+
+        // Lógica de Solução: Pega após o "=" e remove "AGBANESPA"
+        const mSol = /ITEM A SER SUBSTITUÍDO\s*=\s*(.+)/i.exec(texto);
+        if (mSol) {
+            let item = mSol[1].toUpperCase();
+            item = item.split('AGBANESPA')[0].trim();
+            dados.solucao = "REALIZADO " + item;
         } else {
-            dados.modelo = "---";
+            dados.solucao = "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
         }
 
         dados.uniorg = (/Uniorg\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
@@ -94,12 +98,8 @@
             dados.num = (/(\d+)/.exec(linhaEnd.replace(dados.rua, "")) || ["","---"])[1];
             dados.cid = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
             dados.uf = (/,\s*([A-Z]{2})/.exec(linhaEnd) || ["",""])[1];
-
             const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
-            if (mCep && mCep[1] !== dados.cep) {
-                dados.cep = mCep[1];
-                buscarBairro(dados.cep);
-            }
+            if (mCep && mCep[1] !== dados.cep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
         }
         
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
@@ -107,30 +107,26 @@
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
 
         document.getElementById('pIncSn').innerText = `${dados.inc} / ${dados.sn}`;
-        document.getElementById('pHost').innerText = dados.host;
         document.getElementById('pModelo').innerText = dados.modelo;
+        document.getElementById('pSolucao').innerText = dados.solucao;
     }
 
     async function buscarBairro(cep) {
         try {
             const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
             const data = await res.json();
-            if (!data.erro) {
-                dados.bai = data.bairro.toUpperCase();
-            }
+            if (!data.erro) { dados.bai = data.bairro.toUpperCase(); }
         } catch (e) {}
     }
 
     async function gerarERenderizar() {
         const btn = document.getElementById('btnGerar');
         btn.disabled = true;
-
         try {
             const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
             const pdfDoc = await PDFLib.PDFDocument.load(await response.arrayBuffer());
             const page = pdfDoc.getPages()[0];
             const fontColor = PDFLib.rgb(0, 0, 0);
-
             const txt = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
 
             txt(dados.inc, 123, 768);
@@ -146,13 +142,15 @@
             txt(dados.host, 78, 443, 11);
             txt(dados.patri, 88, 485, 11); 
             txt(dados.sn, 110, 471, 11);
+            
+            // Carimbo da Solução
+            txt(dados.solucao, 30, 395, 11); 
 
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
             txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
             txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
 
             const pdfBytes = await pdfDoc.save();
-            
             const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
             const pdf = await loadingTask.promise;
             const pdfPage = await pdf.getPage(1);
@@ -161,16 +159,10 @@
             const context = canvas.getContext('2d');
             canvas.height = viewport.height;
             canvas.width = viewport.width;
-
             await pdfPage.render({canvasContext: context, viewport: viewport}).promise;
             document.getElementById('viewerContainer').style.display = 'block';
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-
-        } catch (e) {
-            alert("Erro: " + e.message);
-        } finally {
-            btn.disabled = false;
-        }
+        } catch (e) { alert("Erro: " + e.message); } finally { btn.disabled = false; }
     }
 
     async function salvarAtendimento() {
