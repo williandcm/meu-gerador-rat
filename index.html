@@ -39,7 +39,7 @@
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN DO CARMO MORAIS</span></div>
-        <div class="info-item"><span class="info-label">Resp. / Matrícula</span><span id="pRespMat" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Série / MAC</span><span id="pSerieMac" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Solução Sugerida</span><span id="pSolucao" class="info-value">---</span></div>
     </div>
 
@@ -85,24 +85,24 @@
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
         dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
-
-        // AJUSTE MATRÍCULA: Captura apenas números (\d+), ignorando pontos ou caracteres extras
+        
         const matchMatricula = /MATRÍCULA\s*:\s*(\d+)/i.exec(texto);
         dados.matricula = matchMatricula ? matchMatricula[1] : '---';
 
         const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
         dados.mac = matchMac ? matchMac[1] : '';
         
+        const matchSn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
+        dados.sn = matchSn;
+
         let nomeBruto = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
         dados.resp = ajustarNomeSequencial(nomeBruto, 168);
-        
-        const mSn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
-        dados.sn = mSn;
 
-        if (mSn.startsWith('P')) dados.modelo = "LENOVO T14";
-        else if (mSn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
+        if (dados.sn.startsWith('P')) dados.modelo = "LENOVO T14";
+        else if (dados.sn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
         else dados.modelo = "---";
 
+        // Regra de Solução
         const mSol = /ITEM A SER SUBSTITUÍDO\s*=\s*(.+)/i.exec(texto);
         if (mSol) {
             let itemBruto = mSol[1].toUpperCase();
@@ -115,6 +115,10 @@
         } else {
             dados.solucao = "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
         }
+
+        // Validação Visual no Painel
+        const temTrocaOuSub = texto.includes("TROCA") || texto.includes("SUBSTITUIÇÃO") || texto.includes("SUBSTITUICAO");
+        document.getElementById('pSerieMac').innerText = temTrocaOuSub ? "OCULTOS (CASO TROCA)" : `${dados.sn} / ${dados.mac || 'N/A'}`;
 
         dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
@@ -168,15 +172,22 @@
             txt(dados.modelo, 69, 457, 11); 
             txt(dados.host, 78, 443, 11);
             txt(dados.patri, 88, 485, 11); 
-            txt(dados.sn, 110, 471, 11);
 
+            // --- NOVA REGRA DE SEGURANÇA ---
             const temTrocaOuSub = textoOriginal.includes("TROCA") || textoOriginal.includes("SUBSTITUIÇÃO") || textoOriginal.includes("SUBSTITUICAO");
             const temImagem = textoOriginal.includes("IMAGEM");
 
-            if (temImagem && !temTrocaOuSub) {
-                txt(dados.mac, 91, 430, 11);
+            // Se for TROCA ou SUBSTITUIÇÃO, SN e MAC ficam em branco obrigatoriamente
+            if (!temTrocaOuSub) {
+                txt(dados.sn, 110, 471, 11);
+                
+                // Só carimba MAC se for Imagem e NÃO for Troca
+                if (temImagem) {
+                    txt(dados.mac, 91, 430, 11);
+                }
             }
-            
+            // ------------------------------
+
             txt(dados.solucao, 30, 232, 11); 
             txt(dados.resp, 95, 174, 11); 
             txt(dados.matricula, 83, 147, 11);
