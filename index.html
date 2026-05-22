@@ -82,33 +82,29 @@
         if(!textoInput) return;
         const texto = textoInput.toUpperCase();
 
-        // 1. Extração básica inicial
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
         dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
         const matchMatricula = /MATRÍCULA\s*:\s*(\d+)/i.exec(texto);
         dados.matricula = matchMatricula ? matchMatricula[1] : '---';
 
-        // 2. Lógica Crítica de Decisão (Pin Pad vs Imagem)
         const ehPinPad = texto.includes("PIN PAD");
         const ehBaixaImagem = texto.includes("BAIXA DE IMAGEM");
 
         if (ehPinPad) {
-            // Se for Pin Pad, obrigatoriamente limpa
             dados.sn = '';
             dados.mac = '';
             dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD";
             document.getElementById('pSerieMac').innerText = "EM BRANCO (PIN PAD)";
         } else if (ehBaixaImagem) {
-            // Se for Baixa de Imagem, obrigatoriamente preenche
             const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
             dados.mac = matchMac ? matchMac[1] : '';
             const matchSn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
             dados.sn = matchSn;
-            dados.solucao = "REALIZADO BAIXA DE IMAGEM AGBANESPA";
+            // AJUSTE SOLICITADO: Frase curta para baixa de imagem
+            dados.solucao = "REALIZADO A BAIXA DE IMAGEM";
             document.getElementById('pSerieMac').innerText = `${dados.sn} / ${dados.mac || 'N/A'}`;
         } else {
-            // Comportamento padrão para outros chamados
             const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
             dados.mac = matchMac ? matchMac[1] : '';
             const matchSn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
@@ -117,7 +113,6 @@
             document.getElementById('pSerieMac').innerText = `${dados.sn} / ${dados.mac || 'N/A'}`;
         }
 
-        // Ajuste de Modelo e Solicitante
         let nomeBruto = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
         dados.resp = ajustarNomeSequencial(nomeBruto, 168);
 
@@ -127,7 +122,6 @@
 
         dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
-        // Endereço e Tempos
         const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(texto);
         if (mFullEnd) {
             const linhaEnd = mFullEnd[1];
@@ -143,7 +137,6 @@
         const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
 
-        document.getElementById('pRespMat').innerText = `${dados.resp} / ${dados.matricula}`;
         document.getElementById('pSolucao').innerText = dados.solucao;
     }
 
@@ -178,7 +171,6 @@
             txt(dados.host, 78, 443, 11);
             txt(dados.patri, 88, 485, 11); 
 
-            // Carimba Serial e MAC (se preenchidos na extração)
             txt(dados.sn, 110, 471, 11);
             txt(dados.mac, 91, 430, 11);
 
