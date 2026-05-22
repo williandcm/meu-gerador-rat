@@ -65,16 +65,16 @@
     
     let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', matricula:'', mac:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
-    function ajustarNomeSequencial(nome, limitePx) {
-        const larguraEstimadaChar = 5.8;
-        let partes = nome.split(' ').filter(p => {
-            const pLower = p.toLowerCase();
-            return p.length > 0 && !(['da', 'de', 'do', 'das', 'dos'].includes(pLower));
-        });
-        while (partes.length > 1 && (partes.join(' ').length * larguraEstimadaChar) > limitePx) {
-            partes.pop();
+    // Função que corta o nome para caber no campo sem alterar fonte
+    function limitarNomeSolicitante(nome) {
+        const limiteMaxCaracteres = 28; // Limite seguro para não passar da linha
+        if (nome.length <= limiteMaxCaracteres) return nome.toUpperCase();
+        
+        let partes = nome.split(' ');
+        while (partes.join(' ').length > limiteMaxCaracteres && partes.length > 1) {
+            partes.pop(); // Remove o último sobrenome até caber
         }
-        return partes.join(' ');
+        return partes.join(' ').toUpperCase();
     }
 
     async function extrairDados() {
@@ -101,7 +101,6 @@
             dados.mac = matchMac ? matchMac[1] : '';
             const matchSn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
             dados.sn = matchSn;
-            // AJUSTE SOLICITADO: Frase curta para baixa de imagem
             dados.solucao = "REALIZADO A BAIXA DE IMAGEM";
             document.getElementById('pSerieMac').innerText = `${dados.sn} / ${dados.mac || 'N/A'}`;
         } else {
@@ -113,8 +112,9 @@
             document.getElementById('pSerieMac').innerText = `${dados.sn} / ${dados.mac || 'N/A'}`;
         }
 
-        let nomeBruto = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
-        dados.resp = ajustarNomeSequencial(nomeBruto, 168);
+        // EXTRAÇÃO E AJUSTE DO NOME DO RESPONSÁVEL
+        let nomeCapturado = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
+        dados.resp = limitarNomeSolicitante(nomeCapturado);
 
         if (dados.sn && dados.sn.startsWith('P')) dados.modelo = "LENOVO T14";
         else if (dados.sn && dados.sn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
@@ -175,7 +175,10 @@
             txt(dados.mac, 91, 430, 11);
 
             txt(dados.solucao, 30, 232, 11); 
+            
+            // Campo do Responsável ajustado para não passar do limite
             txt(dados.resp, 95, 174, 11); 
+            
             txt(dados.matricula, 83, 147, 11);
             txt(dados.tecnico, 347, 176, 11);
 
