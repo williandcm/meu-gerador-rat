@@ -82,10 +82,15 @@
         if(!textoInput) return;
         const texto = textoInput.toUpperCase();
 
-        // Detecta se há intenção de troca por palavras-chave ou pelo campo de item substituído
-        const temTrocaOuSub = texto.includes("TROCA") || texto.includes("SUBSTITUIÇÃO") || texto.includes("SUBSTITUICAO");
+        // 1. Identifica se é Baixa de Imagem (Exceção que mantém os dados)
+        const ehBaixaImagem = texto.includes("BAIXA DE IMAGEM");
+        
+        // 2. Identifica se há troca física (Palavras chave)
+        const temTrocaOuSub = (texto.includes("TROCA") || texto.includes("SUBSTITUIÇÃO") || texto.includes("SUBSTITUICAO")) && !ehBaixaImagem;
+        
+        // 3. Verifica campo específico de item substituído
         const mSolMatch = /ITEM A SER SUBSTITUÍDO\s*=\s*(.+)/i.exec(texto);
-        const ehSubstituicaoDeItem = mSolMatch !== null;
+        const ehSubstituicaoFisica = mSolMatch !== null && !ehBaixaImagem;
 
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
@@ -94,11 +99,11 @@
         const matchMatricula = /MATRÍCULA\s*:\s*(\d+)/i.exec(texto);
         dados.matricula = matchMatricula ? matchMatricula[1] : '---';
 
-        // REGRA DE OURO: Se houver indicação de troca, não usa SN e MAC do chamado
-        if (temTrocaOuSub || ehSubstituicaoDeItem) {
+        // REGRA: Se for troca física, limpa. Se for Baixa de Imagem ou manutenção comum, mantém.
+        if (temTrocaOuSub || ehSubstituicaoFisica) {
             dados.mac = '';
             dados.sn = '';
-            document.getElementById('pSerieMac').innerText = "EM BRANCO (TROCA DETECTADA)";
+            document.getElementById('pSerieMac').innerText = "EM BRANCO (TROCA)";
         } else {
             const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
             dados.mac = matchMac ? matchMac[1] : '';
@@ -110,16 +115,17 @@
         let nomeBruto = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
         dados.resp = ajustarNomeSequencial(nomeBruto, 168);
 
-        // Define modelo baseado no SN (se existir)
-        if (dados.sn.startsWith('P')) dados.modelo = "LENOVO T14";
-        else if (dados.sn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
+        if (dados.sn && dados.sn.startsWith('P')) dados.modelo = "LENOVO T14";
+        else if (dados.sn && dados.sn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
         else dados.modelo = "---";
 
         // Define a frase da Solução
-        if (ehSubstituicaoDeItem) {
+        if (mSolMatch) {
             let itemBruto = mSolMatch[1].toUpperCase();
             if (itemBruto.includes("PIN PAD")) {
                 dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD";
+            } else if (itemBruto.includes("BAIXA DE IMAGEM")) {
+                dados.solucao = "REALIZADO BAIXA DE IMAGEM AGBANESPA";
             } else {
                 let itemLimpo = itemBruto.split('AGBANESPA')[0].trim();
                 dados.solucao = "REALIZADO " + itemLimpo;
@@ -181,11 +187,10 @@
             txt(dados.host, 78, 443, 11);
             txt(dados.patri, 88, 485, 11); 
 
-            // Carimba apenas se tiver dados
+            // Carimba Serial e MAC se estiverem preenchidos (mantidos em Baixa de Imagem)
             txt(dados.sn, 110, 471, 11);
             
-            const temImagem = textoOriginal.includes("IMAGEM");
-            if (temImagem) {
+            if (textoOriginal.includes("IMAGEM") || dados.mac) {
                 txt(dados.mac, 91, 430, 11);
             }
 
