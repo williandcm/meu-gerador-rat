@@ -39,7 +39,7 @@
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN DO CARMO MORAIS</span></div>
-        <div class="info-item"><span class="info-label">CPF Fixo</span><span class="info-value">327.190.648-31</span></div>
+        <div class="info-item"><span class="info-label">CPF</span><span class="info-value">327.190.648-31</span></div>
         <div class="info-item"><span class="info-label">Série / MAC</span><span id="pSerieMac" class="info-value">---</span></div>
     </div>
 
@@ -134,6 +134,7 @@
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
         const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
+        document.getElementById('pSolucao').innerText = dados.solucao;
     }
 
     async function buscarBairro(cep) {
@@ -171,41 +172,4 @@
             txt(dados.mac, 91, 430, 11);
 
             txt(dados.solucao, 30, 232, 11); 
-            txt(dados.resp, 95, 174, 11); 
-            txt(dados.matricula, 83, 147, 11);
-            
-            // CARIMBO DO TÉCNICO E CPF FIXO
-            txt(dados.tecnico, 347, 176, 11);
-            txt(dados.cpf, 346, 149, 11); // Campo de CPF/RG do Técnico
-
-            txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
-            txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
-            txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
-
-            const pdfBytes = await pdfDoc.save();
-            const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
-            const pdf = await loadingTask.promise;
-            const pdfPage = await pdf.getPage(1);
-            const viewport = pdfPage.getViewport({scale: 2.0}); 
-            const canvas = document.getElementById('pdfCanvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            await pdfPage.render({canvasContext: context, viewport: viewport}).promise;
-            document.getElementById('viewerContainer').style.display = 'block';
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        } catch (e) { alert("Erro: " + e.message); } finally { btn.disabled = false; }
-    }
-
-    async function salvarAtendimento() {
-        const texto = document.getElementById('textoBruto').value.trim();
-        if(!texto) return;
-        try {
-            const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' }]);
-            if (error) throw error;
-            alert("Salvo!");
-        } catch (e) { alert(e.message); }
-    }
-</script>
-</body>
-</html>
+            txt(dados.resp, 95, 174
