@@ -1,212 +1,54 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAT Visualizador Pro - Willian</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; box-sizing: border-box; }
-        h2 { color: #1e293b; text-align: center; font-size: 1.1rem; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; }
-        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
-        
-        .info-painel { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
-        .info-item { text-align: center; border-right: 1px solid #e2e8f0; padding: 2px; }
-        .info-item:last-child { border-right: none; }
-        .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
-        .info-value { font-size: 11px; color: #1e293b; font-weight: bold; word-break: break-all; }
 
-        .btn-group { display: flex; gap: 8px; margin-bottom: 15px; }
-        button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; }
-        .btn-save { background: #3b82f6; color: white; }
-        .btn-pdf { background: #10b981; color: white; }
-        button:disabled { background: #cbd5e1; cursor: not-allowed; }
+Inicio
 
-        #viewerContainer { display: none; width: 100%; margin-top: 10px; background: #525659; border-radius: 8px; padding: 10px; box-sizing: border-box; text-align: center; }
-        canvas { width: 100% !important; height: auto !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 4px; }
-        .msg-view { color: white; font-size: 11px; margin-bottom: 8px; display: block; font-weight: bold; }
-    </style>
-</head>
-<body>
 
-<div class="card">
-    <h2>📄 Gerador de RAT Santander</h2>
-    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
-    
-    <div class="info-painel">
-        <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN DO CARMO MORAIS</span></div>
-        <div class="info-item"><span class="info-label">Série / MAC</span><span id="pSerieMac" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Solução Sugerida</span><span id="pSolucao" class="info-value">---</span></div>
-    </div>
 
-    <div class="btn-group">
-        <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar</button>
-        <button class="btn-pdf" id="btnGerar" onclick="gerarERenderizar()">👁️ Visualizar RAT</button>
-    </div>
+Atividade : INC067370252
+Status : Criada - 610993
+Data de Criação : 21/05/2026 13:11
+Data de Alocação : 21/05/2026 15:05
+Data de Chegada :
+Data de Atendimento :
+Endereço : PCA RAUL LEME 265 - BRAGANCA PAULISTA, SP - 12900140
+GOOGLE MAPS        WAZE
+Empresa : Santander Brasil
+Tipo : MicroInf
+Data agendada : 22/05/2026 10:00
 
-    <div id="viewerContainer">
-        <span class="msg-view">PRÉ-VISUALIZAÇÃO DA RAT:</span>
-        <canvas id="pdfCanvas"></canvas>
-    </div>
-</div>
+Info adicional : Ag. 22/05/2026 10:00:00 * 0011977 * INC067370252 * LUCIENE EMILIO OLIVEIRA DE ALMEIDA * 11 995871050 * 823695 / BRA Espec Clientes Select High * Agencia/pab * Fill with additional info * Praça, Raul Leme, 265 * * 2524218 * BRJ3338Y7B * End User Hardware * Notebook * Agências - Notebook - Windows fora do dominio * Equipamento fora do domínio, favor seguir com a baixa de imagem.
+Dominio: Ag Banespa - Agências - Notebook - Windows fora do dominio * Hostname: AG00740000E058 * - Data Prevista: 22/05/2026 10:00:00 - Motivo: Técnico previsto para este atendimento - Info Complementar: ## DANIELE NASCIMENTO ## VALIDADO O UNIORG E SGPI ## ## SW ENVIAR TÉCNICO PARA BAIXA DE IMAGEM AGBANESPA ## Em contato com Jorge validado a uniorg e endereco e SGPI favor seguir com orientacao do Banco. ITEM A SER SUBSTITUÍDO = BAIXA DE IMAGEM AGBANESPA.
+Data / Hora Prevista: 22/05 a partir das 10:00
+Usuario: LUCIENE EMILIO OLIVEIRA DE ALMEIDA
+Analista: Daniele Nascimento
 
-<script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+- Previsão de Chamado: SW
+BAIXA-FORA DOMINIO
+- Info Complementar: (Leander) Usuária deseja fazer com o técnico presencialmente.
+Uniorg : 0011977
+Incidente / Requisição : INC067370252
+Solicitante : LUCIENE EMILIO OLIVEIRA DE ALMEIDA
+Telefone : 11 995871050
+Matrícula : 823695 / BRA Espec Clientes Select High
+Tipo de Local : Agencia/pab
+Complemento : Fill with additional info
+Andar / Agencia : Praça, Raul Leme, 265
+Estação / RITM :
+SGPI : 2524218
+Serial : BRJ3338Y7B
+Categoria : End User Hardware
+SubCategoria : Notebook
+SubCategoriaItem : Agências - Notebook - Windows fora do dominio
+Histórico ServiceNow
+Descrição : Equipamento fora do domínio, favor seguir com a baixa de imagem.
+Dominio: Ag Banespa - Agências - Notebook - Windows fora do dominio
+Hostname / Info Gerais : Hostname: AG00740000E058
+Outras Informações : - Data Prevista: 22/05/2026 10:00:00 - Motivo: Técnico previsto para este atendimento - Info Complementar: ## DANIELE NASCIMENTO ## VALIDADO O UNIORG E SGPI ## ## SW ENVIAR TÉCNICO PARA BAIXA DE IMAGEM AGBANESPA ## Em contato com Jorge validado a uniorg e endereco e SGPI favor seguir com orientacao do Banco. ITEM A SER SUBSTITUÍDO = BAIXA DE IMAGEM AGBANESPA.
+Data / Hora Prevista: 22/05 a partir das 10:00
+Usuario: LUCIENE EMILIO OLIVEIRA DE ALMEIDA
+Analista: Daniele Nascimento
 
-    const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
-    const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
+- Previsão de Chamado: SW
+BAIXA-FORA DOMINIO
+- Info Complementar: (Leander) Usuária deseja fazer com o técnico presencialmente.
 
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    
-    let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', matricula:'', mac:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
-    function ajustarNomeSequencial(nome, limitePx) {
-        const larguraEstimadaChar = 5.8;
-        let partes = nome.split(' ').filter(p => {
-            const pLower = p.toLowerCase();
-            return p.length > 0 && !(['da', 'de', 'do', 'das', 'dos'].includes(pLower));
-        });
-        while (partes.length > 1 && (partes.join(' ').length * larguraEstimadaChar) > limitePx) {
-            partes.pop();
-        }
-        return partes.join(' ');
-    }
-
-    async function extrairDados() {
-        const textoInput = document.getElementById('textoBruto').value;
-        if(!textoInput) return;
-        const texto = textoInput.toUpperCase();
-
-        dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
-        dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
-        dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
-        const matchMatricula = /MATRÍCULA\s*:\s*(\d+)/i.exec(texto);
-        dados.matricula = matchMatricula ? matchMatricula[1] : '---';
-
-        const ehPinPad = texto.includes("PIN PAD");
-        const ehBaixaImagem = texto.includes("BAIXA DE IMAGEM");
-
-        if (ehPinPad) {
-            dados.sn = '';
-            dados.mac = '';
-            dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD";
-            document.getElementById('pSerieMac').innerText = "EM BRANCO (PIN PAD)";
-        } else if (ehBaixaImagem) {
-            const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
-            dados.mac = matchMac ? matchMac[1] : '';
-            const matchSn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
-            dados.sn = matchSn;
-            // AJUSTE SOLICITADO: Frase curta para baixa de imagem
-            dados.solucao = "REALIZADO A BAIXA DE IMAGEM";
-            document.getElementById('pSerieMac').innerText = `${dados.sn} / ${dados.mac || 'N/A'}`;
-        } else {
-            const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
-            dados.mac = matchMac ? matchMac[1] : '';
-            const matchSn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
-            dados.sn = matchSn;
-            dados.solucao = "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
-            document.getElementById('pSerieMac').innerText = `${dados.sn} / ${dados.mac || 'N/A'}`;
-        }
-
-        let nomeBruto = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
-        dados.resp = ajustarNomeSequencial(nomeBruto, 168);
-
-        if (dados.sn && dados.sn.startsWith('P')) dados.modelo = "LENOVO T14";
-        else if (dados.sn && dados.sn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
-        else dados.modelo = "---";
-
-        dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
-
-        const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(texto);
-        if (mFullEnd) {
-            const linhaEnd = mFullEnd[1];
-            dados.rua = (/^([^0-9,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
-            dados.num = (/(\d+)/.exec(linhaEnd.replace(dados.rua, "")) || ["","---"])[1];
-            dados.cid = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
-            dados.uf = (/,\s*([A-Z]{2})/.exec(linhaEnd) || ["",""])[1];
-            const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
-            if (mCep && mCep[1] !== dados.cep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
-        }
-        
-        const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
-        const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
-        if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
-
-        document.getElementById('pSolucao').innerText = dados.solucao;
-    }
-
-    async function buscarBairro(cep) {
-        try {
-            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            const data = await res.json();
-            if (!data.erro) { dados.bai = data.bairro.toUpperCase(); }
-        } catch (e) {}
-    }
-
-    async function gerarERenderizar() {
-        const btn = document.getElementById('btnGerar');
-        btn.disabled = true;
-        try {
-            const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
-            const pdfDoc = await PDFLib.PDFDocument.load(await response.arrayBuffer());
-            const page = pdfDoc.getPages()[0];
-            const fontColor = PDFLib.rgb(0, 0, 0);
-            const txt = (t, x, y, s = 11) => { if(t && t !== '---' && t !== '') page.drawText(t, { x, y, size: s, color: fontColor }); };
-
-            txt(dados.inc, 123, 768);
-            txt(dados.uniorg, 64, 714);
-            txt(dados.rua, 79, 701, 10);
-            txt(dados.num, 300, 702);
-            txt(dados.cid, 338, 689);
-            txt(dados.uf, 43, 675); 
-            txt(dados.bai, 65, 688);
-
-            txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
-            txt(dados.modelo, 69, 457, 11); 
-            txt(dados.host, 78, 443, 11);
-            txt(dados.patri, 88, 485, 11); 
-
-            txt(dados.sn, 110, 471, 11);
-            txt(dados.mac, 91, 430, 11);
-
-            txt(dados.solucao, 30, 232, 11); 
-            txt(dados.resp, 95, 174, 11); 
-            txt(dados.matricula, 83, 147, 11);
-            txt(dados.tecnico, 347, 176, 11);
-
-            txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
-            txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
-            txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
-
-            const pdfBytes = await pdfDoc.save();
-            const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
-            const pdf = await loadingTask.promise;
-            const pdfPage = await pdf.getPage(1);
-            const viewport = pdfPage.getViewport({scale: 2.0}); 
-            const canvas = document.getElementById('pdfCanvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            await pdfPage.render({canvasContext: context, viewport: viewport}).promise;
-            document.getElementById('viewerContainer').style.display = 'block';
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        } catch (e) { alert("Erro: " + e.message); } finally { btn.disabled = false; }
-    }
-
-    async function salvarAtendimento() {
-        const texto = document.getElementById('textoBruto').value.trim();
-        if(!texto) return;
-        try {
-            const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' }]);
-            if (error) throw error;
-            alert("Salvo!");
-        } catch (e) { alert(e.message); }
-    }
-</script>
-</body>
-</html>
