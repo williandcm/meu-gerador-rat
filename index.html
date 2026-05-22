@@ -82,7 +82,10 @@
         if(!textoInput) return;
         const texto = textoInput.toUpperCase();
 
+        // Detecta se há intenção de troca por palavras-chave ou pelo campo de item substituído
         const temTrocaOuSub = texto.includes("TROCA") || texto.includes("SUBSTITUIÇÃO") || texto.includes("SUBSTITUICAO");
+        const mSolMatch = /ITEM A SER SUBSTITUÍDO\s*=\s*(.+)/i.exec(texto);
+        const ehSubstituicaoDeItem = mSolMatch !== null;
 
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
@@ -91,11 +94,11 @@
         const matchMatricula = /MATRÍCULA\s*:\s*(\d+)/i.exec(texto);
         dados.matricula = matchMatricula ? matchMatricula[1] : '---';
 
-        // Lógica de SN e MAC baseada em Troca
-        if (temTrocaOuSub) {
+        // REGRA DE OURO: Se houver indicação de troca, não usa SN e MAC do chamado
+        if (temTrocaOuSub || ehSubstituicaoDeItem) {
             dados.mac = '';
             dados.sn = '';
-            document.getElementById('pSerieMac').innerText = "EM BRANCO (TROCA)";
+            document.getElementById('pSerieMac').innerText = "EM BRANCO (TROCA DETECTADA)";
         } else {
             const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
             dados.mac = matchMac ? matchMac[1] : '';
@@ -107,14 +110,14 @@
         let nomeBruto = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
         dados.resp = ajustarNomeSequencial(nomeBruto, 168);
 
+        // Define modelo baseado no SN (se existir)
         if (dados.sn.startsWith('P')) dados.modelo = "LENOVO T14";
         else if (dados.sn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
         else dados.modelo = "---";
 
-        // Regra de Solução (Pin Pad)
-        const mSol = /ITEM A SER SUBSTITUÍDO\s*=\s*(.+)/i.exec(texto);
-        if (mSol) {
-            let itemBruto = mSol[1].toUpperCase();
+        // Define a frase da Solução
+        if (ehSubstituicaoDeItem) {
+            let itemBruto = mSolMatch[1].toUpperCase();
             if (itemBruto.includes("PIN PAD")) {
                 dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD";
             } else {
@@ -178,10 +181,9 @@
             txt(dados.host, 78, 443, 11);
             txt(dados.patri, 88, 485, 11); 
 
-            // Carimba apenas se houver dados (limpos na extração em caso de troca)
+            // Carimba apenas se tiver dados
             txt(dados.sn, 110, 471, 11);
             
-            // Lógica do MAC no PDF
             const temImagem = textoOriginal.includes("IMAGEM");
             if (temImagem) {
                 txt(dados.mac, 91, 430, 11);
