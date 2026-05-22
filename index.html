@@ -38,7 +38,7 @@
     <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
-        <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN MORAIS</span></div>
+        <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN DO CARMO MORAIS</span></div>
         <div class="info-item"><span class="info-label">Resp. / Matrícula</span><span id="pRespMat" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Status MAC</span><span id="pMacStatus" class="info-value">---</span></div>
     </div>
@@ -62,8 +62,9 @@
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    // Técnico fixo definido aqui
-    let dados = { tecnico: 'WILLIAN MORAIS', inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', matricula:'', mac:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
+    
+    // Nome do Técnico atualizado
+    let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', matricula:'', mac:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
     function ajustarNomeSequencial(nome, limitePx) {
         const larguraEstimadaChar = 5.8;
@@ -179,8 +180,7 @@
             txt(dados.matricula, 83, 147, 11);
 
             // CARIMBO TÉCNICO (WILLIAN DO CARMO MORAIS)
-            // Colocado em x:410 como sugestão inicial
-            txt(dados.tecnico, 350, 174, 11);
+            txt(dados.tecnico, 410, 174, 11);
 
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
             txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
