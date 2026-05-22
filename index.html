@@ -39,7 +39,7 @@
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">INC / SN</span><span id="pIncSn" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Responsável</span><span id="pResp" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Resp. / Matrícula</span><span id="pRespMat" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Solução</span><span id="pSolucao" class="info-value">---</span></div>
     </div>
 
@@ -62,19 +62,14 @@
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
+    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', matricula:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
-    // Função para limpar conectivos e ajustar tamanho do nome
     function ajustarNomeSequencial(nome, limitePx) {
         const larguraEstimadaChar = 5.8;
-        
-        // 1. Remove conectivos (da, de, do, das, dos)
         let partes = nome.split(' ').filter(p => {
             const pLower = p.toLowerCase();
             return p.length > 0 && !(['da', 'de', 'do', 'das', 'dos'].includes(pLower));
         });
-        
-        // 2. Enquanto o nome for maior que o limite, remove o último sobrenome
         while (partes.length > 1 && (partes.join(' ').length * larguraEstimadaChar) > limitePx) {
             partes.pop();
         }
@@ -89,9 +84,11 @@
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
         dados.host = (/Hostname\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         
-        let nomeBruto = (/Solicitante\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim().toUpperCase();
+        // Extração Matrícula
+        dados.matricula = (/Matrícula\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         
-        // Limite de 168px (distância de x=95 até x=263)
+        // Extração Responsável
+        let nomeBruto = (/Solicitante\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim().toUpperCase();
         dados.resp = ajustarNomeSequencial(nomeBruto, 168);
         
         const mSn = (/(?:SN|Serial)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
@@ -127,8 +124,7 @@
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
 
         document.getElementById('pIncSn').innerText = `${dados.inc} / ${dados.sn}`;
-        document.getElementById('pResp').innerText = dados.resp;
-        document.getElementById('pModelo').innerText = dados.modelo;
+        document.getElementById('pRespMat').innerText = `${dados.resp} / ${dados.matricula}`;
         document.getElementById('pSolucao').innerText = dados.solucao;
     }
 
@@ -166,8 +162,11 @@
             
             txt(dados.solucao, 30, 232, 11); 
 
-            // Responsável (x: 95, y: 174) - Sequencial e sem conectivos
+            // Responsável (x: 95, y: 174)
             txt(dados.resp, 95, 174, 11); 
+            
+            // Matrícula (x: 350, y: 174)
+            txt(dados.matricula, 350, 174, 11);
 
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
             txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
