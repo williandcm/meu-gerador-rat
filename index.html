@@ -100,7 +100,6 @@
         else if (mSn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
         else dados.modelo = "---";
 
-        // NOVA REGRA DE SOLUÇÃO (PIN PAD)
         const mSol = /ITEM A SER SUBSTITUÍDO\s*=\s*(.+)/i.exec(texto);
         if (mSol) {
             let itemBruto = mSol[1].toUpperCase();
@@ -178,6 +177,8 @@
             txt(dados.solucao, 30, 232, 11); 
             txt(dados.resp, 95, 174, 11); 
             txt(dados.matricula, 83, 147, 11);
+
+            // CARIMBO TÉCNICO ATUALIZADO (x:347, y:176)
             txt(dados.tecnico, 347, 176, 11);
 
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
