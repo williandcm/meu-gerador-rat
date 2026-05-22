@@ -40,7 +40,7 @@
     <div class="info-painel">
         <div class="info-item"><span class="info-label">INC / SN</span><span id="pIncSn" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Resp. / Matrícula</span><span id="pRespMat" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">MAC (Apenas Imagem)</span><span id="pMac" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Status MAC</span><span id="pMacStatus" class="info-value">---</span></div>
     </div>
 
     <div class="btn-group">
@@ -77,40 +77,45 @@
     }
 
     async function extrairDados() {
-        const texto = document.getElementById('textoBruto').value;
+        const texto = document.getElementById('textoBruto').value.toUpperCase();
         if(!texto) return;
 
-        dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1].toUpperCase();
+        dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
-        dados.host = (/Hostname\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
-        dados.matricula = (/Matrícula\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
+        dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
+        dados.matricula = (/MATRÍCULA\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
 
-        // Extração do MAC
         const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
-        dados.mac = matchMac ? matchMac[1].toUpperCase() : '';
+        dados.mac = matchMac ? matchMac[1] : '';
         
-        let nomeBruto = (/Solicitante\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim().toUpperCase();
+        let nomeBruto = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
         dados.resp = ajustarNomeSequencial(nomeBruto, 168);
         
-        const mSn = (/(?:SN|Serial)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
+        const mSn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
         dados.sn = mSn;
 
         if (mSn.startsWith('P')) dados.modelo = "LENOVO T14";
         else if (mSn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
         else dados.modelo = "---";
 
-        // Extração da Solução e Regra de MAC
         const mSol = /ITEM A SER SUBSTITUÍDO\s*=\s*(.+)/i.exec(texto);
         if (mSol) {
-            let item = mSol[1].toUpperCase().split('AGBANESPA')[0].trim();
+            let item = mSol[1].split('AGBANESPA')[0].trim();
             dados.solucao = "REALIZADO " + item;
         } else {
             dados.solucao = "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
         }
 
-        dados.uniorg = (/Uniorg\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+        // Regra de Validação do MAC para o Painel
+        const temTrocaOuSub = texto.includes("TROCA") || texto.includes("SUBSTITUIÇÃO") || texto.includes("SUBSTITUICAO");
+        const temImagem = texto.includes("IMAGEM");
+        const podeCarimbarMac = temImagem && !temTrocaOuSub;
 
-        const mFullEnd = /Endereço\s*:\s*(.+)/i.exec(texto);
+        document.getElementById('pMacStatus').innerText = podeCarimbarMac ? (dados.mac || "OK") : "OCULTAR (TROCA/SEM IMG)";
+
+        dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+
+        const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(texto);
         if (mFullEnd) {
             const linhaEnd = mFullEnd[1];
             dados.rua = (/^([^0-9,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
@@ -122,15 +127,11 @@
         }
         
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
-        const p = reg("Início"), c = reg("Chegada"), a = reg("Atendimento");
+        const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
 
         document.getElementById('pIncSn').innerText = `${dados.inc} / ${dados.sn}`;
         document.getElementById('pRespMat').innerText = `${dados.resp} / ${dados.matricula}`;
-        
-        // No painel, mostra o MAC apenas para conferência, a regra final é no PDF
-        const ehBaixaImagem = dados.solucao.includes("IMAGEM");
-        document.getElementById('pMac').innerText = ehBaixaImagem ? (dados.mac || "---") : "N/A (Não é Imagem)";
         document.getElementById('pSolucao').innerText = dados.solucao;
     }
 
@@ -146,6 +147,7 @@
         const btn = document.getElementById('btnGerar');
         btn.disabled = true;
         try {
+            const textoOriginal = document.getElementById('textoBruto').value.toUpperCase();
             const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
             const pdfDoc = await PDFLib.PDFDocument.load(await response.arrayBuffer());
             const page = pdfDoc.getPages()[0];
@@ -166,8 +168,11 @@
             txt(dados.patri, 88, 485, 11); 
             txt(dados.sn, 110, 471, 11);
 
-            // REGRA: Só carimba o MAC se a solução for Baixa de Imagem
-            if (dados.solucao.includes("IMAGEM")) {
+            // REGRA FINAL DO MAC
+            const temTrocaOuSub = textoOriginal.includes("TROCA") || textoOriginal.includes("SUBSTITUIÇÃO") || textoOriginal.includes("SUBSTITUICAO");
+            const temImagem = textoOriginal.includes("IMAGEM");
+
+            if (temImagem && !temTrocaOuSub) {
                 txt(dados.mac, 91, 430, 11);
             }
             
