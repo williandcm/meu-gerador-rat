@@ -38,7 +38,7 @@
     <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
-        <div class="info-item"><span class="info-label">INC / SN</span><span id="pIncSn" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN MORAIS</span></div>
         <div class="info-item"><span class="info-label">Resp. / Matrícula</span><span id="pRespMat" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Status MAC</span><span id="pMacStatus" class="info-value">---</span></div>
     </div>
@@ -62,7 +62,8 @@
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', matricula:'', mac:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
+    // Técnico fixo definido aqui
+    let dados = { tecnico: 'WILLIAN MORAIS', inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', matricula:'', mac:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
     function ajustarNomeSequencial(nome, limitePx) {
         const larguraEstimadaChar = 5.8;
@@ -77,8 +78,9 @@
     }
 
     async function extrairDados() {
-        const texto = document.getElementById('textoBruto').value.toUpperCase();
-        if(!texto) return;
+        const textoInput = document.getElementById('textoBruto').value;
+        if(!textoInput) return;
+        const texto = textoInput.toUpperCase();
 
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
@@ -106,7 +108,6 @@
             dados.solucao = "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
         }
 
-        // Regra de Validação do MAC para o Painel
         const temTrocaOuSub = texto.includes("TROCA") || texto.includes("SUBSTITUIÇÃO") || texto.includes("SUBSTITUICAO");
         const temImagem = texto.includes("IMAGEM");
         const podeCarimbarMac = temImagem && !temTrocaOuSub;
@@ -130,9 +131,7 @@
         const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
 
-        document.getElementById('pIncSn').innerText = `${dados.inc} / ${dados.sn}`;
         document.getElementById('pRespMat').innerText = `${dados.resp} / ${dados.matricula}`;
-        document.getElementById('pSolucao').innerText = dados.solucao;
     }
 
     async function buscarBairro(cep) {
@@ -168,7 +167,6 @@
             txt(dados.patri, 88, 485, 11); 
             txt(dados.sn, 110, 471, 11);
 
-            // REGRA FINAL DO MAC
             const temTrocaOuSub = textoOriginal.includes("TROCA") || textoOriginal.includes("SUBSTITUIÇÃO") || textoOriginal.includes("SUBSTITUICAO");
             const temImagem = textoOriginal.includes("IMAGEM");
 
@@ -179,6 +177,10 @@
             txt(dados.solucao, 30, 232, 11); 
             txt(dados.resp, 95, 174, 11); 
             txt(dados.matricula, 83, 147, 11);
+
+            // CARIMBO TÉCNICO (WILLIAN MORAIS)
+            // Colocado em x:410 como sugestão inicial
+            txt(dados.tecnico, 410, 174, 11);
 
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
             txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
