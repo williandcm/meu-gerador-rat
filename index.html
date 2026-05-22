@@ -66,13 +66,21 @@
     
     let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO, inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', matricula:'', mac:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
+    // Função que limpa conectivos E limita o tamanho do nome
     function limitarNomeSolicitante(nome) {
         const limiteMaxCaracteres = 28;
-        if (nome.length <= limiteMaxCaracteres) return nome.toUpperCase();
-        let partes = nome.split(' ');
+        
+        // 1. Divide em palavras e filtra conectivos (de, da, do, etc)
+        let partes = nome.split(' ').filter(p => {
+            const pLower = p.toLowerCase();
+            return p.length > 0 && !(['da', 'de', 'do', 'das', 'dos'].includes(pLower));
+        });
+
+        // 2. Garante que caiba no campo removendo os últimos sobrenomes se necessário
         while (partes.join(' ').length > limiteMaxCaracteres && partes.length > 1) {
             partes.pop();
         }
+
         return partes.join(' ').toUpperCase();
     }
 
@@ -176,8 +184,6 @@
             txt(dados.matricula, 83, 147, 11);
             
             txt(dados.tecnico, 347, 176, 11);
-            
-            // AJUSTE SOLICITADO: CPF COM COORDENADAS X: 346, Y: 149
             txt(dados.cpf, 346, 149, 11); 
 
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
