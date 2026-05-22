@@ -64,6 +64,23 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
+    // Função para encurtar o nome sem cortar sobrenomes ao meio
+    function ajustarNome(nome, limitePx) {
+        const larguraEstimadaChar = 5.5; // Média de largura de caracteres em fonte 11
+        let partes = nome.split(' ').filter(p => p.length > 0);
+        
+        while (partes.length > 1 && (partes.join(' ').length * larguraEstimadaChar) > limitePx) {
+            if (partes.length > 2) {
+                // Remove o sobrenome do meio primeiro
+                partes.splice(partes.length - 2, 1);
+            } else {
+                // Se só restarem dois, remove o último (ou mantém se preferir apenas o primeiro)
+                partes.pop();
+            }
+        }
+        return partes.join(' ');
+    }
+
     async function extrairDados() {
         const texto = document.getElementById('textoBruto').value;
         if(!texto) return;
@@ -72,8 +89,10 @@
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
         dados.host = (/Hostname\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         
-        // Extração do Responsável
-        dados.resp = (/Solicitante\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim().toUpperCase();
+        // Captura o nome bruto
+        let nomeBruto = (/Solicitante\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim().toUpperCase();
+        // Ajusta o nome para o limite de 168px (263 - 95)
+        dados.resp = ajustarNome(nomeBruto, 168);
         
         const mSn = (/(?:SN|Serial)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         dados.sn = mSn;
@@ -147,7 +166,7 @@
             
             txt(dados.solucao, 30, 232, 11); 
 
-            // NOVO AJUSTE: Responsável (x: 95, y: 174)
+            // Responsável ajustado (x: 95, y: 174)
             txt(dados.resp, 95, 174, 11); 
 
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
