@@ -39,8 +39,8 @@
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN DO CARMO MORAIS</span></div>
-        <div class="info-item"><span class="info-label">CPF</span><span class="info-value">327.190.648-31</span></div>
-        <div class="info-item"><span class="info-label">Responsável Final</span><span id="pRespView" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Cidade / Local</span><span id="pCidadeView" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Responsável</span><span id="pRespView" class="info-value">---</span></div>
     </div>
 
     <div class="btn-group">
@@ -66,28 +66,22 @@
     
     let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO, inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', matricula:'', mac:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
-    // FUNÇÃO PARA MEDIR LARGURA DO TEXTO EM PIXELS (PRECISÃO TOTAL)
     function medirLarguraTexto(texto) {
         const canvas = document.createElement("canvas");
         const context = canvas.getContext("2d");
-        context.font = "bold 11px Arial"; // Simula a fonte do PDF
+        context.font = "bold 11px Arial";
         return context.measureText(texto.toUpperCase()).width;
     }
 
     function limitarNomeSolicitante(nome) {
-        const LARGURA_MAXIMA_PX = 155; // Espaço disponível no campo da RAT
-        
-        // 1. Filtra conectivos
+        const LARGURA_MAXIMA_PX = 155;
         let partes = nome.split(' ').filter(p => {
             const pLower = p.toLowerCase();
             return p.length > 0 && !(['da', 'de', 'do', 'das', 'dos'].includes(pLower));
         });
-
-        // 2. Loop para remover sobrenomes enquanto for maior que o espaço físico
         while (partes.length > 1 && medirLarguraTexto(partes.join(' ')) > LARGURA_MAXIMA_PX) {
             partes.pop();
         }
-
         return partes.join(' ').toUpperCase();
     }
 
@@ -122,7 +116,6 @@
             dados.solucao = "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
         }
 
-        // AJUSTE DO NOME COM MEDIÇÃO DE PIXELS
         let nomeCapturado = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
         dados.resp = limitarNomeSolicitante(nomeCapturado);
         document.getElementById('pRespView').innerText = dados.resp;
@@ -138,10 +131,11 @@
             const linhaEnd = mFullEnd[1];
             dados.rua = (/^([^0-9,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
             dados.num = (/(\d+)/.exec(linhaEnd.replace(dados.rua, "")) || ["","---"])[1];
-            dados.cid = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
+            dados.cid = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim().toUpperCase();
             dados.uf = (/,\s*([A-Z]{2})/.exec(linhaEnd) || ["",""])[1];
             const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
             if (mCep && mCep[1] !== dados.cep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
+            document.getElementById('pCidadeView').innerText = dados.cid;
         }
         
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
@@ -182,12 +176,16 @@
             txt(dados.mac, 91, 430, 11);
             txt(dados.solucao, 30, 232, 11); 
             
-            // NOME JÁ LIMITADO FISICAMENTE
             txt(dados.resp, 95, 174, 11); 
-            
             txt(dados.matricula, 83, 147, 11);
+            
+            // CARIMBOS TÉCNICOS
             txt(dados.tecnico, 347, 176, 11);
             txt(dados.cpf, 346, 149, 11); 
+
+            // CARIMBO DE LOCALIZAÇÃO (CIDADE NO CAMPO LOCAL)
+            // Coordenadas aproximadas para o campo de local da RAT
+            txt(dados.cid, 30, 120, 11); 
 
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
             txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
