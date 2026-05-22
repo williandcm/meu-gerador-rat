@@ -85,7 +85,10 @@
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
         dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
-        dados.matricula = (/MATRÍCULA\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
+
+        // AJUSTE MATRÍCULA: Captura apenas números (\d+), ignorando pontos ou caracteres extras
+        const matchMatricula = /MATRÍCULA\s*:\s*(\d+)/i.exec(texto);
+        dados.matricula = matchMatricula ? matchMatricula[1] : '---';
 
         const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
         dados.mac = matchMac ? matchMac[1] : '';
@@ -177,8 +180,6 @@
             txt(dados.solucao, 30, 232, 11); 
             txt(dados.resp, 95, 174, 11); 
             txt(dados.matricula, 83, 147, 11);
-
-            // CARIMBO TÉCNICO ATUALIZADO (x:347, y:176)
             txt(dados.tecnico, 347, 176, 11);
 
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
