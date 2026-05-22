@@ -40,7 +40,7 @@
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN DO CARMO MORAIS</span></div>
         <div class="info-item"><span class="info-label">Resp. / Matrícula</span><span id="pRespMat" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Status MAC</span><span id="pMacStatus" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Solução Sugerida</span><span id="pSolucao" class="info-value">---</span></div>
     </div>
 
     <div class="btn-group">
@@ -63,7 +63,6 @@
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    // Nome do Técnico atualizado
     let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', matricula:'', mac:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
     function ajustarNomeSequencial(nome, limitePx) {
@@ -101,19 +100,19 @@
         else if (mSn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
         else dados.modelo = "---";
 
+        // NOVA REGRA DE SOLUÇÃO (PIN PAD)
         const mSol = /ITEM A SER SUBSTITUÍDO\s*=\s*(.+)/i.exec(texto);
         if (mSol) {
-            let item = mSol[1].split('AGBANESPA')[0].trim();
-            dados.solucao = "REALIZADO " + item;
+            let itemBruto = mSol[1].toUpperCase();
+            if (itemBruto.includes("PIN PAD")) {
+                dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD";
+            } else {
+                let itemLimpo = itemBruto.split('AGBANESPA')[0].trim();
+                dados.solucao = "REALIZADO " + itemLimpo;
+            }
         } else {
             dados.solucao = "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
         }
-
-        const temTrocaOuSub = texto.includes("TROCA") || texto.includes("SUBSTITUIÇÃO") || texto.includes("SUBSTITUICAO");
-        const temImagem = texto.includes("IMAGEM");
-        const podeCarimbarMac = temImagem && !temTrocaOuSub;
-
-        document.getElementById('pMacStatus').innerText = podeCarimbarMac ? (dados.mac || "OK") : "OCULTAR (TROCA/SEM IMG)";
 
         dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
@@ -133,6 +132,7 @@
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
 
         document.getElementById('pRespMat').innerText = `${dados.resp} / ${dados.matricula}`;
+        document.getElementById('pSolucao').innerText = dados.solucao;
     }
 
     async function buscarBairro(cep) {
@@ -154,62 +154,4 @@
             const fontColor = PDFLib.rgb(0, 0, 0);
             const txt = (t, x, y, s = 11) => { if(t && t !== '---' && t !== '') page.drawText(t, { x, y, size: s, color: fontColor }); };
 
-            txt(dados.inc, 123, 768);
-            txt(dados.uniorg, 64, 714);
-            txt(dados.rua, 79, 701, 10);
-            txt(dados.num, 300, 702);
-            txt(dados.cid, 338, 689);
-            txt(dados.uf, 43, 675); 
-            txt(dados.bai, 65, 688);
-
-            txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
-            txt(dados.modelo, 69, 457, 11); 
-            txt(dados.host, 78, 443, 11);
-            txt(dados.patri, 88, 485, 11); 
-            txt(dados.sn, 110, 471, 11);
-
-            const temTrocaOuSub = textoOriginal.includes("TROCA") || textoOriginal.includes("SUBSTITUIÇÃO") || textoOriginal.includes("SUBSTITUICAO");
-            const temImagem = textoOriginal.includes("IMAGEM");
-
-            if (temImagem && !temTrocaOuSub) {
-                txt(dados.mac, 91, 430, 11);
-            }
-            
-            txt(dados.solucao, 30, 232, 11); 
-            txt(dados.resp, 95, 174, 11); 
-            txt(dados.matricula, 83, 147, 11);
-
-            // CARIMBO TÉCNICO (WILLIAN DO CARMO MORAIS)
-            txt(dados.tecnico, 345, 150, 11);
-
-            txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
-            txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
-            txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
-
-            const pdfBytes = await pdfDoc.save();
-            const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
-            const pdf = await loadingTask.promise;
-            const pdfPage = await pdf.getPage(1);
-            const viewport = pdfPage.getViewport({scale: 2.0}); 
-            const canvas = document.getElementById('pdfCanvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            await pdfPage.render({canvasContext: context, viewport: viewport}).promise;
-            document.getElementById('viewerContainer').style.display = 'block';
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        } catch (e) { alert("Erro: " + e.message); } finally { btn.disabled = false; }
-    }
-
-    async function salvarAtendimento() {
-        const texto = document.getElementById('textoBruto').value.trim();
-        if(!texto) return;
-        try {
-            const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' }]);
-            if (error) throw error;
-            alert("Salvo!");
-        } catch (e) { alert(e.message); }
-    }
-</script>
-</body>
-</html>
+            txt(dados.inc, 1
