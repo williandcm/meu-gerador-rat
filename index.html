@@ -84,13 +84,14 @@
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
         dados.host = (/Hostname\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         
-        // Extração Matrícula
+        // Matrícula
         dados.matricula = (/Matrícula\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
 
-        // Extração MAC Address (Deixa em branco se não encontrar)
+        // MAC Address
         const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
         dados.mac = matchMac ? matchMac[1].toUpperCase() : '';
         
+        // Responsável
         let nomeBruto = (/Solicitante\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim().toUpperCase();
         dados.resp = ajustarNomeSequencial(nomeBruto, 168);
         
@@ -164,7 +165,7 @@
             txt(dados.patri, 88, 485, 11); 
             txt(dados.sn, 110, 471, 11);
 
-            // MAC (x: 100, y: 430) - Fica em branco se não existir
+            // AJUSTE MAC (x: 91, y: 430)
             txt(dados.mac, 91, 430, 11);
             
             txt(dados.solucao, 30, 232, 11); 
