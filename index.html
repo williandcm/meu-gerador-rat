@@ -40,7 +40,7 @@
     <div class="info-painel">
         <div class="info-item"><span class="info-label">INC / SN</span><span id="pIncSn" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Resp. / Matrícula</span><span id="pRespMat" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">MAC</span><span id="pMac" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">MAC (Apenas Imagem)</span><span id="pMac" class="info-value">---</span></div>
     </div>
 
     <div class="btn-group">
@@ -83,15 +83,12 @@
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
         dados.host = (/Hostname\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
-        
-        // Matrícula
         dados.matricula = (/Matrícula\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
 
-        // MAC Address
+        // Extração do MAC
         const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
         dados.mac = matchMac ? matchMac[1].toUpperCase() : '';
         
-        // Responsável
         let nomeBruto = (/Solicitante\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim().toUpperCase();
         dados.resp = ajustarNomeSequencial(nomeBruto, 168);
         
@@ -102,6 +99,7 @@
         else if (mSn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
         else dados.modelo = "---";
 
+        // Extração da Solução e Regra de MAC
         const mSol = /ITEM A SER SUBSTITUÍDO\s*=\s*(.+)/i.exec(texto);
         if (mSol) {
             let item = mSol[1].toUpperCase().split('AGBANESPA')[0].trim();
@@ -129,7 +127,10 @@
 
         document.getElementById('pIncSn').innerText = `${dados.inc} / ${dados.sn}`;
         document.getElementById('pRespMat').innerText = `${dados.resp} / ${dados.matricula}`;
-        document.getElementById('pMac').innerText = dados.mac || "---";
+        
+        // No painel, mostra o MAC apenas para conferência, a regra final é no PDF
+        const ehBaixaImagem = dados.solucao.includes("IMAGEM");
+        document.getElementById('pMac').innerText = ehBaixaImagem ? (dados.mac || "---") : "N/A (Não é Imagem)";
         document.getElementById('pSolucao').innerText = dados.solucao;
     }
 
@@ -165,11 +166,12 @@
             txt(dados.patri, 88, 485, 11); 
             txt(dados.sn, 110, 471, 11);
 
-            // AJUSTE MAC (x: 91, y: 430)
-            txt(dados.mac, 91, 430, 11);
+            // REGRA: Só carimba o MAC se a solução for Baixa de Imagem
+            if (dados.solucao.includes("IMAGEM")) {
+                txt(dados.mac, 91, 430, 11);
+            }
             
             txt(dados.solucao, 30, 232, 11); 
-
             txt(dados.resp, 95, 174, 11); 
             txt(dados.matricula, 83, 147, 11);
 
