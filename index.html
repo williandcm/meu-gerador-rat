@@ -64,12 +64,17 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let dados = { inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
-    // Função ajustada para manter a sequência e remover o último se não couber
+    // Função para limpar conectivos e ajustar tamanho do nome
     function ajustarNomeSequencial(nome, limitePx) {
-        const larguraEstimadaChar = 5.8; // Ajuste fino para segurança de margem
-        let partes = nome.split(' ').filter(p => p.length > 0);
+        const larguraEstimadaChar = 5.8;
         
-        // Enquanto o nome total for maior que o limite (168px), remove o último sobrenome
+        // 1. Remove conectivos (da, de, do, das, dos)
+        let partes = nome.split(' ').filter(p => {
+            const pLower = p.toLowerCase();
+            return p.length > 0 && !(['da', 'de', 'do', 'das', 'dos'].includes(pLower));
+        });
+        
+        // 2. Enquanto o nome for maior que o limite, remove o último sobrenome
         while (partes.length > 1 && (partes.join(' ').length * larguraEstimadaChar) > limitePx) {
             partes.pop();
         }
@@ -161,7 +166,7 @@
             
             txt(dados.solucao, 30, 232, 11); 
 
-            // Responsável (x: 95, y: 174) - Sequencial
+            // Responsável (x: 95, y: 174) - Sequencial e sem conectivos
             txt(dados.resp, 95, 174, 11); 
 
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
