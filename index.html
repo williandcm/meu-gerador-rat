@@ -39,7 +39,7 @@
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">INC / SN</span><span id="pIncSn" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Solicitante</span><span id="pResp" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Responsável</span><span id="pResp" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Solução</span><span id="pSolucao" class="info-value">---</span></div>
     </div>
 
@@ -72,7 +72,7 @@
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
         dados.host = (/Hostname\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
         
-        // Extração do Responsável (Solicitante)
+        // Extração do Responsável
         dados.resp = (/Solicitante\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim().toUpperCase();
         
         const mSn = (/(?:SN|Serial)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1].toUpperCase();
@@ -132,7 +132,6 @@
             const txt = (t, x, y, s = 11) => { if(t && t !== '---') page.drawText(t, { x, y, size: s, color: fontColor }); };
 
             txt(dados.inc, 123, 768);
-            txt(dados.resp, 95, 174); // Carimbo do Responsável
             txt(dados.uniorg, 64, 714);
             txt(dados.rua, 79, 701, 10);
             txt(dados.num, 300, 702);
@@ -145,7 +144,11 @@
             txt(dados.host, 78, 443, 11);
             txt(dados.patri, 88, 485, 11); 
             txt(dados.sn, 110, 471, 11);
+            
             txt(dados.solucao, 30, 232, 11); 
+
+            // NOVO AJUSTE: Responsável (x: 95, y: 174)
+            txt(dados.resp, 95, 174, 11); 
 
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
             txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
