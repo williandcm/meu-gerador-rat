@@ -132,4 +132,99 @@
         let nomeCapturado = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
         dados.resp = limitarNomeSolicitante(nomeCapturado);
 
-        dados.modelo
+        dados.modelo = dados.sn.startsWith('P') ? "LENOVO T14" : (dados.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "---");
+        dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+
+        const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(texto);
+        if (mFullEnd) {
+            const linhaEnd = mFullEnd[1];
+            dados.rua = (/^([^0-9,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
+            dados.num = (/(\d+)/.exec(linhaEnd.replace(dados.rua, "")) || ["","---"])[1];
+            dados.cid = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim().toUpperCase();
+            dados.uf = (/,\s*([A-Z]{2})/.exec(linhaEnd) || ["",""])[1];
+            const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
+            if (mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
+            document.getElementById('pCidadeView').innerText = dados.cid;
+        }
+        
+        document.getElementById('pDataView').innerText = new Date().toLocaleDateString('pt-BR');
+
+        const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
+        const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
+        if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
+    }
+
+    // ==========================================
+    // 4. MOTOR DO PDF
+    // ==========================================
+    async function gerarERenderizar() {
+        const btn = document.getElementById('btnGerar');
+        btn.disabled = true;
+        try {
+            const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
+            const pdfDoc = await PDFLib.PDFDocument.load(await response.arrayBuffer());
+            const page = pdfDoc.getPages()[0];
+            const fontColor = PDFLib.rgb(0, 0, 0);
+
+            // Função ajudante para escrever no PDF usando o mapa POS
+            const escrever = (texto, config) => {
+                if(texto && texto !== '---' && texto !== '') {
+                    page.drawText(String(texto), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
+                }
+            };
+
+            // Preenchimento de Campos
+            escrever(dados.inc, POS.inc);
+            escrever(dados.uniorg, POS.uniorg);
+            escrever(dados.rua, POS.rua);
+            escrever(dados.num, POS.num);
+            escrever(dados.cid, POS.cid);
+            escrever(dados.uf, POS.uf);
+            escrever(dados.bai, POS.bai);
+            escrever("EQUIPAMENTO INOPERANTE", POS.inoperante);
+            escrever(dados.modelo, POS.modelo);
+            escrever(dados.host, POS.host);
+            escrever(dados.patri, POS.patri);
+            escrever(dados.sn, POS.sn);
+            escrever(dados.mac, POS.mac);
+            escrever(dados.solucao, POS.solucao);
+            escrever(dados.resp, POS.resp);
+            escrever(dados.matricula, POS.matri);
+            escrever(dados.tecnico, POS.tecnico);
+            escrever(dados.cpf, POS.cpf);
+
+            // Carimbos de Rodapé
+            escrever(dados.cid, POS.local);
+            const d = new Date();
+            escrever(String(d.getDate()).padStart(2, '0'), POS.dia);
+            escrever(String(d.getMonth() + 1).padStart(2, '0'), POS.mes);
+            escrever(String(d.getFullYear()), POS.ano);
+
+            // Horários
+            escrever(dados.p.h, POS.h_ini); escrever(dados.p.m, POS.m_ini);
+            escrever(dados.p.h ? dados.c.h : '00', POS.h_che); escrever(dados.p.h ? dados.c.m : '00', POS.m_che);
+            escrever(dados.a.h, POS.h_ate); escrever(dados.a.m, POS.m_ate);
+
+            // Renderização
+            const pdfBytes = await pdfDoc.save();
+            const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
+            const pdf = await loadingTask.promise;
+            const pdfPage = await pdf.getPage(1);
+            const viewport = pdfPage.getViewport({scale: 2.0}); 
+            const canvas = document.getElementById('pdfCanvas');
+            canvas.height = viewport.height; canvas.width = viewport.width;
+            await pdfPage.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
+            document.getElementById('viewerContainer').style.display = 'block';
+        } catch (e) { alert("Erro: " + e.message); } finally { btn.disabled = false; }
+    }
+
+    async function salvarAtendimento() {
+        if(!dados.inc) return;
+        try {
+            const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: document.getElementById('textoBruto').value, analista: 'Willian' }]);
+            alert(error ? "Erro ao salvar" : "Salvo!");
+        } catch (e) { alert(e.message); }
+    }
+</script>
+</body>
+</html>
