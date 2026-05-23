@@ -316,7 +316,6 @@
         }
         
         escrever('f_local_data_cidade', POS.local);
-
         escreverParHorario('f_partida', POS.h_partida, POS.m_partida);
         escreverParHorario('f_chegada', POS.h_chegada, POS.m_chegada);
         escreverParHorario('f_inicio_ate', POS.h_inicio_ate, POS.m_inicio_ate);
@@ -350,12 +349,49 @@
     async function salvarAtendimento() {
         const inc = document.getElementById('f_inc').value.toUpperCase();
         if(!inc) { alert("Preencha ao menos o INC antes de salvar."); return; }
+
+        const dadosParaSalvar = {
+            numero_inc: inc,
+            uniorg: document.getElementById('f_uniorg').value,
+            hora_partida: document.getElementById('f_partida').value,
+            hora_chegada: document.getElementById('f_chegada').value,
+            hora_inicio_ate: document.getElementById('f_inicio_ate').value,
+            hora_termino_ate: document.getElementById('f_termino_ate').value,
+            endereco: document.getElementById('f_rua').value,
+            numero: document.getElementById('f_num').value,
+            bairro: document.getElementById('f_bai').value,
+            cidade: document.getElementById('f_cid').value,
+            uf: document.getElementById('f_uf').value,
+            patri_ret: document.getElementById('f_patri_ret').value,
+            sn_ret: document.getElementById('f_sn_ret').value,
+            modelo_ret: document.getElementById('f_modelo_ret').value,
+            host_ret: document.getElementById('f_host_ret').value,
+            mac_ret: document.getElementById('f_mac_ret').value,
+            patri_inst: document.getElementById('f_patri_inst').value,
+            sn_inst: document.getElementById('f_sn_inst').value,
+            modelo_inst: document.getElementById('f_modelo_inst').value,
+            host_inst: document.getElementById('f_host_inst').value,
+            mac_inst: document.getElementById('f_mac_inst').value,
+            solucao: document.getElementById('f_solucao').value,
+            solicitante: document.getElementById('f_resp').value,
+            matricula: document.getElementById('f_matricula').value,
+            data_atendimento: document.getElementById('f_data_completa').value,
+            texto_bruto: document.getElementById('textoBruto').value,
+            analista: 'Willian'
+        };
+
         try {
-            const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: inc, texto_bruto: document.getElementById('textoBruto').value, analista: 'Willian' }]);
-            alert(error ? "Erro ao salvar" : "Salvo no banco de dados!");
-        } catch (e) { alert(e.message); }
+            const { error } = await supabaseClient.from('chamados').insert([dadosParaSalvar]);
+            if (error) {
+                console.error(error);
+                alert("Erro ao salvar: " + error.message);
+            } else {
+                alert("Dados salvos com sucesso!");
+            }
+        } catch (e) { 
+            alert("Erro inesperado: " + e.message); 
+        }
     }
 </script>
 </body>
 </html>
-
