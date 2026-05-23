@@ -108,6 +108,7 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="field full-width"><label>Endereço</label><input type="text" id="f_rua"></div>
                 <div class="field"><label>Número</label><input type="text" id="f_num"></div>
                 <div class="field"><label>Bairro</label><input type="text" id="f_bai"></div>
@@ -157,7 +158,6 @@
     const CPF_FIXO = "327.190.648-31";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Coordenadas originais do mapeamento do PDF
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
@@ -168,10 +168,10 @@
         local: { x: 123, y: 56 }, dia: { x: 376, y: 58 }, mes: { x: 410, y: 58 }, ano: { x: 441, y: 58 },
         h_partida: { x: 91, y: 747 }, m_partida: { x: 110, y: 747 },
         h_chegada: { x: 91, y: 736 }, m_chegada: { x: 110, y: 736 },
-        h_termino_ate: { x: 418, y: 749 }, m_termino_ate: { x: 436, y: 749 }
+        h_inicio_ate: { x: 418, y: 749 }, m_inicio_ate: { x: 436, y: 749 } // Coordenada ajustada para o Início correto
     };
 
-    let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO, partida:{h:null,m:null}, chegada:{h:null,m:null}, termino:{h:null,m:null} };
+    let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO, partida:{h:null,m:null}, chegada:{h:null,m:null}, inicio:{h:null,m:null} };
     let modeloPdfBytes = null;
     let timeoutRender = null;
 
@@ -181,7 +181,6 @@
             modeloPdfBytes = await response.arrayBuffer();
             gerarERenderizar();
             
-            // Ouvinte universal para atualizar o Canvas em tempo real ao digitar em qualquer campo
             document.getElementById('editorBox').addEventListener('input', () => {
                 clearTimeout(timeoutRender);
                 timeoutRender = setTimeout(gerarERenderizar, 500);
@@ -249,26 +248,27 @@
             if (mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
         }
 
+        // CORREÇÃO DA INVERSÃO: "INÍCIO" preenche "f_h_inicio_ate" / "f_m_inicio_ate"
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
-        const partida = reg("INÍCIO"), chegada = reg("CHEGADA"), termino = reg("ATENDIMENTO");
+        const partida = reg("PARTIDA"), chegada = reg("CHEGADA"), inicio = reg("INÍCIO");
         dados.partida = partida ? {h:partida[1], m:partida[2]} : {h:'', m:''};
         dados.chegada = chegada ? {h:chegada[1], m:chegada[2]} : {h:'', m:''};
-        dados.termino = termino ? {h:termino[1], m:termino[2]} : {h:'', m:''};
+        dados.inicio = inicio ? {h:inicio[1], m:inicio[2]} : {h:'', m:''};
 
         document.getElementById('f_inc').value = dados.inc;
         document.getElementById('f_uniorg').value = dados.uniorg;
         
-        // Auto-preenchimento dos horários extraídos do texto
+        // Atribuição corrigida nas caixas da tela
         document.getElementById('f_h_partida').value = dados.partida.h;
         document.getElementById('f_m_partida').value = dados.partida.m;
         document.getElementById('f_h_chegada').value = dados.chegada.h;
         document.getElementById('f_m_chegada').value = dados.chegada.m;
-        document.getElementById('f_h_termino_ate').value = dados.termino.h;
-        document.getElementById('f_m_termino_ate').value = dados.termino.m;
+        document.getElementById('f_h_inicio_ate').value = dados.inicio.h;
+        document.getElementById('f_m_inicio_ate').value = dados.inicio.m;
         
-        // Campo manual limpo por padrão
-        document.getElementById('f_h_inicio_ate').value = '';
-        document.getElementById('f_m_inicio_ate').value = '';
+        // Campo do término fica limpo para preenchimento manual
+        document.getElementById('f_h_termino_ate').value = '';
+        document.getElementById('f_m_termino_ate').value = '';
 
         document.getElementById('f_rua').value = dados.rua || '';
         document.getElementById('f_num').value = dados.num || '';
@@ -332,10 +332,10 @@
         page.drawText(String(d.getMonth() + 1).padStart(2, '0'), { x: POS.mes.x, y: 58, size: 11, color: fontColor }); 
         page.drawText(String(d.getFullYear()), { x: POS.ano.x, y: 58, size: 11, color: fontColor }); 
 
-        // Carimbando os horários do formulário no PDF
+        // Carimba os dados das caixas nos locais corretos do PDF
         escrever('f_h_partida', POS.h_partida); escrever('f_m_partida', POS.m_partida);
         escrever('f_h_chegada', POS.h_chegada); escrever('f_m_chegada', POS.m_chegada);
-        escrever('f_h_termino_ate', POS.h_termino_ate); escrever('f_m_termino_ate', POS.m_termino_ate);
+        escrever('f_h_inicio_ate', POS.h_inicio_ate); escrever('f_m_inicio_ate', POS.m_inicio_ate);
 
         return pdfDoc;
     }
