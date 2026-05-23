@@ -30,7 +30,7 @@
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .full-width { grid-column: span 2; }
         
-        /* NOVA REGRA PARA AS DUAS COLUNAS DE EQUIPAMENTO */
+        /* CONTAINER EM DUAS COLUNAS */
         .equip-container { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .column-title { font-size: 11px; font-weight: bold; color: var(--primary); text-transform: uppercase; margin-bottom: 5px; text-align: center; }
         
@@ -85,6 +85,7 @@
                     </div>
                 </div>
                 <div class="field full-width"><label>Modelo</label><input type="text" id="f_modelo"></div>
+
                 <div class="field"><label>Solicitante</label><input type="text" id="f_resp"></div>
                 <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
                 <div class="field full-width"><label>Solução</label><input type="text" id="f_solucao"></div>
@@ -110,7 +111,6 @@
     const CPF_FIXO = "327.190.648-31";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Mantidos os mapeamentos originais para o PDF base
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
@@ -215,17 +215,17 @@
         document.getElementById('f_cid').value = dados.cid || '';
         document.getElementById('f_uf').value = dados.uf || '';
         
-        // MODIFICADO: A captura automática preenche a coluna do equipamento Novo/Instalado
-        document.getElementById('f_patri_inst').value = dados.patri;
-        document.getElementById('f_host_inst').value = dados.host;
-        document.getElementById('f_sn_inst').value = dados.sn;
-        document.getElementById('f_mac_inst').value = dados.mac;
+        // AJUSTADO: Captura automática preenche a coluna do "Atual / Retirado" conforme as coordenadas do PDF
+        document.getElementById('f_patri_ret').value = dados.patri;
+        document.getElementById('f_host_ret').value = dados.host;
+        document.getElementById('f_sn_ret').value = dados.sn;
+        document.getElementById('f_mac_ret').value = dados.mac;
         
-        // Deixa os campos do equipamento Atual/Retirado em branco para preenchimento manual
-        document.getElementById('f_patri_ret').value = '';
-        document.getElementById('f_host_ret').value = '';
-        document.getElementById('f_sn_ret').value = '';
-        document.getElementById('f_mac_ret').value = '';
+        // Deixa a coluna do "Novo / Instalado" limpa para digitação manual
+        document.getElementById('f_patri_inst').value = '';
+        document.getElementById('f_host_inst').value = '';
+        document.getElementById('f_sn_inst').value = '';
+        document.getElementById('f_mac_inst').value = '';
 
         document.getElementById('f_modelo').value = dados.modelo;
         document.getElementById('f_resp').value = dados.resp;
@@ -254,12 +254,12 @@
         escrever('f_bai', POS.bai);
         page.drawText("EQUIPAMENTO INOPERANTE", { x: 30, y: 555, size: 11, color: fontColor });
         
-        // MODIFICADO: O PDF base original usa as coordenadas de POS para o equipamento instalado.
+        // AJUSTADO: O PDF lê os dados que estão na coluna "f_xxx_ret" para estampar nas posições originais
         escrever('f_modelo', POS.modelo); 
-        escrever('f_host_inst', POS.host); 
-        escrever('f_patri_inst', POS.patri);
-        escrever('f_sn_inst', POS.sn); 
-        escrever('f_mac_inst', POS.mac); 
+        escrever('f_host_ret', POS.host); 
+        escrever('f_patri_ret', POS.patri);
+        escrever('f_sn_ret', POS.sn); 
+        escrever('f_mac_ret', POS.mac); 
         
         escrever('f_solucao', POS.solucao);
         escrever('f_resp', POS.resp); escrever('f_matricula', POS.matri);
