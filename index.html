@@ -62,7 +62,7 @@
         <div class="editor-box" id="editorBox">
             <h2>2. Editor em Tempo Real</h2>
             <div class="form-grid">
-                <div class="field"><label>INC</label><input type="text" id="f_inc"></div>
+                <div class="field full-width"><label>Chamado Santander</label><input type="text" id="f_inc"></div>
                 <div class="field"><label>Uniorg</label><input type="text" id="f_uniorg"></div>
                 
                 <div class="time-container">
@@ -349,7 +349,7 @@
 
     async function salvarAtendimento() {
         const inc = document.getElementById('f_inc').value.toUpperCase();
-        if(!inc) { alert("Preencha ao menos o INC antes de salvar."); return; }
+        if(!inc) { alert("Preencha ao menos o chamado antes de salvar."); return; }
         try {
             const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: inc, texto_bruto: document.getElementById('textoBruto').value, analista: 'Willian' }]);
             alert(error ? "Erro ao salvar" : "Salvo no banco de dados!");
@@ -358,4 +358,3 @@
 </script>
 </body>
 </html>
-
