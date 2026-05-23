@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAT Pro Editor - Willian</title>
+    <title>RAT Pro Editor - Base Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -14,53 +14,26 @@
         
         .container { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; max-width: 1200px; margin: 0 auto; }
         
-        /* Card de entrada de texto */
         .card-input { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; }
-        textarea { width: 100%; height: 80px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box; resize: none; }
+        textarea { width: 100%; height: 80px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box; resize: none; outline: none; }
 
-        /* Layout Responsivo: Lado a lado no PC, coluna no Tablet/Mobile */
-        .workspace { 
-            display: flex; 
-            flex-wrap: wrap; /* Isso faz o PDF ir para baixo se não couber */
-            gap: 20px; 
-            width: 100%; 
-            justify-content: center;
-        }
+        .workspace { display: flex; flex-wrap: wrap; gap: 20px; width: 100%; justify-content: center; }
 
-        /* Coluna do Formulário */
-        .editor-box { 
-            flex: 1; 
-            min-width: 320px; 
-            background: white; 
-            padding: 20px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
+        .editor-box { flex: 1; min-width: 320px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .preview-box { flex: 1; min-width: 320px; background: #525659; padding: 15px; border-radius: 12px; text-align: center; display: none; }
 
-        /* Coluna do PDF */
-        .preview-box { 
-            flex: 1; 
-            min-width: 320px; 
-            background: #525659; 
-            padding: 15px; 
-            border-radius: 12px; 
-            text-align: center;
-            display: none; /* Inicia oculto */
-        }
-
-        /* Estilo do Formulário Interno */
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .full-width { grid-column: span 2; }
-        .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
-        .field label { font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; }
-        .field input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; }
+        .field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
+        .field label { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+        .field input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; background: #f8fafc; }
 
         .btn-group { display: flex; gap: 8px; margin-top: 15px; }
-        button { flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.2s; }
+        button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.2s; font-size: 14px; }
         .btn-save { background: var(--primary); color: white; }
         .btn-pdf { background: var(--success); color: white; }
         
-        canvas { width: 100% !important; height: auto !important; border-radius: 4px; }
+        canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         h2 { font-size: 1rem; color: #1e293b; margin: 0 0 10px 0; border-bottom: 2px solid var(--primary); padding-bottom: 5px; }
     </style>
 </head>
@@ -68,156 +41,177 @@
 
 <div class="container">
     <div class="card-input">
-        <h2>1. Cole o Chamado</h2>
-        <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="processarChamado()"></textarea>
+        <h2>1. Cole o Chamado (Extração Automática)</h2>
+        <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairEPreencher()"></textarea>
     </div>
 
     <div class="workspace">
         <div class="editor-box" id="editorBox">
-            <h2>2. Ajuste os Dados</h2>
+            <h2>2. Formulário de Edição (Tablet Responsivo)</h2>
             <div class="form-grid">
-                <div class="field"><label>INC</label><input type="text" id="f_inc" oninput="atualizarDados()"></div>
-                <div class="field"><label>Uniorg</label><input type="text" id="f_uniorg" oninput="atualizarDados()"></div>
-                <div class="field full-width"><label>Endereço</label><input type="text" id="f_rua" oninput="atualizarDados()"></div>
-                <div class="field"><label>Número</label><input type="text" id="f_num" oninput="atualizarDados()"></div>
-                <div class="field"><label>Bairro</label><input type="text" id="f_bai" oninput="atualizarDados()"></div>
-                <div class="field"><label>Cidade</label><input type="text" id="f_cid" oninput="atualizarDados()"></div>
-                <div class="field"><label>UF</label><input type="text" id="f_uf" oninput="atualizarDados()"></div>
-                <div class="field"><label>Modelo</label><input type="text" id="f_modelo" oninput="atualizarDados()"></div>
-                <div class="field"><label>Serial</label><input type="text" id="f_sn" oninput="atualizarDados()"></div>
-                <div class="field"><label>Patrimônio</label><input type="text" id="f_patri" oninput="atualizarDados()"></div>
-                <div class="field"><label>Hostname</label><input type="text" id="f_host" oninput="atualizarDados()"></div>
-                <div class="field"><label>MAC</label><input type="text" id="f_mac" oninput="atualizarDados()"></div>
-                <div class="field full-width"><label>Solicitante</label><input type="text" id="f_resp" oninput="atualizarDados()"></div>
-                <div class="field full-width"><label>Solução</label><input type="text" id="f_solucao" oninput="atualizarDados()"></div>
+                <div class="field"><label>INC</label><input type="text" id="f_inc"></div>
+                <div class="field"><label>Uniorg</label><input type="text" id="f_uniorg"></div>
+                <div class="field full-width"><label>Endereço/Rua</label><input type="text" id="f_rua"></div>
+                <div class="field"><label>Número</label><input type="text" id="f_num"></div>
+                <div class="field"><label>Bairro</label><input type="text" id="f_bai"></div>
+                <div class="field"><label>Cidade</label><input type="text" id="f_cid"></div>
+                <div class="field"><label>UF</label><input type="text" id="f_uf"></div>
+                <div class="field"><label>Modelo</label><input type="text" id="f_modelo"></div>
+                <div class="field"><label>Serial</label><input type="text" id="f_sn"></div>
+                <div class="field"><label>Patrimônio</label><input type="text" id="f_patri"></div>
+                <div class="field"><label>Hostname</label><input type="text" id="f_host"></div>
+                <div class="field"><label>MAC</label><input type="text" id="f_mac"></div>
+                <div class="field"><label>Matrícula</label><input type="text" id="f_matri"></div>
+                <div class="field"><label>Solicitante</label><input type="text" id="f_resp"></div>
+                <div class="field full-width"><label>Solução</label><input type="text" id="f_solucao"></div>
             </div>
             <div class="btn-group">
-                <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar Banco</button>
-                <button class="btn-pdf" id="btnGerar" onclick="gerarERenderizar()">👁️ Atualizar RAT</button>
+                <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar</button>
+                <button class="btn-pdf" id="btnGerar" onclick="gerarERenderizar()">👁️ Visualizar RAT</button>
             </div>
         </div>
 
         <div class="preview-box" id="previewBox">
-            <span style="color:white; font-size: 11px; font-weight: bold; margin-bottom: 10px; display: block;">PRÉ-VISUALIZAÇÃO DA RAT:</span>
+            <span style="color:white; font-size: 11px; font-weight: bold; margin-bottom: 10px; display: block;">PRÉ-VISUALIZAÇÃO:</span>
             <canvas id="pdfCanvas"></canvas>
         </div>
     </div>
 </div>
 
 <script>
-    // --- Configurações Base (Mantidas do Código Base) ---
+    // --- Configurações Iniciais ---
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    // Suas coordenadas originais
+    // Suas coordenadas originais intactas
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
-        bai: { x: 65, y: 688 }, modelo: { x: 69, y: 457 }, host: { x: 78, y: 443 }, 
-        patri: { x: 88, y: 485 }, sn: { x: 110, y: 471 }, mac: { x: 91, y: 430 }, 
-        solucao: { x: 30, y: 232 }, resp: { x: 95, y: 174 }, matri: { x: 83, y: 147 }, 
-        tecnico: { x: 347, y: 176 }, cpf: { x: 346, y: 149 },
+        bai: { x: 65, y: 688 }, inop: { x: 30, y: 555 }, modelo: { x: 69, y: 457 },
+        host: { x: 78, y: 443 }, patri: { x: 88, y: 485 }, sn: { x: 110, y: 471 },
+        mac: { x: 91, y: 430 }, sol: { x: 30, y: 232 }, resp: { x: 95, y: 174 },
+        matri: { x: 83, y: 147 }, tec: { x: 347, y: 176 }, cpf: { x: 346, y: 149 },
         local: { x: 123, y: 56 }, dia: { x: 376, y: 58 }, mes: { x: 410, y: 58 }, ano: { x: 441, y: 58 },
         h_ini: { x: 91, y: 747 }, m_ini: { x: 110, y: 747 },
         h_che: { x: 91, y: 736 }, m_che: { x: 110, y: 736 },
         h_ate: { x: 418, y: 749 }, m_ate: { x: 436, y: 749 }
     };
 
-    let db = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: "327.190.648-31", p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
+    let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: "327.190.648-31", p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
-    // Função para extrair e preencher o formulário
-    async function processarChamado() {
-        const texto = document.getElementById('textoBruto').value.toUpperCase();
-        if(!texto) return;
+    // --- Funções Auxiliares de Limpeza e Busca ---
+    function medirLargura(t) { const c = document.createElement("canvas"); const ctx = c.getContext("2d"); ctx.font = "bold 11px Arial"; return ctx.measureText(t.toUpperCase()).width; }
 
-        // Extração (Sua lógica base)
-        db.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
-        db.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
-        db.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
-        db.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
-        db.mac = (/MAC\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
-        db.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
-        db.modelo = db.sn.startsWith('P') ? "LENOVO T14" : (db.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "---");
-        db.solucao = texto.includes("BAIXA DE IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
+    function limparNome(nome) {
+        const MAX = 155;
+        let p = nome.split(' ').filter(x => !(['da','de','do','das','dos'].includes(x.toLowerCase())));
+        while (p.length > 1 && medirLargura(p.join(' ')) > MAX) p.pop();
+        return p.join(' ').toUpperCase();
+    }
+
+    async function buscarBairro(cep) {
+        const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`).then(res => res.json());
+        if(!r.erro) document.getElementById('f_bai').value = r.bairro.toUpperCase();
+    }
+
+    // --- Motor de Extração ---
+    async function extrairEPreencher() {
+        const txt = document.getElementById('textoBruto').value.toUpperCase();
+        if(!txt) return;
+
+        const val = (reg, def = "---") => (reg.exec(txt) || ["", def])[1];
+
+        document.getElementById('f_inc').value = val(/(INC\d+)/i);
+        document.getElementById('f_uniorg').value = val(/UNIORG\s*:\s*(\d+)/i);
+        document.getElementById('f_patri').value = val(/SGPI\s*:\s*(\d+)/i);
+        document.getElementById('f_host').value = val(/HOSTNAME\s*:\s*(\S+)/i);
+        document.getElementById('f_sn').value = val(/(?:SN|SERIAL)\s*:\s*(\S+)/i);
+        document.getElementById('f_mac').value = val(/MAC\s*:\s*(\S+)/i, "");
+        document.getElementById('f_matri').value = val(/MATRÍCULA\s*:\s*(\d+)/i, "---");
+
+        let sn = document.getElementById('f_sn').value;
+        document.getElementById('f_modelo').value = sn.startsWith('P') ? "LENOVO T14" : (sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "---");
         
-        // Pega horários
-        const reg = (l) => new RegExp(l + ".*?(\\d{2}):(\\d{2})").exec(texto);
-        const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
-        if(p) db.p = {h:p[1], m:p[2]}; if(c) db.c = {h:c[1], m:c[2]}; if(a) db.a = {h:a[1], m:a[2]};
-
-        // Preenche os campos do formulário para o usuário poder editar
-        document.getElementById('f_inc').value = db.inc;
-        document.getElementById('f_uniorg').value = db.uniorg;
-        document.getElementById('f_sn').value = db.sn;
-        document.getElementById('f_modelo').value = db.modelo;
-        document.getElementById('f_patri').value = db.patri;
-        document.getElementById('f_host').value = db.host;
-        document.getElementById('f_mac').value = db.mac;
-        document.getElementById('f_solucao').value = db.solucao;
+        let nomeRaw = val(/SOLICITANTE\s*:\s*(.+)/i);
+        document.getElementById('f_resp').value = limparNome(nomeRaw);
         
-        // Dispara a geração inicial do PDF
+        document.getElementById('f_solucao').value = txt.includes("IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
+
+        const mEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(txt);
+        if(mEnd) {
+            const linha = mEnd[1];
+            document.getElementById('f_rua').value = (/^([^0-9,]+)/.exec(linha) || ["","---"])[1].trim();
+            document.getElementById('f_num').value = (/(\d+)/.exec(linha.replace(document.getElementById('f_rua').value, "")) || ["","---"])[1];
+            document.getElementById('f_cid').value = (/-\s*([^,]+)/.exec(linha) || ["","---"])[1].trim();
+            document.getElementById('f_uf').value = (/,\s*([A-Z]{2})/.exec(linha) || ["",""])[1];
+            const mCep = /(\d{8})/.exec(linha.replace(/\s/g, ""));
+            if (mCep) buscarBairro(mCep[1]);
+        }
+
+        const getH = (l) => { const m = new RegExp(l + ".*?(\\d{2}):(\\d{2})").exec(txt); return m ? {h:m[1], m:m[2]} : {h:"00", m:"00"}; };
+        dados.p = getH("INÍCIO"); dados.c = getH("CHEGADA"); dados.a = getH("ATENDIMENTO");
+
         gerarERenderizar();
     }
 
-    // Lê o que está no formulário e joga para o objeto de dados
-    function atualizarDados() {
-        db.inc = document.getElementById('f_inc').value;
-        db.uniorg = document.getElementById('f_uniorg').value;
-        db.sn = document.getElementById('f_sn').value;
-        db.modelo = document.getElementById('f_modelo').value;
-        db.solucao = document.getElementById('f_solucao').value;
-        // ... adicione os outros conforme necessário
-    }
-
+    // --- Gerador de PDF ---
     async function gerarERenderizar() {
         document.getElementById('previewBox').style.display = 'block';
         const btn = document.getElementById('btnGerar');
         btn.disabled = true;
-
         try {
-            const modelBytes = await fetch(URL_MODELO_PDF + '?v=' + Date.now()).then(res => res.arrayBuffer());
-            const pdfDoc = await PDFLib.PDFDocument.load(modelBytes);
-            const page = pdfDoc.getPages()[0];
-            const fontColor = PDFLib.rgb(0, 0, 0);
+            const bytes = await fetch(URL_MODELO_PDF + '?v=' + Date.now()).then(res => res.arrayBuffer());
+            const doc = await PDFLib.PDFDocument.load(bytes);
+            const page = doc.getPages()[0];
+            const cor = PDFLib.rgb(0, 0, 0);
 
-            const escrever = (txt, config) => {
-                if(txt && txt !== '---') page.drawText(String(txt), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
+            const escrever = (id, pos) => {
+                const t = document.getElementById(id).value;
+                if(t && t !== '---' && t !== '') page.drawText(t, { x: pos.x, y: pos.y, size: pos.s || 11, color: cor });
             };
 
-            // Escreve usando os dados do formulário
-            escrever(document.getElementById('f_inc').value, POS.inc);
-            escrever(document.getElementById('f_uniorg').value, POS.uniorg);
-            escrever(document.getElementById('f_sn').value, POS.sn);
-            escrever(document.getElementById('f_modelo').value, POS.modelo);
-            escrever(document.getElementById('f_solucao').value, POS.solucao);
-            escrever(db.tecnico, POS.tecnico);
-            escrever(db.cpf, POS.cpf);
+            escrever('f_inc', POS.inc); escrever('f_uniorg', POS.uniorg); escrever('f_rua', POS.rua);
+            escrever('f_num', POS.num); escrever('f_bai', POS.bai); escrever('f_cid', POS.cid);
+            escrever('f_uf', POS.uf); escrever('f_modelo', POS.modelo); escrever('f_host', POS.host);
+            escrever('f_patri', POS.patri); escrever('f_sn', POS.sn); escrever('f_mac', POS.mac);
+            escrever('f_solucao', POS.sol); escrever('f_resp', POS.resp); escrever('f_matri', POS.matri);
+            
+            page.drawText("EQUIPAMENTO INOPERANTE", { x: POS.inop.x, y: POS.inop.y, size: 11, color: cor });
+            page.drawText(dados.tecnico, { x: POS.tec.x, y: POS.tec.y, size: 11, color: cor });
+            page.drawText(dados.cpf, { x: POS.cpf.x, y: POS.cpf.y, size: 11, color: cor });
 
-            // Data atual
+            // Carimbos de Data/Local
+            page.drawText(document.getElementById('f_cid').value, { x: POS.local.x, y: POS.local.y, size: 11, color: cor });
             const d = new Date();
-            escrever(String(d.getDate()).padStart(2, '0'), POS.dia);
-            escrever(String(d.getMonth() + 1).padStart(2, '0'), POS.mes);
-            escrever(d.getFullYear(), POS.ano);
+            page.drawText(String(d.getDate()).padStart(2,'0'), { x: POS.dia.x, y: POS.dia.y, size: 11, color: cor });
+            page.drawText(String(d.getMonth()+1).padStart(2,'0'), { x: POS.mes.x, y: POS.mes.y, size: 11, color: cor });
+            page.drawText(String(d.getFullYear()), { x: POS.ano.x, y: POS.ano.y, size: 11, color: cor });
 
-            // Renderização no Canvas
-            const pdfBytes = await pdfDoc.save();
-            const pdf = await pdfjsLib.getDocument({data: pdfBytes}).promise;
-            const pdfPage = await pdf.getPage(1);
-            const canvas = document.getElementById('pdfCanvas');
-            const viewport = pdfPage.getViewport({scale: 1.5});
-            canvas.height = viewport.height; canvas.width = viewport.width;
-            await pdfPage.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
+            // Horários
+            page.drawText(dados.p.h, { x: POS.h_ini.x, y: POS.h_ini.y, size: 10, color: cor });
+            page.drawText(dados.p.m, { x: POS.m_ini.x, y: POS.m_ini.y, size: 10, color: cor });
+            page.drawText(dados.p.h ? dados.c.h : '00', { x: POS.h_che.x, y: POS.h_che.y, size: 10, color: cor });
+            page.drawText(dados.p.h ? dados.c.m : '00', { x: POS.m_che.x, y: POS.m_che.y, size: 10, color: cor });
+            page.drawText(dados.a.h, { x: POS.h_ate.x, y: POS.h_ate.y, size: 10, color: cor });
+            page.drawText(dados.a.m, { x: POS.m_ate.x, y: POS.m_ate.y, size: 10, color: cor });
 
-        } catch (e) { console.error(e); }
-        btn.disabled = false;
+            const out = await doc.save();
+            const pdf = await pdfjsLib.getDocument({data: out}).promise;
+            const pPage = await pdf.getPage(1);
+            const can = document.getElementById('pdfCanvas');
+            const vp = pPage.getViewport({scale: 2.0});
+            can.height = vp.height; can.width = vp.width;
+            await pPage.render({canvasContext: can.getContext('2d'), viewport: vp}).promise;
+        } catch (e) { alert(e.message); } finally { btn.disabled = false; }
     }
 
     async function salvarAtendimento() {
-        const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: db.inc, analista: 'Willian' }]);
-        alert(error ? "Erro ao salvar" : "Salvo no Banco!");
+        const inc = document.getElementById('f_inc').value;
+        const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: inc, analista: 'Willian' }]);
+        alert(error ? "Erro ao salvar" : "Salvo!");
     }
 </script>
 </body>
