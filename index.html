@@ -40,7 +40,7 @@
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN DO CARMO MORAIS</span></div>
         <div class="info-item"><span class="info-label">Local</span><span id="pCidadeView" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Data</span><span id="pDataView" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Data Atual</span><span id="pDataView" class="info-value">---</span></div>
     </div>
 
     <div class="btn-group">
@@ -137,10 +137,8 @@
             document.getElementById('pCidadeView').innerText = dados.cid;
         }
         
-        // Pega data atual para exibição no painel
         const hoje = new Date();
-        const dataFormatada = hoje.toLocaleDateString('pt-BR');
-        document.getElementById('pDataView').innerText = dataFormatada;
+        document.getElementById('pDataView').innerText = hoje.toLocaleDateString('pt-BR');
 
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
         const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
@@ -165,7 +163,7 @@
             const fontColor = PDFLib.rgb(0, 0, 0);
             const txt = (t, x, y, s = 11) => { if(t && t !== '---' && t !== '') page.drawText(String(t), { x, y, size: s, color: fontColor }); };
 
-            // Dados do Chamado
+            // Dados Gerais
             txt(dados.inc, 123, 768);
             txt(dados.uniorg, 64, 714);
             txt(dados.rua, 79, 701, 10);
@@ -183,22 +181,20 @@
             txt(dados.resp, 95, 174, 11); 
             txt(dados.matricula, 83, 147, 11);
             
-            // Carimbos do Técnico
+            // Carimbos Fixos
             txt(dados.tecnico, 347, 176, 11);
             txt(dados.cpf, 346, 149, 11); 
-            txt(dados.cid, 123, 56, 11); 
+            txt(dados.cid, 123, 56, 11); // Localização
 
-            // LOGICA DA DATA ATUAL SEPARADA
-            const dataAtual = new Date();
-            const dia = String(dataAtual.getDate()).padStart(2, '0');
-            const mes = String(dataAtual.getMonth() + 1).padStart(2, '0');
-            const ano = String(dataAtual.getFullYear());
+            // LOGICA DA DATA ATUAL (AJUSTE SOLICITADO)
+            const d = new Date();
+            const dia = String(d.getDate()).padStart(2, '0');
+            const mes = String(d.getMonth() + 1).padStart(2, '0');
+            const ano = String(d.getFullYear());
 
-            // COORDENADAS PROVISÓRIAS PARA DIA/MÊS/ANO
-            // Me passe as coordenadas X e Y reais depois
-            txt(dia, 376, 58, 11); // Campo DIA
-            txt(mes, 410, 58, 11); // Campo MÊS
-            txt(ano, 441, 58, 11); // Campo ANO
+            txt(dia, 376, 58, 11); 
+            txt(mes, 410, 58, 11); 
+            txt(ano, 441, 58, 11); 
 
             // Horários
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
