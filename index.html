@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAT Pro Editor - Willian</title>
+    <title>RAT Pro Editor - Willian (Estável)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -50,7 +50,7 @@
                 <div class="field"><label>Bairro</label><input type="text" id="f_bai"></div>
                 <div class="field"><label>Cidade</label><input type="text" id="f_cid"></div>
                 <div class="field"><label>UF</label><input type="text" id="f_uf"></div>
-                <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri"></div>
+                <div class="field"><label>Patrimônio</label><input type="text" id="f_patri"></div>
                 <div class="field"><label>Hostname</label><input type="text" id="f_host"></div>
                 <div class="field"><label>Série (SN)</label><input type="text" id="f_sn"></div>
                 <div class="field"><label>MAC</label><input type="text" id="f_mac"></div>
@@ -66,7 +66,6 @@
         </div>
 
         <div class="preview-box" id="previewBox">
-            <span style="color:white; font-size: 11px; font-weight: bold; margin-bottom: 10px; display: block;">PRÉ-VISUALIZAÇÃO DA RAT:</span>
             <canvas id="pdfCanvas"></canvas>
         </div>
     </div>
@@ -74,106 +73,50 @@
 
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-    const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
-    const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
     const POS = {
-        inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
-        num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
-        bai: { x: 65, y: 688 }, modelo: { x: 69, y: 457 },
-        host: { x: 78, y: 443 }, patri: { x: 88, y: 485 }, sn: { x: 110, y: 471 },
-        mac: { x: 91, y: 430 }, solucao: { x: 30, y: 232 }, resp: { x: 95, y: 174 },
-        matri: { x: 83, y: 147 }, tecnico: { x: 347, y: 176 }, cpf: { x: 346, y: 149 },
-        local: { x: 123, y: 56 }, dia: { x: 376, y: 58 }, mes: { x: 410, y: 58 }, ano: { x: 441, y: 58 },
-        h_ini: { x: 91, y: 747 }, m_ini: { x: 110, y: 747 },
-        h_che: { x: 91, y: 736 }, m_che: { x: 110, y: 736 },
-        h_ate: { x: 418, y: 749 }, m_ate: { x: 436, y: 749 }
+        f_inc: { x: 123, y: 768 }, f_uniorg: { x: 64, y: 714 }, f_rua: { x: 79, y: 701, s: 10 }, 
+        f_num: { x: 300, y: 702 }, f_cid: { x: 338, y: 689 }, f_uf: { x: 43, y: 675 },
+        f_bai: { x: 65, y: 688 }, f_modelo: { x: 69, y: 457 }, f_host: { x: 78, y: 443 },
+        f_patri: { x: 88, y: 485 }, f_sn: { x: 110, y: 471 }, f_mac: { x: 91, y: 430 },
+        f_solucao: { x: 30, y: 232 }, f_resp: { x: 95, y: 174 }, f_matricula: { x: 83, y: 147 }
     };
 
-    let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: '327.190.648-31', p:{h:null,m:null}, c:{h:null,m:null}, a:{h:null,m:null} };
-    let modeloPdfBytes, timeoutRender;
+    let modeloPdfBytes;
 
     window.onload = async () => {
-        const res = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
+        const res = await fetch('https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf?v=' + Date.now());
         modeloPdfBytes = await res.arrayBuffer();
         gerarERenderizar();
-        document.querySelectorAll('input').forEach(i => i.addEventListener('input', () => {
-            clearTimeout(timeoutRender); timeoutRender = setTimeout(gerarERenderizar, 500);
-        }));
     };
 
-    async function extrairDados() {
+    function extrairDados() {
         const t = document.getElementById('textoBruto').value.toUpperCase();
+        const mapping = {
+            f_inc: /(INC\d+)/i, f_uniorg: /UNIORG\s*:\s*(\d+)/i, f_patri: /SGPI\s*:\s*(\d+)/i,
+            f_host: /HOSTNAME\s*:\s*(\S+)/i, f_matricula: /MATRÍCULA\s*:\s*(\d+)/i,
+            f_mac: /MAC\s*:\s*(\S+)/i, f_sn: /(?:SN|SERIAL)\s*:\s*(\S+)/i,
+            f_resp: /SOLICITANTE\s*:\s*(.+)/i
+        };
         
-        dados.inc = (/(INC\d+)/i.exec(t) || ["",""])[1];
-        dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(t) || ["",""])[1];
-        dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(t) || ["",""])[1];
-        dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(t) || ["",""])[1];
-        dados.matricula = (/MATRÍCULA\s*:\s*(\d+)/i.exec(t) || ["",""])[1];
-        dados.mac = (/MAC\s*:\s*(\S+)/i.exec(t) || ["",""])[1];
-        dados.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(t) || ["",""])[1];
-        dados.resp = (/SOLICITANTE\s*:\s*(.+)/i.exec(t) || ["",""])[1].trim();
-        dados.solucao = t.includes("BAIXA DE IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
-        dados.modelo = dados.sn.startsWith('P') ? "LENOVO T14" : (dados.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "");
+        Object.keys(mapping).forEach(id => {
+            const match = mapping[id].exec(t);
+            if(match) document.getElementById(id).value = match[1].trim();
+        });
 
-        const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(t);
-        if (mFullEnd) {
-            const l = mFullEnd[1];
-            dados.rua = (/^([^0-9,]+)/.exec(l) || ["",""])[1].trim();
-            dados.num = (/(\d+)/.exec(l.replace(dados.rua, "")) || ["",""])[1];
-            dados.cid = (/-\s*([^,]+)/.exec(l) || ["",""])[1].trim();
-            dados.uf = (/,\s*([A-Z]{2})/.exec(l) || ["",""])[1];
-            const mCep = /(\d{8})/.exec(l.replace(/\s/g, ""));
-            if(mCep) fetch(`https://viacep.com.br/ws/${mCep[1]}/json/`).then(r => r.json()).then(d => { if(!d.erro) document.getElementById('f_bai').value = d.bairro.toUpperCase(); });
-        }
-
-        const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(t);
-        const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
-        dados.p = {h:p?p[1]:null, m:p?p[2]:null};
-        dados.c = {h:c?c[1]:null, m:c?c[2]:null};
-        dados.a = {h:a?a[1]:null, m:a?a[2]:null};
-
-        document.getElementById('f_inc').value = dados.inc;
-        document.getElementById('f_uniorg').value = dados.uniorg;
-        document.getElementById('f_rua').value = dados.rua || '';
-        document.getElementById('f_num').value = dados.num || '';
-        document.getElementById('f_cid').value = dados.cid || '';
-        document.getElementById('f_uf').value = dados.uf || '';
-        document.getElementById('f_patri').value = dados.patri;
-        document.getElementById('f_host').value = dados.host;
-        document.getElementById('f_sn').value = dados.sn;
-        document.getElementById('f_mac').value = dados.mac;
-        document.getElementById('f_modelo').value = dados.modelo;
-        document.getElementById('f_resp').value = dados.resp;
-        document.getElementById('f_matricula').value = dados.matricula;
-        document.getElementById('f_solucao').value = dados.solucao;
+        document.getElementById('f_solucao').value = t.includes("BAIXA DE IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
         gerarERenderizar();
     }
 
     async function aplicarDadosNoPdf() {
         const doc = await PDFLib.PDFDocument.load(modeloPdfBytes);
         const page = doc.getPages()[0];
-        const write = (id, pos) => { const v = document.getElementById(id).value; if(v) page.drawText(v.toUpperCase(), {x: pos.x, y: pos.y, size: pos.s || 11, color: PDFLib.rgb(0,0,0)}); };
+        const font = await doc.embedFont(PDFLib.StandardFonts.HelveticaBold);
         
-        write('f_inc', POS.inc); write('f_uniorg', POS.uniorg); write('f_rua', POS.rua); write('f_num', POS.num);
-        write('f_cid', POS.cid); write('f_uf', POS.uf); write('f_bai', POS.bai); write('f_modelo', POS.modelo);
-        write('f_host', POS.host); write('f_patri', POS.patri); write('f_sn', POS.sn); write('f_mac', POS.mac);
-        write('f_solucao', POS.solucao); write('f_resp', POS.resp); write('f_matricula', POS.matri);
+        Object.keys(POS).forEach(id => {
+            const val = document.getElementById(id).value;
+            if(val) page.drawText(val.toUpperCase(), {x: POS[id].x, y: POS[id].y, size: POS[id].s || 11, font});
+        });
         
-        page.drawText("EQUIPAMENTO INOPERANTE", {x: 30, y: 555, size: 11, color: PDFLib.rgb(0,0,0)});
-        page.drawText(dados.tecnico, {x: POS.tecnico.x, y: POS.tecnico.y, size: 11, color: PDFLib.rgb(0,0,0)});
-        page.drawText(dados.cpf, {x: POS.cpf.x, y: POS.cpf.y, size: 11, color: PDFLib.rgb(0,0,0)});
-        
-        const d = new Date();
-        page.drawText(String(d.getDate()).padStart(2,'0'), {x: POS.dia.x, y: POS.dia.y, size: 11, color: PDFLib.rgb(0,0,0)});
-        page.drawText(String(d.getMonth()+1).padStart(2,'0'), {x: POS.mes.x, y: POS.mes.y, size: 11, color: PDFLib.rgb(0,0,0)});
-        page.drawText(String(d.getFullYear()), {x: POS.ano.x, y: POS.ano.y, size: 11, color: PDFLib.rgb(0,0,0)});
-
-        if(dados.p.h) { page.drawText(dados.p.h, {x: POS.h_ini.x, y: POS.h_ini.y, size: 10}); page.drawText(dados.p.m, {x: POS.m_ini.x, y: POS.m_ini.y, size: 10}); }
-        if(dados.c.h) { page.drawText(dados.c.h, {x: POS.h_che.x, y: POS.h_che.y, size: 10}); page.drawText(dados.c.m, {x: POS.m_che.x, y: POS.m_che.y, size: 10}); }
-        if(dados.a.h) { page.drawText(dados.a.h, {x: POS.h_ate.x, y: POS.h_ate.y, size: 10}); page.drawText(dados.a.m, {x: POS.m_ate.x, y: POS.m_ate.y, size: 10}); }
         return doc;
     }
 
@@ -192,12 +135,6 @@
         const link = document.createElement('a');
         link.href = URL.createObjectURL(new Blob([bytes], {type: 'application/pdf'}));
         link.download = `RAT_${document.getElementById('f_inc').value || 'Nova'}.pdf`; link.click();
-    }
-
-    function salvarAtendimento() {
-        const inc = document.getElementById('f_inc').value;
-        if(!inc) return alert("Preencha o INC");
-        supabaseClient.from('chamados').insert([{ numero_inc: inc, texto_bruto: document.getElementById('textoBruto').value, analista: 'Willian' }]).then(({error}) => alert(error ? "Erro" : "Salvo!"));
     }
 </script>
 </body>
