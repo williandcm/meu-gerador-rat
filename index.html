@@ -62,8 +62,7 @@
         <div class="editor-box" id="editorBox">
             <h2>2. Editor em Tempo Real</h2>
             <div class="form-grid">
-                <div class="field"><label>INC</label><input type="text" id="f_inc"></div>
-                <div class="field"><label>Uniorg</label><input type="text" id="f_uniorg"></div>
+                <div class="field full-width"><label>CHAMADO SANTANDER</label><input type="text" id="f_inc"></div>
                 
                 <div class="time-container">
                     <div>
@@ -78,12 +77,16 @@
                     </div>
                 </div>
 
+                <div class="field full-width"><label>Uniorg</label><input type="text" id="f_uniorg"></div>
+
                 <div class="field full-width"><label>Endereço</label><input type="text" id="f_rua"></div>
                 <div class="field"><label>Número</label><input type="text" id="f_num"></div>
                 <div class="field"><label>Bairro</label><input type="text" id="f_bai"></div>
                 <div class="field"><label>Cidade</label><input type="text" id="f_cid"></div>
                 <div class="field"><label>UF</label><input type="text" id="f_uf"></div>
                 
+                <div class="field full-width"><label>DESCRITIVO DEFEITO/CAUSA</label><input type="text" id="f_defeito"></div>
+
                 <div class="equip-container">
                     <div>
                         <div class="column-title">Atual / Retirado</div>
@@ -223,6 +226,7 @@
             document.getElementById('f_patri_inst').value = dados.patri;
             document.getElementById('f_host_inst').value = dados.host;
             document.getElementById('f_mac_inst').value = dados.mac;
+            document.getElementById('f_defeito').value = "EQUIPAMENTO INOPERANTE";
         } else {
             dados.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
             dados.solucao = texto.includes("BAIXA DE IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
@@ -230,6 +234,7 @@
             document.getElementById('f_patri_inst').value = "";
             document.getElementById('f_host_inst').value = "";
             document.getElementById('f_mac_inst').value = "";
+            document.getElementById('f_defeito').value = "EQUIPAMENTO INOPERANTE";
         }
 
         let nomeCapturado = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
@@ -296,7 +301,11 @@
         escrever('f_inc', POS.inc); escrever('f_uniorg', POS.uniorg); escrever('f_rua', POS.rua);
         escrever('f_num', POS.num); escrever('f_cid', POS.cid); escrever('f_uf', POS.uf);
         escrever('f_bai', POS.bai);
-        page.drawText("EQUIPAMENTO INOPERANTE", { x: 30, y: 555, size: 11, color: fontColor });
+        
+        // Pega o conteúdo do novo campo de Defeito
+        const descDefeito = document.getElementById('f_defeito').value;
+        if(descDefeito) page.drawText(descDefeito.toUpperCase(), { x: POS.inoperante.x, y: POS.inoperante.y, size: 11, color: fontColor });
+        
         escrever('f_modelo_ret', POS.modelo); escrever('f_host_ret', POS.host); escrever('f_patri_ret', POS.patri);
         escrever('f_patri_inst', POS.patri_inst);
         escrever('f_sn_inst', POS.sn_inst);
@@ -349,50 +358,16 @@
 
     async function salvarAtendimento() {
         const inc = document.getElementById('f_inc').value.toUpperCase();
-        if(!inc) { alert("Preencha ao menos o INC antes de salvar."); return; }
+        if(!inc) { alert("Preencha ao menos o CHAMADO SANTANDER antes de salvar."); return; }
         
-        // Coleta todos os campos do formulário para salvar no banco
         const dadosSalvar = {
             numero_inc: inc,
-            analista: 'Willian',
-            uniorg: document.getElementById('f_uniorg').value,
-            horarios: {
-                partida: document.getElementById('f_partida').value,
-                chegada: document.getElementById('f_chegada').value,
-                inicio_ate: document.getElementById('f_inicio_ate').value,
-                termino_ate: document.getElementById('f_termino_ate').value
-            },
-            localizacao: {
-                rua: document.getElementById('f_rua').value,
-                num: document.getElementById('f_num').value,
-                bai: document.getElementById('f_bai').value,
-                cid: document.getElementById('f_cid').value,
-                uf: document.getElementById('f_uf').value
-            },
-            equipamento_retirado: {
-                patri: document.getElementById('f_patri_ret').value,
-                sn: document.getElementById('f_sn_ret').value,
-                modelo: document.getElementById('f_modelo_ret').value,
-                host: document.getElementById('f_host_ret').value,
-                mac: document.getElementById('f_mac_ret').value
-            },
-            equipamento_instalado: {
-                patri: document.getElementById('f_patri_inst').value,
-                sn: document.getElementById('f_sn_inst').value,
-                modelo: document.getElementById('f_modelo_inst').value,
-                host: document.getElementById('f_host_inst').value,
-                mac: document.getElementById('f_mac_inst').value
-            },
-            solucao: document.getElementById('f_solucao').value,
-            solicitante: document.getElementById('f_resp').value,
-            matricula: document.getElementById('f_matricula').value,
-            data_atendimento: document.getElementById('f_data_completa').value,
-            texto_bruto: document.getElementById('textoBruto').value
+            analista: 'Willian'
         };
 
         try {
             const { error } = await supabaseClient.from('chamados').insert([dadosSalvar]);
-            alert(error ? "Erro ao salvar: " + error.message : "Dados salvos com sucesso no banco!");
+            alert(error ? "Erro ao salvar: " + error.message : "Dados básicos salvos com sucesso!");
         } catch (e) { alert("Erro inesperado: " + e.message); }
     }
 </script>
