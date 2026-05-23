@@ -106,6 +106,8 @@
                 <div class="field full-width"><label>Solução</label><input type="text" id="f_solucao"></div>
                 <div class="field"><label>Solicitante</label><input type="text" id="f_resp"></div>
                 <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
+                <div class="field"><label>Local</label><input type="text" id="f_local_data_cidade"></div>
+                <div class="field"><label>Data</label><input type="text" id="f_data_completa" placeholder="DD/MM/AAAA"></div>
             </div>
             <div class="btn-group">
                 <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar</button>
@@ -149,6 +151,8 @@
         try {
             const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
             modeloPdfBytes = await response.arrayBuffer();
+            const d = new Date();
+            document.getElementById('f_data_completa').value = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
             gerarERenderizar();
             document.getElementById('editorBox').addEventListener('input', () => {
                 clearTimeout(timeoutRender);
@@ -183,6 +187,7 @@
             const data = await res.json();
             if (!data.erro) {
                 document.getElementById('f_bai').value = data.bairro.toUpperCase();
+                document.getElementById('f_local_data_cidade').value = data.localidade.toUpperCase();
                 clearTimeout(timeoutRender);
                 timeoutRender = setTimeout(gerarERenderizar, 500);
             }
@@ -200,12 +205,12 @@
         dados.matricula = (/MATRÍCULA\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
         if (texto.includes("PIN PAD")) {
-            dados.sn = ''; dados.mac = ''; dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD"; dados.modelo = "---"; 
+            dados.sn = ''; dados.mac = ''; dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD"; dados.modelo = ""; 
         } else {
             dados.mac = (/MAC\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
             dados.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
             dados.solucao = texto.includes("BAIXA DE IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
-            dados.modelo = dados.sn.startsWith('P') ? "LENOVO T14" : (dados.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "---");
+            dados.modelo = dados.sn.startsWith('P') ? "LENOVO T14" : (dados.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "");
         }
 
         let nomeCapturado = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
@@ -246,6 +251,7 @@
         document.getElementById('f_resp').value = dados.resp;
         document.getElementById('f_matricula').value = dados.matricula;
         document.getElementById('f_solucao').value = dados.solucao;
+        document.getElementById('f_local_data_cidade').value = dados.cid || '';
 
         clearTimeout(timeoutRender);
         timeoutRender = setTimeout(gerarERenderizar, 500);
@@ -278,12 +284,14 @@
         page.drawText(dados.tecnico, { x: POS.tecnico.x, y: 176, size: 11, color: fontColor });
         page.drawText(dados.cpf, { x: POS.cpf.x, y: 149, size: 11, color: fontColor }); 
         
-        const d = new Date();
-        page.drawText(String(d.getDate()).padStart(2, '0'), { x: POS.dia.x, y: 58, size: 11, color: fontColor }); 
-        page.drawText(String(d.getMonth() + 1).padStart(2, '0'), { x: POS.mes.x, y: 58, size: 11, color: fontColor }); 
-        page.drawText(String(d.getFullYear()), { x: POS.ano.x, y: 58, size: 11, color: fontColor }); 
+        const dataStr = document.getElementById('f_data_completa').value.split('/');
+        if(dataStr.length === 3) {
+            page.drawText(dataStr[0], { x: POS.dia.x, y: 58, size: 11, color: fontColor }); 
+            page.drawText(dataStr[1], { x: POS.mes.x, y: 58, size: 11, color: fontColor }); 
+            page.drawText(dataStr[2], { x: POS.ano.x, y: 58, size: 11, color: fontColor }); 
+        }
         
-        escrever('f_cid', POS.local);
+        escrever('f_local_data_cidade', POS.local);
 
         escreverParHorario('f_partida', POS.h_partida, POS.m_partida);
         escreverParHorario('f_chegada', POS.h_chegada, POS.m_chegada);
