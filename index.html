@@ -18,11 +18,11 @@
         textarea { width: 100%; height: 80px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; box-sizing: border-box; resize: none; outline: none; }
 
         .workspace { display: flex; flex-direction: row; gap: 20px; width: 100%; justify-content: center; align-items: flex-start; }
-        .editor-box { flex: 1; min-width: 320px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box; }
+        .editor-box { flex: 1; min-width: 350px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box; }
         
-        .preview-box { flex: 1; min-width: 320px; background: #525659; padding: 15px; border-radius: 12px; text-align: center; display: block; }
+        .preview-box { flex: 1; min-width: 350px; background: #525659; padding: 15px; border-radius: 12px; text-align: center; display: block; }
 
-        /* Mantém o Editor e a RAT lado a lado no tablet */
+        /* CORREÇÃO: Alterado de 1024px para 600px para impedir que a RAT vá para baixo no tablet */
         @media (max-width: 600px) {
             .workspace { flex-direction: column; align-items: center; }
             .editor-box, .preview-box { width: 100%; min-width: unset; }
@@ -40,7 +40,7 @@
         
         .field input.time-input { text-align: center; font-size: 16px; letter-spacing: 1px; width: 100%; box-sizing: border-box; }
 
-        canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); background-color: white; }
+        canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
         .btn-group { display: flex; gap: 8px; margin-top: 15px; }
         button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.2s; font-size: 14px; }
@@ -67,6 +67,7 @@
                 
                 <div class="time-container">
                     <div>
+                        <div class="column-title">PERCURSO</div>
                         <div class="field">
                             <label>Hora Partida</label>
                             <input type="text" id="f_partida" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)">
@@ -77,6 +78,7 @@
                         </div>
                     </div>
                     <div>
+                        <div class="column-title">ATENDIMENTO</div>
                         <div class="field">
                             <label>Hora Início Atendimento</label>
                             <input type="text" id="f_inicio_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)">
@@ -130,9 +132,7 @@
 </div>
 
 <script>
-    // Inicialização correta do Worker do PDF.js
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-    
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
@@ -158,8 +158,7 @@
 
     window.onload = async () => {
         try {
-            // Adicionado cabeçalho de requisição para evitar problemas comuns de CORS no navegador
-            const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now(), { method: 'GET' });
+            const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
             modeloPdfBytes = await response.arrayBuffer();
             gerarERenderizar();
             
@@ -167,9 +166,7 @@
                 clearTimeout(timeoutRender);
                 timeoutRender = setTimeout(gerarERenderizar, 500);
             });
-        } catch (e) { 
-            console.error("Erro ao carregar o PDF base:", e); 
-        }
+        } catch (e) { console.error("Erro ao carregar o PDF base:", e); }
     };
 
     function mascaraHora(input) {
@@ -279,90 +276,71 @@
 
     async function aplicarDadosNoPdf() {
         if (!modeloPdfBytes) return null;
-        try {
-            const pdfDoc = await PDFLib.PDFDocument.load(modeloPdfBytes);
-            const page = pdfDoc.getPages()[0];
-            const fontColor = PDFLib.rgb(0, 0, 0);
+        const pdfDoc = await PDFLib.PDFDocument.load(modeloPdfBytes);
+        const page = pdfDoc.getPages()[0];
+        const fontColor = PDFLib.rgb(0, 0, 0);
 
-            const escribir = (id, config) => {
-                const elemento = document.getElementById(id);
-                if (!elemento) return;
-                const texto = elemento.value;
-                if(texto && texto !== '---' && texto !== '') {
-                    page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
-                }
-            };
+        const escribir = (id, config) => {
+            const texto = document.getElementById(id).value;
+            if(texto && texto !== '---' && texto !== '') {
+                page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
+            }
+        };
 
-            const escribirParHorario = (idCampoUnico, posHora, posMinuto) => {
-                const elemento = document.getElementById(idCampoUnico);
-                if (!elemento) return;
-                const valor = elemento.value.replace(":", "");
-                if (valor && valor.length >= 2) {
-                    const hh = valor.slice(0, 2);
-                    page.drawText(hh, { x: posHora.x, y: posHora.y, size: 11, color: fontColor });
-                }
-                if (valor && valor.length === 4) {
-                    const mm = valor.slice(2, 4);
-                    page.drawText(mm, { x: posMinuto.x, y: posMinuto.y, size: 11, color: fontColor });
-                }
-            };
+        const escribirParHorario = (idCampoUnico, posHora, posMinuto) => {
+            const valor = document.getElementById(idCampoUnico).value.replace(":", "");
+            if (valor && valor.length >= 2) {
+                const hh = valor.slice(0, 2);
+                page.drawText(hh, { x: posHora.x, y: posHora.y, size: 11, color: fontColor });
+            }
+            if (valor && valor.length === 4) {
+                const mm = valor.slice(2, 4);
+                page.drawText(mm, { x: posMinuto.x, y: posMinuto.y, size: 11, color: fontColor });
+            }
+        };
 
-            escrever('f_inc', POS.inc); escrever('f_uniorg', POS.uniorg); escrever('f_rua', POS.rua);
-            escrever('f_num', POS.num); escrever('f_cid', POS.cid); escrever('f_uf', POS.uf);
-            escrever('f_bai', POS.bai);
-            page.drawText("EQUIPAMENTO INOPERANTE", { x: 30, y: 555, size: 11, color: fontColor });
-            
-            escrever('f_modelo', POS.modelo); 
-            escrever('f_host_ret', POS.host); 
-            escrever('f_patri_ret', POS.patri);
-            escrever('f_sn_ret', POS.sn); 
-            escrever('f_mac_ret', POS.mac); 
-            
-            escrever('f_solucao', POS.solucao);
-            escrever('f_resp', POS.resp); escrever('f_matricula', POS.matri);
-            
-            page.drawText(dados.tecnico, { x: POS.tecnico.x, y: 176, size: 11, color: fontColor });
-            page.drawText(dados.cpf, { x: POS.cpf.x, y: 149, size: 11, color: fontColor }); 
+        escrever('f_inc', POS.inc); escrever('f_uniorg', POS.uniorg); escrever('f_rua', POS.rua);
+        escrever('f_num', POS.num); escrever('f_cid', POS.cid); escrever('f_uf', POS.uf);
+        escrever('f_bai', POS.bai);
+        page.drawText("EQUIPAMENTO INOPERANTE", { x: 30, y: 555, size: 11, color: fontColor });
+        
+        escrever('f_modelo', POS.modelo); 
+        escrever('f_host_ret', POS.host); 
+        escrever('f_patri_ret', POS.patri);
+        escrever('f_sn_ret', POS.sn); 
+        escrever('f_mac_ret', POS.mac); 
+        
+        escrever('f_solucao', POS.solucao);
+        escrever('f_resp', POS.resp); escrever('f_matricula', POS.matri);
+        
+        page.drawText(dados.tecnico, { x: POS.tecnico.x, y: 176, size: 11, color: fontColor });
+        page.drawText(dados.cpf, { x: POS.cpf.x, y: 149, size: 11, color: fontColor }); 
 
-            const cidVal = document.getElementById('f_cid').value;
-            if(cidVal) page.drawText(cidVal.toUpperCase(), { x: POS.local.x, y: 56, size: 11, color: fontColor });
-            
-            const d = new Date();
-            page.drawText(String(d.getDate()).padStart(2, '0'), { x: POS.dia.x, y: 58, size: 11, color: fontColor }); 
-            page.drawText(String(d.getMonth() + 1).padStart(2, '0'), { x: POS.mes.x, y: 58, size: 11, color: fontColor }); 
-            page.drawText(String(d.getFullYear()), { x: POS.ano.x, y: 58, size: 11, color: fontColor }); 
+        const cidVal = document.getElementById('f_cid').value;
+        if(cidVal) page.drawText(cidVal.toUpperCase(), { x: POS.local.x, y: 56, size: 11, color: fontColor });
+        
+        const d = new Date();
+        page.drawText(String(d.getDate()).padStart(2, '0'), { x: POS.dia.x, y: 58, size: 11, color: fontColor }); 
+        page.drawText(String(d.getMonth() + 1).padStart(2, '0'), { x: POS.mes.x, y: 58, size: 11, color: fontColor }); 
+        page.drawText(String(d.getFullYear()), { x: POS.ano.x, y: 58, size: 11, color: fontColor }); 
 
-            escreverParHorario('f_partida', POS.h_partida, POS.m_partida);
-            escreverParHorario('f_chegada', POS.h_chegada, POS.m_chegada);
-            escreverParHorario('f_inicio_ate', POS.h_inicio_ate, POS.m_inicio_ate);
+        escreverParHorario('f_partida', POS.h_partida, POS.m_partida);
+        escreverParHorario('f_chegada', POS.h_chegada, POS.m_chegada);
+        escreverParHorario('f_inicio_ate', POS.h_inicio_ate, POS.m_inicio_ate);
 
-            return pdfDoc;
-        } catch (e) {
-            console.error("Erro ao modificar o PDF:", e);
-            return null;
-        }
+        return pdfDoc;
     }
 
     async function gerarERenderizar() {
-        const canvas = document.getElementById('pdfCanvas');
-        if (!canvas) return;
-        
         const pdfDoc = await aplicarDadosNoPdf();
         if (!pdfDoc) return;
-        
-        try {
-            const pdfBytes = await pdfDoc.save();
-            const pdf = await pdfjsLib.getDocument({data: pdfBytes}).promise;
-            const pdfPage = await pdf.getPage(1);
-            const viewport = pdfPage.getViewport({scale: 2.0}); 
-            
-            canvas.height = viewport.height; 
-            canvas.width = viewport.width;
-            
-            await pdfPage.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
-        } catch (e) {
-            console.error("Erro ao renderizar o canvas da RAT:", e);
-        }
+        const pdfBytes = await pdfDoc.save();
+        const pdf = await pdfjsLib.getDocument({data: pdfBytes}).promise;
+        const pdfPage = await pdf.getPage(1);
+        const viewport = pdfPage.getViewport({scale: 2.0}); 
+        const canvas = document.getElementById('pdfCanvas');
+        canvas.height = viewport.height; canvas.width = viewport.width;
+        await pdfPage.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
     }
 
     async function baixarPdf() {
