@@ -211,11 +211,14 @@
 
         if (texto.includes("PIN PAD")) {
             dados.sn = ''; dados.mac = ''; dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD"; dados.modelo = ""; 
+            // Regra: se Pin Pad, patrimônio novo = patrimônio atual
+            document.getElementById('f_patri_inst').value = dados.patri;
         } else {
             dados.mac = (/MAC\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
             dados.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
             dados.solucao = texto.includes("BAIXA DE IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
             dados.modelo = dados.sn.startsWith('P') ? "LENOVO T14" : (dados.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "");
+            document.getElementById('f_patri_inst').value = "";
         }
 
         let nomeCapturado = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
@@ -258,8 +261,6 @@
         document.getElementById('f_solucao').value = dados.solucao;
         document.getElementById('f_local_data_cidade').value = dados.cid || '';
         
-        document.getElementById('f_modelo_inst').value = "";
-
         clearTimeout(timeoutRender);
         timeoutRender = setTimeout(gerarERenderizar, 500);
     }
