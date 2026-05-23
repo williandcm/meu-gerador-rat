@@ -144,7 +144,8 @@
         patri_inst: { x: 349, y: 486, s: 11 },
         sn_inst: { x: 372, y: 473, s: 11 },
         modelo_inst: { x: 334, y: 458, s: 11 },
-        host_inst: { x: 342, y: 445, s: 11 }
+        host_inst: { x: 342, y: 445, s: 11 },
+        mac_inst: { x: 356, y: 431, s: 11 }
     };
 
     let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO };
@@ -289,6 +290,7 @@
         escrever('f_sn_inst', POS.sn_inst);
         escrever('f_modelo_inst', POS.modelo_inst);
         escrever('f_host_inst', POS.host_inst);
+        escrever('f_mac_inst', POS.mac_inst);
         escrever('f_sn_ret', POS.sn); escrever('f_mac_ret', POS.mac); escrever('f_solucao', POS.solucao);
         escrever('f_resp', POS.resp); escrever('f_matricula', POS.matri);
         page.drawText(dados.tecnico, { x: POS.tecnico.x, y: 176, size: 11, color: fontColor });
