@@ -1,69 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAT Pro Editor - Willian</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    
+    <style>
+        :root { --primary: #3b82f6; --success: #10b981; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
+        
+        .container { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; max-width: 1200px; margin: 0 auto; }
+        
+        .card-input { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; }
+        textarea { width: 100%; height: 80px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; box-sizing: border-box; resize: none; outline: none; }
 
-Suspender
-Encerrar
+        .workspace { display: flex; flex-direction: row; gap: 20px; width: 100%; justify-content: center; align-items: flex-start; }
+        .editor-box { flex: 1; min-width: 350px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        .preview-box { flex: 1; min-width: 350px; background: #525659; padding: 15px; border-radius: 12px; text-align: center; display: block; }
 
+        @media (max-width: 1024px) {
+            .workspace { flex-direction: column; align-items: center; }
+            .editor-box, .preview-box { width: 100%; min-width: unset; }
+        }
 
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .full-width { grid-column: span 2; }
+        
+        .equip-container, .time-container { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .column-title { font-size: 13px; font-weight: bold; color: #1e293b; text-transform: uppercase; margin-bottom: 8px; text-align: center; border-bottom: 3px solid var(--primary); padding-bottom: 8px; line-height: 1.4; }
+        
+        .field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
+        .field label { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+        
+        .field input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; width: 100%; box-sizing: border-box; }
+        
+        .field input.time-input { text-align: center; font-size: 16px; letter-spacing: normal; }
 
-Atividade : INC067370252
-Status : Em Atendimento - 610993
-Data de Criação : 21/05/2026 13:11
-Data de Início : 22/05/2026 06:53
-Data de Chegada : 22/05/2026 08:46
-Data de Atendimento : 22/05/2026 09:11
-Endereço : PCA RAUL LEME 265 - BRAGANCA PAULISTA, SP - 12900140
-GOOGLE MAPS        WAZE
-Empresa : Santander Brasil
-Tipo : MicroInf
-Data agendada : 22/05/2026 10:00
+        canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-Info adicional : Ag. 22/05/2026 10:00:00 * 0011977 * INC067370252 * LUCIENE EMILIO OLIVEIRA DE ALMEIDA * 11 995871050 * 823695 / BRA Espec Clientes Select High * Agencia/pab * Fill with additional info * Praça, Raul Leme, 265 * * 2524218 * BRJ3338Y7B * End User Hardware * Notebook * Agências - Notebook - Windows fora do dominio * Equipamento fora do domínio, favor seguir com a baixa de imagem.
-Dominio: Ag Banespa - Agências - Notebook - Windows fora do dominio * Hostname: AG00740000E058 * - Data Prevista: 22/05/2026 10:00:00 - Motivo: Técnico previsto para este atendimento - Info Complementar: ## DANIELE NASCIMENTO ## VALIDADO O UNIORG E SGPI ## ## SW ENVIAR TÉCNICO PARA BAIXA DE IMAGEM AGBANESPA ## Em contato com Jorge validado a uniorg e endereco e SGPI favor seguir com orientacao do Banco. ITEM A SER SUBSTITUÍDO = BAIXA DE IMAGEM AGBANESPA.
-Data / Hora Prevista: 22/05 a partir das 10:00
-Usuario: LUCIENE EMILIO OLIVEIRA DE ALMEIDA
-Analista: Daniele Nascimento
+        .btn-group { display: flex; gap: 8px; margin-top: 15px; }
+        button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.2s; font-size: 14px; }
+        .btn-save { background: var(--primary); color: white; }
+        .btn-pdf { background: var(--success); color: white; }
+        
+        h2 { font-size: 1rem; color: #1e293b; margin: 0 0 10px 0; border-bottom: 2px solid var(--primary); padding-bottom: 5px; }
+    </style>
+</head>
+<body>
 
-- Previsão de Chamado: SW
-BAIXA-FORA DOMINIO
-- Info Complementar: (Leander) Usuária deseja fazer com o técnico presencialmente.
-- Info Complementar: Provisionamento
+<div class="container">
+    <div class="card-input">
+        <h2>1. Cole o Chamado</h2>
+        <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
+    </div>
 
-MAC: E0:73:E7:67:1F:17
-Hostname: AG00740000E058
-SGPI: 2524218
-Serial: BRJ3338Y7B
-#URA pedro.moraes@cerbconsulting.com.br - 22/05/2026, 09:07:37 - 22/05/2026, 09:10:51 = SupTec/provisionamento #
-Uniorg : 0011977
-Incidente / Requisição : INC067370252
-Solicitante : LUCIENE EMILIO OLIVEIRA DE ALMEIDA
-Telefone : 11 995871050
-Matrícula : 823695 / BRA Espec Clientes Select High
-Tipo de Local : Agencia/pab
-Complemento : Fill with additional info
-Andar / Agencia : Praça, Raul Leme, 265
-Estação / RITM :
-SGPI : 2524218
-Serial : BRJ3338Y7B
-Categoria : End User Hardware
-SubCategoria : Notebook
-SubCategoriaItem : Agências - Notebook - Windows fora do dominio
-Histórico ServiceNow
-Descrição : Equipamento fora do domínio, favor seguir com a baixa de imagem.
-Dominio: Ag Banespa - Agências - Notebook - Windows fora do dominio
-Hostname / Info Gerais : Hostname: AG00740000E058
-Outras Informações : - Data Prevista: 22/05/2026 10:00:00 - Motivo: Técnico previsto para este atendimento - Info Complementar: ## DANIELE NASCIMENTO ## VALIDADO O UNIORG E SGPI ## ## SW ENVIAR TÉCNICO PARA BAIXA DE IMAGEM AGBANESPA ## Em contato com Jorge validado a uniorg e endereco e SGPI favor seguir com orientacao do Banco. ITEM A SER SUBSTITUÍDO = BAIXA DE IMAGEM AGBANESPA.
-Data / Hora Prevista: 22/05 a partir das 10:00
-Usuario: LUCIENE EMILIO OLIVEIRA DE ALMEIDA
-Analista: Daniele Nascimento
+    <div class="workspace">
+        <div class="editor-box" id="editorBox">
+            <h2>2. Editor em Tempo Real</h2>
+            <div class="form-grid">
+                <div class="field full-width"><label>CHAMADO SANTANDER</label><input type="text" id="f_inc"></div>
+                
+                <div class="time-container">
+                    <div>
+                        <div class="column-title">Percurso</div>
+                        <div class="field"><label>Hora Partida</label><input type="text" id="f_partida" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                        <div class="field"><label>Hora Chegada</label><input type="text" id="f_chegada" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                    </div>
+                    <div>
+                        <div class="column-title">Atendimento</div>
+                        <div class="field"><label>Hora Início Atendimento</label><input type="text" id="f_inicio_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                        <div class="field"><label>Hora Término Atendimento</label><input type="text" id="f_termino_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                    </div>
+                </div>
 
-- Previsão de Chamado: SW
-BAIXA-FORA DOMINIO
-- Info Complementar: (Leander) Usuária deseja fazer com o técnico presencialmente.
-- Info Complementar: Provisionamento
+                <div class="field full-width"><label>Uniorg</label><input type="text" id="f_uniorg"></div>
 
-MAC: E0:73:E7:67:1F:17
-Hostname: AG00740000E058
-SGPI: 2524218
-Serial: BRJ3338Y7B
-#URA pedro.moraes@cerbconsulting.com.br - 22/05/2026, 09:07:37 - 22/05/2026, 09:10:51 = SupTec/provisionamento #
+                <div class="field full-width"><label>Endereço</label><input type="text" id="f_rua"></div>
+                <div class="field"><label>Número</label><input type="text" id="f_num"></div>
+                <div class="field"><label>Bairro</label><input type="text" id="f_bai"></div>
+                <div class="field"><label>Cidade</label><input type="text" id="f_cid"></div>
+                <div class="field"><label>UF</label><input type="text" id="f_uf"></div>
+                
+                <div class="field full-width"><label>DESCRITIVO DEFEITO/CAUSA</label><input type="text" id="f_defeito"></div>
 
+                <div class="equip-container">
+                    <div>
+                        <div class="column-title">SEMPRE PREENCHER<br>ATUAL RECONFIGURADO OU RETIRADO</div>
+                        <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_ret"></div>
+                        <div class="field"><label>Número de Série</label><input type="text" id="f_sn_ret"></div>
+                        <div class="field"><label>Modelo</label><input type="text" id="f_modelo_ret"></div>
+                        <div class="field"><label>Hostname</label><input type="text" id="f_host_ret"></div>
+                        <div class="field"><label>MAC Address</label><input type="text" id="f_mac_ret" oninput="sincronizarMac()"></div>
+                    </div>
+                    <div>
+                        <div class="column-title">PREENCHER EM CASO DE TROCA<br>EQUIPAMENTO NOVO</div>
+                        <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_inst"></div>
+                        <div class="field"><label>Número de Série</label><input type="text" id="f_sn_inst"></div>
+                        <div class="field"><label>Modelo</label><input type="text" id="f_modelo_inst"></div>
+                        <div class="field"><label>Hostname</label><input type="text" id="f_host_inst"></div>
+                        <div class="field"><label>MAC Address</label><input type="text" id="f_mac_inst"></div>
+                    </div>
+                </div>
 
+                <div class="field full-width"><label>Descritivo Solução</label><input type="text" id="f_solucao" oninput="sincronizarMac()"></div>
+                <div class="field"><label>Responsável</label><input type="text" id="f_resp"></div>
+                <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
+                <div class="field"><label>Local</label><input type="text" id="f_local_data_cidade"></div>
+                <div class="field"><label>Data</label><input type="text" id="f_data_completa" placeholder="DD/MM/AAAA"></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar</button>
+                <button class="btn-pdf" onclick="baixarPdf()">📥 Baixar PDF</button>
+            </div>
+        </div>
+
+        <div class="preview-box" id="previewBox">
+            <canvas id="pdfCanvas"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
+    const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
+    const CPF_FIXO = "327.190.648-31";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const POS = {
+        inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
+        num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
+        bai: { x: 65, y: 688 }, inoperante: { x: 30, y: 555 }, modelo: { x: 69, y: 457 },
+        host: { x: 78, y: 443 }, patri: { x: 88, y: 485 }, sn: { x: 110, y: 471 },
+        mac: { x: 91, y: 430 }, solucao: { x: 30, y: 232 }, resp: { x: 95, y: 174 },
+        matri: { x: 83, y: 147 }, tecnico: { x: 347, y: 176 }, cpf: { x: 346, y: 149 },
+        local: { x: 123, y: 56 }, dia: { x: 376, y: 58 }, mes: { x: 410, y: 58 }, ano: { x: 441, y: 58 },
+        h_partida: { x: 91, y: 747 }, m_partida: { x: 110, y: 747 },
+        h_chegada: { x: 91, y: 736 }, m_chegada: { x: 110, y: 736 },
+        h_inicio_ate: { x: 418, y: 749 }, m_inicio_ate: { x: 436, y: 749 },
+        patri_inst: { x: 349, y: 486, s: 11 },
+        sn_inst: { x: 372, y: 473, s: 11 },
+        modelo_inst: { x: 334, y: 458, s: 11 },
+        host_inst: { x: 342, y: 445, s: 11 },
+        mac_inst: { x: 356, y: 431, s: 11 }
+    };
+
+    let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO };
+    let modeloPdfBytes = null;
+    let timeoutRender = null;
+
+    window.onload = async () => {
+        try {
+            const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
+            modeloPdfBytes = await response.arrayBuffer();
+            const d = new Date();
+            document.getElementById('f_data_completa').value = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+            gerarERenderizar();
+            document.getElementById('editorBox').addEventListener('input', () => {
+                clearTimeout(timeoutRender);
+                timeoutRender = setTimeout(gerarERenderizar, 500);
+            });
+        } catch (e) { console.error("Erro ao carregar o PDF base:", e); }
+    };
+
+    function sincronizarMac() {
+        const solucao = document.getElementById('f_solucao').value.toUpperCase();
+        const macRet = document.getElementById('f_mac_ret').value;
+        if(solucao.includes("PIN PAD")) {
+            document.getElementById('f_mac_inst').value = macRet;
+        }
+    }
+
+    function mascaraHora(input) {
+        let v = input.value.replace(/\D/g, "");
+        if (v.length > 2) v = v.slice(0, 2) + ":" + v.slice(2, 4);
+        input.value = v;
+    }
+
+    function medirLarguraTexto(texto) {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        context.font = "bold 11px Arial";
+        return context.measureText(texto.toUpperCase()).width;
+    }
+
+    function limitarNomeResponsavel(nome) {
+        const LARGURA_MAXIMA_PX = 155;
+        let partes = nome.split(' ').filter(p => !(['da', 'de', 'do', 'das', 'dos'].includes(p.toLowerCase())));
+        while (partes.length > 1 && medirLarguraTexto(partes.join(' ')) > LARGURA_MAXIMA_PX) partes.pop();
+        return partes.join(' ').toUpperCase();
+    }
+
+    async function buscarBairro(cep) {
+        try {
+            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            const data = await res.json();
+            if (!data.erro) {
+                document.getElementById('f_bai').value = data.bairro.toUpperCase();
+                document.getElementById('f_local_data_cidade').value = data.localidade.toUpperCase();
+                clearTimeout(timeoutRender);
+                timeoutRender = setTimeout(gerarERenderizar, 500);
+            }
+        } catch (e) {}
+    }
+
+    async function extrairDados() {
+        const textoInput = document.getElementById('textoBruto').value;
+        if(!textoInput) return;
+        const texto = textoInput.toUpperCase();
+
+        dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
+        dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+        dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
+        dados.mac = (/MAC\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
+        dados.matricula = (/MATRÍCULA\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+
+        if (texto.includes("PIN PAD")) {
+            dados.sn = ''; dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD"; dados.modelo = ""; 
+            document.getElementById('f_patri_inst').value = dados.patri;
+            document.getElementById('f_host_inst').value = dados.host;
+            document.getElementById('f_mac_inst').value = dados.mac;
+            document.getElementById('f_defeito').value = "EQUIPAMENTO INOPERANTE";
+        } else {
+            dados.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
+            dados.solucao = texto.includes("BAIXA DE IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
+            dados.modelo = dados.sn.startsWith('P') ? "LENOVO T14" : (dados.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "");
+            document.getElementById('f_patri_inst').value = "";
+            document.getElementById('f_host_inst').value = "";
+            document.getElementById('f_mac_inst').value = "";
+            document.getElementById('f_defeito').value = "EQUIPAMENTO INOPERANTE";
+        }
+
+        let nomeCapturado = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
+        dados.resp = limitarNomeResponsavel(nomeCapturado);
+        dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+
+        const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(texto);
+        if (mFullEnd) {
+            const linhaEnd = mFullEnd[1];
+            dados.rua = (/^([^0-9,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
+            dados.num = (/(\d+)/.exec(linhaEnd.replace(dados.rua, "")) || ["","---"])[1];
+            dados.cid = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim().toUpperCase();
+            dados.uf = (/,\s*([A-Z]{2})/.exec(linhaEnd) || ["",""])[1];
+            const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
+            if (mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
+        }
+
+        const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
+        const partida = reg("PARTIDA") || reg("INÍCIO"); 
+        const chegada = reg("CHEGADA"); 
+        const termino = reg("ATENDIMENTO");
+
+        document.getElementById('f_partida').value = partida ? `${partida[1]}:${partida[2]}` : '';
+        document.getElementById('f_chegada').value = chegada ? `${chegada[1]}:${chegada[2]}` : '';
+        document.getElementById('f_inicio_ate').value = termino ? `${termino[1]}:${termino[2]}` : '';
+
+        document.getElementById('f_inc').value = dados.inc;
+        document.getElementById('f_uniorg').value = dados.uniorg;
+        document.getElementById('f_rua').value = dados.rua || '';
+        document.getElementById('f_num').value = dados.num || '';
+        document.getElementById('f_cid').value = dados.cid || '';
+        document.getElementById('f_uf').value = dados.uf || '';
+        document.getElementById('f_patri_ret').value = dados.patri;
+        document.getElementById('f_host_ret').value = dados.host;
+        document.getElementById('f_sn_ret').value = dados.sn === '---' ? '' : dados.sn;
+        document.getElementById('f_mac_ret').value = dados.mac;
+        document.getElementById('f_modelo_ret').value = dados.modelo;
+        document.getElementById('f_resp').value = dados.resp;
+        document.getElementById('f_matricula').value = dados.matricula;
+        document.getElementById('f_solucao').value = dados.solucao;
+        document.getElementById('f_local_data_cidade').value = dados.cid || '';
+        
+        clearTimeout(timeoutRender);
+        timeoutRender = setTimeout(gerarERenderizar, 500);
+    }
+
+    async function aplicarDadosNoPdf() {
+        if (!modeloPdfBytes) return null;
+        const pdfDoc = await PDFLib.PDFDocument.load(modeloPdfBytes);
+        const page = pdfDoc.getPages()[0];
+        const fontColor = PDFLib.rgb(0, 0, 0);
+
+        const escrever = (id, config) => {
+            const texto = document.getElementById(id).value;
+            if(texto && texto !== '---' && texto !== '') page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
+        };
+
+        const escreverParHorario = (idCampoUnico, posHora, posMinuto) => {
+            const valor = document.getElementById(idCampoUnico).value.replace(":", "");
+            if (valor && valor.length >= 2) page.drawText(valor.slice(0, 2), { x: posHora.x, y: posHora.y, size: 11, color: fontColor });
+            if (valor && valor.length === 4) page.drawText(valor.slice(2, 4), { x: posMinuto.x, y: posMinuto.y, size: 11, color: fontColor });
+        };
+
+        escrever('f_inc', POS.inc); escrever('f_uniorg', POS.uniorg); escrever('f_rua', POS.rua);
+        escrever('f_num', POS.num); escrever('f_cid', POS.cid); escrever('f_uf', POS.uf);
+        escrever('f_bai', POS.bai);
+        
+        const descDefeito = document.getElementById('f_defeito').value;
+        if(descDefeito) page.drawText(descDefeito.toUpperCase(), { x: POS.inoperante.x, y: POS.inoperante.y, size: 11, color: fontColor });
+        
+        escrever('f_modelo_ret', POS.modelo); escrever('f_host_ret', POS.host); escrever('f_patri_ret', POS.patri);
+        escrever('f_patri_inst', POS.patri_inst);
+        escrever('f_sn_inst', POS.sn_inst);
+        escrever('f_modelo_inst', POS.modelo_inst);
+        escrever('f_host_inst', POS.host_inst);
+        escrever('f_mac_inst', POS.mac_inst);
+        escrever('f_sn_ret', POS.sn); escrever('f_mac_ret', POS.mac); escrever('f_solucao', POS.solucao);
+        escrever('f_resp', POS.resp); escrever('f_matricula', POS.matri);
+        page.drawText(dados.tecnico, { x: POS.tecnico.x, y: 176, size: 11, color: fontColor });
+        page.drawText(dados.cpf, { x: POS.cpf.x, y: 149, size: 11, color: fontColor }); 
+        
+        const dataStr = document.getElementById('f_data_completa').value.split('/');
+        if(dataStr.length === 3) {
+            page.drawText(dataStr[0], { x: POS.dia.x, y: 58, size: 11, color: fontColor }); 
+            page.drawText(dataStr[1], { x: POS.mes.x, y: 58, size: 11, color: fontColor }); 
+            page.drawText(dataStr[2], { x: POS.ano.x, y: 58, size: 11, color: fontColor }); 
+        }
+        
+        escrever('f_local_data_cidade', POS.local);
+
+        escreverParHorario('f_partida', POS.h_partida, POS.m_partida);
+        escreverParHorario('f_chegada', POS.h_chegada, POS.m_chegada);
+        escreverParHorario('f_inicio_ate', POS.h_inicio_ate, POS.m_inicio_ate);
+
+        return pdfDoc;
+    }
+
+    async function gerarERenderizar() {
+        const pdfDoc = await aplicarDadosNoPdf();
+        if (!pdfDoc) return;
+        const pdfBytes = await pdfDoc.save();
+        const pdf = await pdfjsLib.getDocument({data: pdfBytes}).promise;
+        const pdfPage = await pdf.getPage(1);
+        const viewport = pdfPage.getViewport({scale: 2.0}); 
+        const canvas = document.getElementById('pdfCanvas');
+        canvas.height = viewport.height; canvas.width = viewport.width;
+        await pdfPage.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
+    }
+
+    async function baixarPdf() {
+        const pdfDoc = await aplicarDadosNoPdf();
+        if (!pdfDoc) return;
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `RAT_${document.getElementById('f_inc').value || 'Nova'}.pdf`;
+        link.click();
+    }
+
+    async function salvarAtendimento() {
+        const inc = document.getElementById('f_inc').value.toUpperCase();
+        if(!inc) { alert("Preencha ao menos o CHAMADO SANTANDER antes de salvar."); return; }
+        
+        const dadosSalvar = {
+            numero_inc: inc,
+            analista: 'Willian'
+        };
+
+        try {
+            const { error } = await supabaseClient.from('chamados').insert([dadosSalvar]);
+            alert(error ? "Erro ao salvar: " + error.message : "Dados básicos salvos com sucesso!");
+        } catch (e) { alert("Erro inesperado: " + e.message); }
+    }
+</script>
+</body>
+</html>
