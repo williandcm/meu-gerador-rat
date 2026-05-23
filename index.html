@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAT Visualizador Pro - Willian</title>
+    <title>RAT Visualizador Pro - Base Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -11,8 +11,8 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; box-sizing: border-box; }
-        h2 { color: #1e293b; text-align: center; font-size: 1.1rem; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; }
-        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
+        h2 { color: #1e293b; text-align: center; font-size: 1.1rem; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; margin-top: 0; }
+        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; resize: none; }
         
         .info-painel { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
         .info-item { text-align: center; border-right: 1px solid #e2e8f0; padding: 2px; }
@@ -24,6 +24,7 @@
         button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; }
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
+        button:hover { opacity: 0.9; }
         button:disabled { background: #cbd5e1; cursor: not-allowed; }
 
         #viewerContainer { display: none; width: 100%; margin-top: 10px; background: #525659; border-radius: 8px; padding: 10px; box-sizing: border-box; text-align: center; }
@@ -40,7 +41,7 @@
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN DO CARMO MORAIS</span></div>
         <div class="info-item"><span class="info-label">Local</span><span id="pCidadeView" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Data Atual</span><span id="pDataView" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Data</span><span id="pDataView" class="info-value">---</span></div>
     </div>
 
     <div class="btn-group">
@@ -66,6 +67,7 @@
     
     let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO, inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', matricula:'', mac:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
 
+    // Medidor de largura real para evitar que o nome trespasse o campo
     function medirLarguraTexto(texto) {
         const canvas = document.createElement("canvas");
         const context = canvas.getContext("2d");
@@ -90,41 +92,36 @@
         if(!textoInput) return;
         const texto = textoInput.toUpperCase();
 
+        // Extração básica
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
         dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
         dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
         const matchMatricula = /MATRÍCULA\s*:\s*(\d+)/i.exec(texto);
         dados.matricula = matchMatricula ? matchMatricula[1] : '---';
 
-        const ehPinPad = texto.includes("PIN PAD");
-        const ehBaixaImagem = texto.includes("BAIXA DE IMAGEM");
-
-        if (ehPinPad) {
+        // Lógica de Solução/Equipamento
+        if (texto.includes("PIN PAD")) {
             dados.sn = ''; dados.mac = '';
             dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD";
-        } else if (ehBaixaImagem) {
-            const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
-            dados.mac = matchMac ? matchMac[1] : '';
-            const matchSn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
-            dados.sn = matchSn;
-            dados.solucao = "REALIZADO A BAIXA DE IMAGEM";
         } else {
             const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
             dados.mac = matchMac ? matchMac[1] : '';
             const matchSn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
             dados.sn = matchSn;
-            dados.solucao = "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
+            dados.solucao = texto.includes("BAIXA DE IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
         }
 
+        // Tratamento do Nome
         let nomeCapturado = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
         dados.resp = limitarNomeSolicitante(nomeCapturado);
 
+        // Modelo via Serial
         if (dados.sn && dados.sn.startsWith('P')) dados.modelo = "LENOVO T14";
         else if (dados.sn && dados.sn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
         else dados.modelo = "---";
 
+        // Endereço e Uniorg
         dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
-
         const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(texto);
         if (mFullEnd) {
             const linhaEnd = mFullEnd[1];
@@ -137,6 +134,7 @@
             document.getElementById('pCidadeView').innerText = dados.cid;
         }
         
+        // Data e Horários
         const hoje = new Date();
         document.getElementById('pDataView').innerText = hoje.toLocaleDateString('pt-BR');
 
@@ -163,7 +161,7 @@
             const fontColor = PDFLib.rgb(0, 0, 0);
             const txt = (t, x, y, s = 11) => { if(t && t !== '---' && t !== '') page.drawText(String(t), { x, y, size: s, color: fontColor }); };
 
-            // Dados Gerais
+            // Preenchimento de Campos
             txt(dados.inc, 123, 768);
             txt(dados.uniorg, 64, 714);
             txt(dados.rua, 79, 701, 10);
@@ -180,27 +178,22 @@
             txt(dados.solucao, 30, 232, 11); 
             txt(dados.resp, 95, 174, 11); 
             txt(dados.matricula, 83, 147, 11);
-            
-            // Carimbos Fixos
             txt(dados.tecnico, 347, 176, 11);
             txt(dados.cpf, 346, 149, 11); 
-            txt(dados.cid, 123, 56, 11); // Localização
 
-            // LOGICA DA DATA ATUAL (AJUSTE SOLICITADO)
+            // Carimbos de Local e Data (Coordenadas Willian)
+            txt(dados.cid, 123, 56, 11); 
             const d = new Date();
-            const dia = String(d.getDate()).padStart(2, '0');
-            const mes = String(d.getMonth() + 1).padStart(2, '0');
-            const ano = String(d.getFullYear());
-
-            txt(dia, 376, 58, 11); 
-            txt(mes, 410, 58, 11); 
-            txt(ano, 441, 58, 11); 
+            txt(String(d.getDate()).padStart(2, '0'), 376, 58, 11); 
+            txt(String(d.getMonth() + 1).padStart(2, '0'), 410, 58, 11); 
+            txt(String(d.getFullYear()), 441, 58, 11); 
 
             // Horários
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
             txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
             txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
 
+            // Renderização do PDF na tela
             const pdfBytes = await pdfDoc.save();
             const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
             const pdf = await loadingTask.promise;
@@ -221,8 +214,8 @@
         try {
             const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: texto, analista: 'Willian' }]);
             if (error) throw error;
-            alert("Salvo!");
-        } catch (e) { alert(e.message); }
+            alert("Salvo com sucesso!");
+        } catch (e) { alert("Erro ao salvar: " + e.message); }
     }
 </script>
 </body>
