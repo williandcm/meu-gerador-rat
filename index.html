@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAT Pro - Central de Configuração</title>
+    <title>RAT Pro - Base Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; box-sizing: border-box; }
-        h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin: 0 0 15px 0; }
+        h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 15px; }
         textarea { width: 100%; height: 120px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box; resize: none; outline: none; }
-        textarea:focus { border-color: #3b82f6; }
         .info-painel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin: 15px 0; }
         .info-item { text-align: center; }
         .info-label { display: block; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; }
@@ -21,7 +20,6 @@
         button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; }
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
-        button:disabled { background: #cbd5e1; cursor: not-allowed; }
         #viewerContainer { display: none; width: 100%; margin-top: 20px; background: #525659; border-radius: 8px; padding: 10px; box-sizing: border-box; }
         canvas { width: 100% !important; height: auto !important; border-radius: 4px; }
     </style>
@@ -29,18 +27,18 @@
 <body>
 
 <div class="card">
-    <h2>📄 RAT Santander - V2.0</h2>
-    <textarea id="textoBruto" placeholder="Cole o chamado completo aqui..." oninput="extrairDados()"></textarea>
+    <h2>📄 RAT Santander - Base Willian</h2>
+    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Chamado</span><span id="vInc" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Equipamento</span><span id="vModelo" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Cidade</span><span id="vCidade" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Data</span><span id="vData" class="info-value">---</span></div>
     </div>
 
     <div class="btn-group">
-        <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar Banco</button>
-        <button class="btn-pdf" id="btnGerar" onclick="gerarERenderizar()">👁️ Gerar e Visualizar</button>
+        <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar</button>
+        <button class="btn-pdf" id="btnGerar" onclick="gerarERenderizar()">👁️ Visualizar RAT</button>
     </div>
 
     <div id="viewerContainer">
@@ -50,8 +48,7 @@
 
 <script>
     // =========================================================
-    // CONFIGURAÇÃO DE COORDENADAS (O CORAÇÃO DO PROGRAMADOR)
-    // Se precisar mudar de lugar, altere apenas os números abaixo:
+    // MAPA DE COORDENADAS (VALORES ORIGINAIS RESTAURADOS)
     // =========================================================
     const MAPA_CAMPOS = {
         inc:      { x: 123, y: 768, s: 11 },
@@ -62,35 +59,29 @@
         cidade:   { x: 338, y: 689, s: 11 },
         uf:       { x: 43,  y: 675, s: 11 },
         
-        // Dados do Equipamento
         modelo:   { x: 69,  y: 457, s: 11 },
         hostname: { x: 78,  y: 443, s: 11 },
         patri:    { x: 88,  y: 485, s: 11 },
         serial:   { x: 110, y: 471, s: 11 },
         mac:      { x: 91,  y: 430, s: 11 },
         
-        // Atendimento
         solucao:  { x: 30,  y: 232, s: 11 },
-        responsavel: { x: 95, y: 174, s: 11 },
-        matricula: { x: 83,  y: 147, s: 11 },
+        resp:     { x: 95,  y: 174, s: 11 },
+        matri:    { x: 83,  y: 147, s: 11 },
         tecnico:  { x: 347, y: 176, s: 11 },
         cpf:      { x: 346, y: 149, s: 11 },
 
-        // Carimbos de Rodapé (Data e Local)
+        // COORDENADAS QUE VOCÊ CONFIGUROU (RESTAURADAS)
         localCarimbo: { x: 123, y: 56, s: 11 },
-        dia:      { x: 376, y: 58, s: 11 },
-        mes:      { x: 410, y: 58, s: 11 },
-        ano:      { x: 441, y: 58, s: 11 },
+        dia:          { x: 376, y: 58, s: 11 },
+        mes:          { x: 410, y: 58, s: 11 },
+        ano:          { x: 441, y: 58, s: 11 },
 
-        // Horários
         h_ini: { x: 91, y: 747, s: 10 }, m_ini: { x: 110, y: 747, s: 10 },
         h_che: { x: 91, y: 736, s: 10 }, m_che: { x: 110, y: 736, s: 10 },
         h_ate: { x: 418, y: 749, s: 10 }, m_ate: { x: 436, y: 749, s: 10 }
     };
 
-    // =========================================================
-    // VARIÁVEIS GLOBAIS E CONEXÕES
-    // =========================================================
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
@@ -98,40 +89,30 @@
     
     let db = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: "327.190.648-31" };
 
-    // =========================================================
-    // FUNÇÕES DE TRATAMENTO DE DADOS
-    // =========================================================
     function limparNome(nome) {
         const proibidas = ['da', 'de', 'do', 'das', 'dos'];
-        return nome.split(' ')
-                   .filter(p => p && !proibidas.includes(p.toLowerCase()))
-                   .slice(0, 3) // Pega no máximo 3 nomes para não vazar
-                   .join(' ').toUpperCase();
+        return nome.split(' ').filter(p => p && !proibidas.includes(p.toLowerCase())).slice(0, 3).join(' ').toUpperCase();
     }
 
     async function extrairDados() {
         const txt = document.getElementById('textoBruto').value.toUpperCase();
         if(!txt) return;
 
-        // Extração com Regex
-        db.inc = (/(INC\d+)/.exec(txt) || ["",""])[1];
-        db.patri = (/SGPI\s*:\s*(\d+)/.exec(txt) || ["",""])[1];
-        db.host = (/HOSTNAME\s*:\s*(\S+)/.exec(txt) || ["",""])[1];
-        db.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/.exec(txt) || ["",""])[1];
-        db.mac = (/MAC\s*:\s*(\S+)/.exec(txt) || ["",""])[1];
-        db.uniorg = (/UNIORG\s*:\s*(\d+)/.exec(txt) || ["",""])[1];
-        db.matricula = (/MATRÍCULA\s*:\s*(\d+)/.exec(txt) || ["","---"])[1];
+        db.inc = (/(INC\d+)/.exec(txt) || ["","---"])[1];
+        db.patri = (/SGPI\s*:\s*(\d+)/.exec(txt) || ["","---"])[1];
+        db.host = (/HOSTNAME\s*:\s*(\S+)/.exec(txt) || ["","---"])[1];
+        db.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/.exec(txt) || ["","---"])[1];
+        db.mac = (/MAC\s*:\s*(\S+)/.exec(txt) || ["","---"])[1];
+        db.uniorg = (/UNIORG\s*:\s*(\d+)/.exec(txt) || ["","---"])[1];
+        db.matri = (/MATRÍCULA\s*:\s*(\d+)/.exec(txt) || ["","---"])[1];
 
-        // Lógica de Modelo
         if (db.sn.startsWith('P')) db.modelo = "LENOVO T14";
         else if (db.sn.startsWith('B')) db.modelo = "HP ELITEBOOK 640 G9";
-        else db.modelo = "EQUIPAMENTO PADRÃO";
+        else db.modelo = "---";
 
-        // Nome do Responsável
-        let rawNome = (/SOLICITANTE\s*:\s*(.+)/.exec(txt) || ["",""])[1].trim();
+        let rawNome = (/SOLICITANTE\s*:\s*(.+)/.exec(txt) || ["","---"])[1].trim();
         db.resp = limparNome(rawNome);
 
-        // Endereço
         const mEnd = /ENDEREÇO\s*:\s*(.+)/.exec(txt);
         if(mEnd) {
             const linha = mEnd[1];
@@ -139,22 +120,16 @@
             db.num = (/(\d+)/.exec(linha.replace(db.rua, "")) || ["",""])[1];
             db.cid = (/-\s*([^,]+)/.exec(linha) || ["","---"])[1].trim();
             db.uf = (/,\s*([A-Z]{2})/.exec(linha) || ["",""])[1];
-            
             const mCep = /(\d{8})/.exec(linha.replace(/\s/g, ""));
             if (mCep) buscarBairro(mCep[1]);
         }
 
-        // Horários
-        const getHora = (label) => {
-            const m = new RegExp(label + ".*?(\\d{2}):(\\d{2})").exec(txt);
-            return m ? { h: m[1], m: m[2] } : { h: "00", m: "00" };
-        };
-        db.ini = getHora("INÍCIO"); db.che = getHora("CHEGADA"); db.ate = getHora("ATENDIMENTO");
+        const getH = (l) => { const m = new RegExp(l + ".*?(\\d{2}):(\\d{2})").exec(txt); return m ? {h:m[1], m:m[2]} : {h:"00", m:"00"}; };
+        db.ini = getH("INÍCIO"); db.che = getH("CHEGADA"); db.ate = getH("ATENDIMENTO");
 
-        // Atualiza Painel Visual
         document.getElementById('vInc').innerText = db.inc;
-        document.getElementById('vModelo').innerText = db.modelo;
         document.getElementById('vCidade').innerText = db.cid;
+        document.getElementById('vData').innerText = new Date().toLocaleDateString('pt-BR');
     }
 
     async function buscarBairro(cep) {
@@ -162,63 +137,48 @@
         if(!r.erro) db.bai = r.bairro.toUpperCase();
     }
 
-    // =========================================================
-    // MOTOR DE GERAÇÃO DO PDF (PADRÃO PROFISSIONAL)
-    // =========================================================
     async function gerarERenderizar() {
         const btn = document.getElementById('btnGerar');
         btn.disabled = true;
-        
         try {
             const modelBytes = await fetch(URL_MODELO_PDF + '?v=' + Date.now()).then(res => res.arrayBuffer());
             const pdfDoc = await PDFLib.PDFDocument.load(modelBytes);
             const page = pdfDoc.getPages()[0];
             const black = PDFLib.rgb(0, 0, 0);
 
-            // Função interna para carimbar usando o MAPA
-            const carimbar = (valor, config) => {
-                if (valor && config) {
-                    page.drawText(String(valor), { x: config.x, y: config.y, size: config.s, color: black });
-                }
-            };
+            const draw = (val, cfg) => { if (val && cfg) page.drawText(String(val), { x: cfg.x, y: cfg.y, size: cfg.s, color: black }); };
 
-            // Aplicação em massa seguindo o mapa de coordenadas
-            carimbar(db.inc, MAPA_CAMPOS.inc);
-            carimbar(db.uniorg, MAPA_CAMPOS.uniorg);
-            carimbar(db.rua, MAPA_CAMPOS.rua);
-            carimbar(db.num, MAPA_CAMPOS.num);
-            carimbar(db.bai, MAPA_CAMPOS.bairro);
-            carimbar(db.cid, MAPA_CAMPOS.cidade);
-            carimbar(db.uf, MAPA_CAMPOS.uf);
-            
-            carimbar(db.modelo, MAPA_CAMPOS.modelo);
-            carimbar(db.host, MAPA_CAMPOS.hostname);
-            carimbar(db.patri, MAPA_CAMPOS.patri);
-            carimbar(db.sn, MAPA_CAMPOS.serial);
-            carimbar(db.mac, MAPA_CAMPOS.mac);
-            
-            carimbar(db.resp, MAPA_CAMPOS.responsavel);
-            carimbar(db.matricula, MAPA_CAMPOS.matricula);
-            carimbar(db.tecnico, MAPA_CAMPOS.tecnico);
-            carimbar(db.cpf, MAPA_CAMPOS.cpf);
+            draw(db.inc, MAPA_CAMPOS.inc);
+            draw(db.uniorg, MAPA_CAMPOS.uniorg);
+            draw(db.rua, MAPA_CAMPOS.rua);
+            draw(db.num, MAPA_CAMPOS.num);
+            draw(db.bai, MAPA_CAMPOS.bairro);
+            draw(db.cid, MAPA_CAMPOS.cidade);
+            draw(db.uf, MAPA_CAMPOS.uf);
+            draw(db.modelo, MAPA_CAMPOS.modelo);
+            draw(db.host, MAPA_CAMPOS.hostname);
+            draw(db.patri, MAPA_CAMPOS.patri);
+            draw(db.sn, MAPA_CAMPOS.serial);
+            draw(db.mac, MAPA_CAMPOS.mac);
+            draw(db.resp, MAPA_CAMPOS.resp);
+            draw(db.matri, MAPA_CAMPOS.matri);
+            draw(db.tecnico, MAPA_CAMPOS.tecnico);
+            draw(db.cpf, MAPA_CAMPOS.cpf);
 
-            // Local e Data
-            carimbar(db.cid, MAPA_CAMPOS.localCarimbo);
+            // RESTAURAÇÃO DOS CARIMBOS DE DATA/LOCAL
+            draw(db.cid, MAPA_CAMPOS.localCarimbo);
             const d = new Date();
-            carimbar(String(d.getDate()).padStart(2,'0'), MAPA_CAMPOS.dia);
-            carimbar(String(d.getMonth()+1).padStart(2,'0'), MAPA_CAMPOS.mes);
-            carimbar(d.getFullYear(), MAPA_CAMPOS.ano);
+            draw(String(d.getDate()).padStart(2,'0'), MAPA_CAMPOS.dia);
+            draw(String(d.getMonth()+1).padStart(2,'0'), MAPA_CAMPOS.mes);
+            draw(d.getFullYear(), MAPA_CAMPOS.ano);
 
-            // Solução Dinâmica
-            const sol = db.inc.includes("IMG") || document.getElementById('textoBruto').value.includes("IMAGEM") ? "BAIXA DE IMAGEM REALIZADA" : "MANUTENÇÃO PREVENTIVA/CORRETIVA";
-            carimbar(sol, MAPA_CAMPOS.solucao);
+            const sol = document.getElementById('textoBruto').value.includes("IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
+            draw(sol, MAPA_CAMPOS.solucao);
 
-            // Horários
-            carimbar(db.ini.h, MAPA_CAMPOS.h_ini); carimbar(db.ini.m, MAPA_CAMPOS.m_ini);
-            carimbar(db.che.h, MAPA_CAMPOS.h_che); carimbar(db.che.m, MAPA_CAMPOS.m_che);
-            carimbar(db.ate.h, MAPA_CAMPOS.h_ate); carimbar(db.ate.m, MAPA_CAMPOS.m_ate);
+            draw(db.ini.h, MAPA_CAMPOS.h_ini); draw(db.ini.m, MAPA_CAMPOS.m_ini);
+            draw(db.che.h, MAPA_CAMPOS.h_che); draw(db.che.m, MAPA_CAMPOS.m_che);
+            draw(db.ate.h, MAPA_CAMPOS.h_ate); draw(db.ate.m, MAPA_CAMPOS.m_ate);
 
-            // Renderização no Navegador
             const pdfData = await pdfDoc.save();
             const pdf = await pdfjsLib.getDocument({data: pdfData}).promise;
             const pdfPage = await pdf.getPage(1);
@@ -226,7 +186,6 @@
             const viewport = pdfPage.getViewport({scale: 2.0});
             canvas.height = viewport.height; canvas.width = viewport.width;
             await pdfPage.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
-            
             document.getElementById('viewerContainer').style.display = 'block';
         } catch (e) { alert("Erro: " + e.message); }
         btn.disabled = false;
@@ -234,7 +193,7 @@
 
     async function salvarAtendimento() {
         const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: db.inc, analista: 'Willian' }]);
-        alert(error ? "Erro ao salvar" : "Salvo no Banco!");
+        alert(error ? "Erro ao salvar" : "Salvo!");
     }
 </script>
 </body>
