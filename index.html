@@ -156,7 +156,6 @@
     const CPF_FIXO = "327.190.648-31";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Mapeamento corrigido baseado nas posições da folha física
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
@@ -194,6 +193,7 @@
         return context.measureText(texto.toUpperCase()).width;
     }
 
+    // Limita o nome do solicitante mantendo a largura ideal na célula
     function limitarNomeSolicitante(nome) {
         const LARGURA_MAXIMA_PX = 155;
         let partes = nome.split(' ').filter(p => !(['da', 'de', 'do', 'das', 'dos'].includes(p.toLowerCase())));
@@ -247,16 +247,29 @@
             if (mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
         }
 
-        // LIMPEZA DAS VALIDAÇÕES AUTOMÁTICAS: Deixa os campos de hora limpos para digitação manual sem misturar as ordens
-        document.getElementById('f_h_partida').value = '';
-        document.getElementById('f_m_partida').value = '';
-        document.getElementById('f_h_chegada').value = '';
-        document.getElementById('f_m_chegada').value = '';
-        document.getElementById('f_h_inicio_ate').value = '';
-        document.getElementById('f_m_inicio_ate').value = '';
+        // LÓGICA DO SEU PRIMEIRO CÓDIGO RESTAURADA: Captura os carimbos de data/hora dinamicamente usando Regex
+        const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
+        
+        // Mapeia os termos de hora do texto bruto
+        const partida = reg("PARTIDA") || reg("INÍCIO"); 
+        const chegada = reg("CHEGADA"); 
+        const termino = reg("ATENDIMENTO"); // Captura baseado na linha de atendimento do texto
+
+        // Atribui os valores capturados diretamente às caixas da tela seguindo a lógica visual correta
+        document.getElementById('f_h_partida').value = partida ? partida[1] : '';
+        document.getElementById('f_m_partida').value = partida ? partida[2] : '';
+        
+        document.getElementById('f_h_chegada').value = chegada ? chegada[1] : '';
+        document.getElementById('f_m_chegada').value = chegada ? chegada[2] : '';
+        
+        document.getElementById('f_h_inicio_ate').value = termino ? termino[1] : '';
+        document.getElementById('f_m_inicio_ate').value = termino ? termino[2] : '';
+        
+        // Mantém a caixa inferior direita limpa por enquanto
         document.getElementById('f_h_termino_ate').value = '';
         document.getElementById('f_m_termino_ate').value = '';
 
+        // Preenche os demais campos estruturais
         document.getElementById('f_inc').value = dados.inc;
         document.getElementById('f_uniorg').value = dados.uniorg;
         document.getElementById('f_rua').value = dados.rua || '';
@@ -321,7 +334,7 @@
         page.drawText(String(d.getMonth() + 1).padStart(2, '0'), { x: POS.mes.x, y: 58, size: 11, color: fontColor }); 
         page.drawText(String(d.getFullYear()), { x: POS.ano.x, y: 58, size: 11, color: fontColor }); 
 
-        // Carimba cada campo estritamente baseado no ID correto da tela
+        // Carimba no PDF exatamente as informações digitadas ou capturadas nas caixas
         escrever('f_h_partida', POS.h_partida); escrever('f_m_partida', POS.m_partida);
         escrever('f_h_chegada', POS.h_chegada); escrever('f_m_chegada', POS.m_chegada);
         escrever('f_h_inicio_ate', POS.h_inicio_ate); escrever('f_m_inicio_ate', POS.m_inicio_ate);
