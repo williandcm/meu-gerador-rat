@@ -3,261 +3,238 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAT Visualizador Pro - Base Willian</title>
-
+    <title>RAT Pro - Central de Configuração</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    
     <style>
-        /* Estilização Visual (CSS) */
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        
-        /* O "Card" branco centralizado */
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; box-sizing: border-box; }
-        
-        h2 { color: #1e293b; text-align: center; font-size: 1.1rem; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; margin-top: 0; }
-        
-        /* Área de texto onde você cola o chamado */
-        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; resize: none; }
-        
-        /* Painel cinza que mostra os dados extraídos antes de gerar o PDF */
-        .info-painel { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
-        .info-item { text-align: center; border-right: 1px solid #e2e8f0; padding: 2px; }
-        .info-item:last-child { border-right: none; } /* Remove a linha divisória do último item */
-        .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
-        .info-value { font-size: 11px; color: #1e293b; font-weight: bold; word-break: break-all; }
-
-        /* Botões de ação */
-        .btn-group { display: flex; gap: 8px; margin-bottom: 15px; }
-        button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; }
-        .btn-save { background: #3b82f6; color: white; } /* Azul para salvar */
-        .btn-pdf { background: #10b981; color: white; }  /* Verde para PDF */
-        button:hover { opacity: 0.9; } /* Efeito ao passar o mouse */
-        button:disabled { background: #cbd5e1; cursor: not-allowed; } /* Botão cinza se estiver carregando */
-
-        /* Container do Visualizador do PDF (fica oculto até gerar) */
-        #viewerContainer { display: none; width: 100%; margin-top: 10px; background: #525659; border-radius: 8px; padding: 10px; box-sizing: border-box; text-align: center; }
-        canvas { width: 100% !important; height: auto !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 4px; }
-        .msg-view { color: white; font-size: 11px; margin-bottom: 8px; display: block; font-weight: bold; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; box-sizing: border-box; }
+        h2 { color: #1e293b; text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin: 0 0 15px 0; }
+        textarea { width: 100%; height: 120px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; box-sizing: border-box; resize: none; outline: none; }
+        textarea:focus { border-color: #3b82f6; }
+        .info-painel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin: 15px 0; }
+        .info-item { text-align: center; }
+        .info-label { display: block; font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+        .info-value { font-size: 12px; color: #1e293b; font-weight: bold; }
+        .btn-group { display: flex; gap: 10px; }
+        button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; }
+        .btn-save { background: #3b82f6; color: white; }
+        .btn-pdf { background: #10b981; color: white; }
+        button:disabled { background: #cbd5e1; cursor: not-allowed; }
+        #viewerContainer { display: none; width: 100%; margin-top: 20px; background: #525659; border-radius: 8px; padding: 10px; box-sizing: border-box; }
+        canvas { width: 100% !important; height: auto !important; border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>📄 Gerador de RAT Santander</h2>
-    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
+    <h2>📄 RAT Santander - V2.0</h2>
+    <textarea id="textoBruto" placeholder="Cole o chamado completo aqui..." oninput="extrairDados()"></textarea>
     
     <div class="info-painel">
-        <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN DO CARMO MORAIS</span></div>
-        <div class="info-item"><span class="info-label">Local</span><span id="pCidadeView" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Data</span><span id="pDataView" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Chamado</span><span id="vInc" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Equipamento</span><span id="vModelo" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Cidade</span><span id="vCidade" class="info-value">---</span></div>
     </div>
 
     <div class="btn-group">
-        <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar</button>
-        <button class="btn-pdf" id="btnGerar" onclick="gerarERenderizar()">👁️ Visualizar RAT</button>
+        <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar Banco</button>
+        <button class="btn-pdf" id="btnGerar" onclick="gerarERenderizar()">👁️ Gerar e Visualizar</button>
     </div>
 
     <div id="viewerContainer">
-        <span class="msg-view">PRÉ-VISUALIZAÇÃO DA RAT:</span>
         <canvas id="pdfCanvas"></canvas>
     </div>
 </div>
 
 <script>
-    // Configura o "motor" que lê o PDF
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    // =========================================================
+    // CONFIGURAÇÃO DE COORDENADAS (O CORAÇÃO DO PROGRAMADOR)
+    // Se precisar mudar de lugar, altere apenas os números abaixo:
+    // =========================================================
+    const MAPA_CAMPOS = {
+        inc:      { x: 123, y: 768, s: 11 },
+        uniorg:   { x: 64,  y: 714, s: 11 },
+        rua:      { x: 79,  y: 701, s: 10 },
+        num:      { x: 300, y: 702, s: 11 },
+        bairro:   { x: 65,  y: 688, s: 11 },
+        cidade:   { x: 338, y: 689, s: 11 },
+        uf:       { x: 43,  y: 675, s: 11 },
+        
+        // Dados do Equipamento
+        modelo:   { x: 69,  y: 457, s: 11 },
+        hostname: { x: 78,  y: 443, s: 11 },
+        patri:    { x: 88,  y: 485, s: 11 },
+        serial:   { x: 110, y: 471, s: 11 },
+        mac:      { x: 91,  y: 430, s: 11 },
+        
+        // Atendimento
+        solucao:  { x: 30,  y: 232, s: 11 },
+        responsavel: { x: 95, y: 174, s: 11 },
+        matricula: { x: 83,  y: 147, s: 11 },
+        tecnico:  { x: 347, y: 176, s: 11 },
+        cpf:      { x: 346, y: 149, s: 11 },
 
-    // Configurações de conexão com o Banco de Dados e PDF base
+        // Carimbos de Rodapé (Data e Local)
+        localCarimbo: { x: 123, y: 56, s: 11 },
+        dia:      { x: 376, y: 58, s: 11 },
+        mes:      { x: 410, y: 58, s: 11 },
+        ano:      { x: 441, y: 58, s: 11 },
+
+        // Horários
+        h_ini: { x: 91, y: 747, s: 10 }, m_ini: { x: 110, y: 747, s: 10 },
+        h_che: { x: 91, y: 736, s: 10 }, m_che: { x: 110, y: 736, s: 10 },
+        h_ate: { x: 418, y: 749, s: 10 }, m_ate: { x: 436, y: 749, s: 10 }
+    };
+
+    // =========================================================
+    // VARIÁVEIS GLOBAIS E CONEXÕES
+    // =========================================================
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
-    const CPF_FIXO = "327.190.648-31";
-
-    // Inicializa o cliente do Supabase
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
-    // Objeto que guarda todos os dados que serão usados na RAT
-    let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO, inc:'', uniorg:'', rua:'', num:'', cid:'', uf:'', bai:'', cep:'', patri:'', sn:'', modelo:'', host:'', solucao:'', resp:'', matricula:'', mac:'', p:{h:'00',m:'00'}, c:{h:'00',m:'00'}, a:{h:'00',m:'00'} };
+    let db = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: "327.190.648-31" };
 
-    // Função que mede o tamanho físico (em pixels) do texto para não vazar a linha do PDF
-    function medirLarguraTexto(texto) {
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-        context.font = "bold 11px Arial"; // Usa a mesma fonte e tamanho do PDF
-        return context.measureText(texto.toUpperCase()).width;
+    // =========================================================
+    // FUNÇÕES DE TRATAMENTO DE DADOS
+    // =========================================================
+    function limparNome(nome) {
+        const proibidas = ['da', 'de', 'do', 'das', 'dos'];
+        return nome.split(' ')
+                   .filter(p => p && !proibidas.includes(p.toLowerCase()))
+                   .slice(0, 3) // Pega no máximo 3 nomes para não vazar
+                   .join(' ').toUpperCase();
     }
 
-    // Função que corta sobrenomes se o nome for grande demais para o espaço da RAT
-    function limitarNomeSolicitante(nome) {
-        const LARGURA_MAXIMA_PX = 155; // Limite de espaço no campo do PDF
-        // Divide o nome em palavras e remove conectivos como "de", "do", etc.
-        let partes = nome.split(' ').filter(p => {
-            const pLower = p.toLowerCase();
-            return p.length > 0 && !(['da', 'de', 'do', 'das', 'dos'].includes(pLower));
-        });
-        // Enquanto o nome for mais largo que 155 pixels, remove a última palavra
-        while (partes.length > 1 && medirLarguraTexto(partes.join(' ')) > LARGURA_MAXIMA_PX) {
-            partes.pop();
-        }
-        return partes.join(' ').toUpperCase();
-    }
-
-    // Função principal de extração (Lê o texto colado)
     async function extrairDados() {
-        const textoInput = document.getElementById('textoBruto').value;
-        if(!textoInput) return;
-        const texto = textoInput.toUpperCase();
+        const txt = document.getElementById('textoBruto').value.toUpperCase();
+        if(!txt) return;
 
-        // Regex (Expressões Regulares) para encontrar os dados no meio do texto
-        dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1]; // Busca INC + números
-        dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1]; // Busca SGPI
-        dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1]; // Busca Hostname
-        const matchMatricula = /MATRÍCULA\s*:\s*(\d+)/i.exec(texto);
-        dados.matricula = matchMatricula ? matchMatricula[1] : '---';
+        // Extração com Regex
+        db.inc = (/(INC\d+)/.exec(txt) || ["",""])[1];
+        db.patri = (/SGPI\s*:\s*(\d+)/.exec(txt) || ["",""])[1];
+        db.host = (/HOSTNAME\s*:\s*(\S+)/.exec(txt) || ["",""])[1];
+        db.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/.exec(txt) || ["",""])[1];
+        db.mac = (/MAC\s*:\s*(\S+)/.exec(txt) || ["",""])[1];
+        db.uniorg = (/UNIORG\s*:\s*(\d+)/.exec(txt) || ["",""])[1];
+        db.matricula = (/MATRÍCULA\s*:\s*(\d+)/.exec(txt) || ["","---"])[1];
 
-        // Lógica para definir Solução e se deve buscar MAC/SN
-        if (texto.includes("PIN PAD")) {
-            dados.sn = ''; dados.mac = '';
-            dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD";
-        } else {
-            const matchMac = /MAC\s*:\s*(\S+)/i.exec(texto);
-            dados.mac = matchMac ? matchMac[1] : '';
-            const matchSn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
-            dados.sn = matchSn;
-            // Define se é Baixa de Imagem ou Manutenção Preventiva
-            dados.solucao = texto.includes("BAIXA DE IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
+        // Lógica de Modelo
+        if (db.sn.startsWith('P')) db.modelo = "LENOVO T14";
+        else if (db.sn.startsWith('B')) db.modelo = "HP ELITEBOOK 640 G9";
+        else db.modelo = "EQUIPAMENTO PADRÃO";
+
+        // Nome do Responsável
+        let rawNome = (/SOLICITANTE\s*:\s*(.+)/.exec(txt) || ["",""])[1].trim();
+        db.resp = limparNome(rawNome);
+
+        // Endereço
+        const mEnd = /ENDEREÇO\s*:\s*(.+)/.exec(txt);
+        if(mEnd) {
+            const linha = mEnd[1];
+            db.rua = (/^([^0-9,]+)/.exec(linha) || ["",""])[1].trim();
+            db.num = (/(\d+)/.exec(linha.replace(db.rua, "")) || ["",""])[1];
+            db.cid = (/-\s*([^,]+)/.exec(linha) || ["","---"])[1].trim();
+            db.uf = (/,\s*([A-Z]{2})/.exec(linha) || ["",""])[1];
+            
+            const mCep = /(\d{8})/.exec(linha.replace(/\s/g, ""));
+            if (mCep) buscarBairro(mCep[1]);
         }
 
-        // Pega o nome do solicitante e aplica a função de limite de tamanho
-        let nomeCapturado = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
-        dados.resp = limitarNomeSolicitante(nomeCapturado);
+        // Horários
+        const getHora = (label) => {
+            const m = new RegExp(label + ".*?(\\d{2}):(\\d{2})").exec(txt);
+            return m ? { h: m[1], m: m[2] } : { h: "00", m: "00" };
+        };
+        db.ini = getHora("INÍCIO"); db.che = getHora("CHEGADA"); db.ate = getHora("ATENDIMENTO");
 
-        // Define o modelo do notebook automaticamente baseado na letra inicial do Serial
-        if (dados.sn && dados.sn.startsWith('P')) dados.modelo = "LENOVO T14";
-        else if (dados.sn && dados.sn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
-        else dados.modelo = "---";
-
-        // Extração de Uniorg e Endereço detalhado
-        dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
-        const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(texto);
-        if (mFullEnd) {
-            const linhaEnd = mFullEnd[1];
-            dados.rua = (/^([^0-9,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
-            dados.num = (/(\d+)/.exec(linhaEnd.replace(dados.rua, "")) || ["","---"])[1];
-            dados.cid = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim().toUpperCase();
-            dados.uf = (/,\s*([A-Z]{2})/.exec(linhaEnd) || ["",""])[1];
-            const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
-            // Se encontrar o CEP, chama a função para buscar o bairro na internet (ViaCEP)
-            if (mCep && mCep[1] !== dados.cep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
-            document.getElementById('pCidadeView').innerText = dados.cid;
-        }
-        
-        // Pega a data de hoje para mostrar no painel
-        const hoje = new Date();
-        document.getElementById('pDataView').innerText = hoje.toLocaleDateString('pt-BR');
-
-        // Extrai horários (Início, Chegada, Atendimento) usando padrão de 00:00
-        const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
-        const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
-        if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
+        // Atualiza Painel Visual
+        document.getElementById('vInc').innerText = db.inc;
+        document.getElementById('vModelo').innerText = db.modelo;
+        document.getElementById('vCidade').innerText = db.cid;
     }
 
-    // Função que consulta o bairro pelo CEP usando a API ViaCEP
     async function buscarBairro(cep) {
-        try {
-            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            const data = await res.json();
-            if (!data.erro) { dados.bai = data.bairro.toUpperCase(); }
-        } catch (e) {}
+        const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`).then(res => res.json());
+        if(!r.erro) db.bai = r.bairro.toUpperCase();
     }
 
-    // Função que cria o PDF com os textos nas posições X e Y
+    // =========================================================
+    // MOTOR DE GERAÇÃO DO PDF (PADRÃO PROFISSIONAL)
+    // =========================================================
     async function gerarERenderizar() {
         const btn = document.getElementById('btnGerar');
-        btn.disabled = true; // Desativa o botão para evitar cliques duplos
+        btn.disabled = true;
+        
         try {
-            // 1. Baixa o modelo em branco do PDF
-            const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
-            const pdfDoc = await PDFLib.PDFDocument.load(await response.arrayBuffer());
-            const page = pdfDoc.getPages()[0]; // Pega a primeira página
-            const fontColor = PDFLib.rgb(0, 0, 0); // Define cor preta para o texto
-            
-            // Atalho para desenhar o texto na página
-            const txt = (t, x, y, s = 11) => { 
-                if(t && t !== '---' && t !== '') page.drawText(String(t), { x, y, size: s, color: fontColor }); 
+            const modelBytes = await fetch(URL_MODELO_PDF + '?v=' + Date.now()).then(res => res.arrayBuffer());
+            const pdfDoc = await PDFLib.PDFDocument.load(modelBytes);
+            const page = pdfDoc.getPages()[0];
+            const black = PDFLib.rgb(0, 0, 0);
+
+            // Função interna para carimbar usando o MAPA
+            const carimbar = (valor, config) => {
+                if (valor && config) {
+                    page.drawText(String(valor), { x: config.x, y: config.y, size: config.s, color: black });
+                }
             };
 
-            // ESCRITA DOS DADOS NOS CAMPOS DO PDF (X, Y)
-            txt(dados.inc, 123, 768);
-            txt(dados.uniorg, 64, 714);
-            txt(dados.rua, 79, 701, 10);
-            txt(dados.num, 300, 702);
-            txt(dados.cid, 338, 689);
-            txt(dados.uf, 43, 675); 
-            txt(dados.bai, 65, 688);
-            txt("EQUIPAMENTO INOPERANTE", 30, 555, 11);
-            txt(dados.modelo, 69, 457, 11); 
-            txt(dados.host, 78, 443, 11);
-            txt(dados.patri, 88, 485, 11); 
-            txt(dados.sn, 110, 471, 11);
-            txt(dados.mac, 91, 430, 11);
-            txt(dados.solucao, 30, 232, 11); 
-            txt(dados.resp, 95, 174, 11); 
-            txt(dados.matricula, 83, 147, 11);
-            txt(dados.tecnico, 347, 176, 11);
-            txt(dados.cpf, 346, 149, 11); 
+            // Aplicação em massa seguindo o mapa de coordenadas
+            carimbar(db.inc, MAPA_CAMPOS.inc);
+            carimbar(db.uniorg, MAPA_CAMPOS.uniorg);
+            carimbar(db.rua, MAPA_CAMPOS.rua);
+            carimbar(db.num, MAPA_CAMPOS.num);
+            carimbar(db.bai, MAPA_CAMPOS.bairro);
+            carimbar(db.cid, MAPA_CAMPOS.cidade);
+            carimbar(db.uf, MAPA_CAMPOS.uf);
+            
+            carimbar(db.modelo, MAPA_CAMPOS.modelo);
+            carimbar(db.host, MAPA_CAMPOS.hostname);
+            carimbar(db.patri, MAPA_CAMPOS.patri);
+            carimbar(db.sn, MAPA_CAMPOS.serial);
+            carimbar(db.mac, MAPA_CAMPOS.mac);
+            
+            carimbar(db.resp, MAPA_CAMPOS.responsavel);
+            carimbar(db.matricula, MAPA_CAMPOS.matricula);
+            carimbar(db.tecnico, MAPA_CAMPOS.tecnico);
+            carimbar(db.cpf, MAPA_CAMPOS.cpf);
 
-            // Carimbos de Local e Data (Coordenadas enviadas pelo Willian)
-            txt(dados.cid, 123, 56, 11); 
+            // Local e Data
+            carimbar(db.cid, MAPA_CAMPOS.localCarimbo);
             const d = new Date();
-            txt(String(d.getDate()).padStart(2, '0'), 376, 58, 11); // Dia
-            txt(String(d.getMonth() + 1).padStart(2, '0'), 410, 58, 11); // Mês
-            txt(String(d.getFullYear()), 441, 58, 11); // Ano
+            carimbar(String(d.getDate()).padStart(2,'0'), MAPA_CAMPOS.dia);
+            carimbar(String(d.getMonth()+1).padStart(2,'0'), MAPA_CAMPOS.mes);
+            carimbar(d.getFullYear(), MAPA_CAMPOS.ano);
+
+            // Solução Dinâmica
+            const sol = db.inc.includes("IMG") || document.getElementById('textoBruto').value.includes("IMAGEM") ? "BAIXA DE IMAGEM REALIZADA" : "MANUTENÇÃO PREVENTIVA/CORRETIVA";
+            carimbar(sol, MAPA_CAMPOS.solucao);
 
             // Horários
-            txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
-            txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
-            txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
+            carimbar(db.ini.h, MAPA_CAMPOS.h_ini); carimbar(db.ini.m, MAPA_CAMPOS.m_ini);
+            carimbar(db.che.h, MAPA_CAMPOS.h_che); carimbar(db.che.m, MAPA_CAMPOS.m_che);
+            carimbar(db.ate.h, MAPA_CAMPOS.h_ate); carimbar(db.ate.m, MAPA_CAMPOS.m_ate);
 
-            // 2. Salva o PDF modificado e prepara para mostrar na tela
-            const pdfBytes = await pdfDoc.save();
-            const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
-            const pdf = await loadingTask.promise;
+            // Renderização no Navegador
+            const pdfData = await pdfDoc.save();
+            const pdf = await pdfjsLib.getDocument({data: pdfData}).promise;
             const pdfPage = await pdf.getPage(1);
-            const viewport = pdfPage.getViewport({scale: 2.0}); // Aumenta a qualidade da imagem (zoom)
-            
             const canvas = document.getElementById('pdfCanvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-
-            // 3. Renderiza o conteúdo do PDF no canvas da página
-            await pdfPage.render({canvasContext: context, viewport: viewport}).promise;
-            document.getElementById('viewerContainer').style.display = 'block'; // Mostra o visualizador
-        } catch (e) { 
-            alert("Erro: " + e.message); 
-        } finally { 
-            btn.disabled = false; 
-        }
+            const viewport = pdfPage.getViewport({scale: 2.0});
+            canvas.height = viewport.height; canvas.width = viewport.width;
+            await pdfPage.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
+            
+            document.getElementById('viewerContainer').style.display = 'block';
+        } catch (e) { alert("Erro: " + e.message); }
+        btn.disabled = false;
     }
 
-    // Função que envia o texto bruto para o banco de dados Supabase
     async function salvarAtendimento() {
-        const texto = document.getElementById('textoBruto').value.trim();
-        if(!texto) return;
-        try {
-            const { error } = await supabaseClient.from('chamados').insert([{ 
-                numero_inc: dados.inc, 
-                texto_bruto: texto, 
-                analista: 'Willian' 
-            }]);
-            if (error) throw error;
-            alert("Salvo com sucesso!");
-        } catch (e) { 
-            alert("Erro ao salvar: " + e.message); 
-        }
+        const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: db.inc, analista: 'Willian' }]);
+        alert(error ? "Erro ao salvar" : "Salvo no Banco!");
     }
 </script>
 </body>
