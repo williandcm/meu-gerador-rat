@@ -30,17 +30,18 @@
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .full-width { grid-column: span 2; }
         
-        /* CONTAINERS EM DUAS COLUNAS */
-        .equip-container, .time-container { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .column-title { font-size: 11px; font-weight: bold; color: var(--primary); text-transform: uppercase; margin-bottom: 5px; text-align: center; }
+        /* LAYOUT DE DUAS COLUNAS PARA EQUIPAMENTOS E HORÁRIOS */
+        .equip-container, .time-container { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .column-title { font-size: 11px; font-weight: bold; color: var(--primary); text-transform: uppercase; margin-bottom: 8px; text-align: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 3px; }
         
         .field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
         .field label { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; }
         .field input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; }
         
-        /* INPUTS DE HORÁRIO ALINHADOS LADO A LADO */
-        .time-group { display: flex; gap: 5px; }
-        .time-group input { text-align: center; }
+        /* CAIXAS DE HORÁRIO LADO A LADO (HH : MM) */
+        .time-group { display: flex; align-items: center; gap: 4px; }
+        .time-group input { text-align: center; width: 100%; }
+        .time-divider { font-weight: bold; color: #64748b; }
 
         canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
@@ -69,10 +70,12 @@
                 
                 <div class="time-container">
                     <div>
+                        <div class="column-title">Percurso</div>
                         <div class="field">
                             <label>Hora Partida</label>
                             <div class="time-group">
                                 <input type="text" id="f_h_partida" placeholder="HH" maxlength="2">
+                                <span class="time-divider">:</span>
                                 <input type="text" id="f_m_partida" placeholder="MM" maxlength="2">
                             </div>
                         </div>
@@ -80,15 +83,18 @@
                             <label>Hora Chegada</label>
                             <div class="time-group">
                                 <input type="text" id="f_h_chegada" placeholder="HH" maxlength="2">
+                                <span class="time-divider">:</span>
                                 <input type="text" id="f_m_chegada" placeholder="MM" maxlength="2">
                             </div>
                         </div>
                     </div>
                     <div>
+                        <div class="column-title">Atendimento</div>
                         <div class="field">
                             <label>Hora Início Atendimento</label>
                             <div class="time-group">
                                 <input type="text" id="f_h_inicio_ate" placeholder="HH" maxlength="2">
+                                <span class="time-divider">:</span>
                                 <input type="text" id="f_m_inicio_ate" placeholder="MM" maxlength="2">
                             </div>
                         </div>
@@ -96,6 +102,7 @@
                             <label>Hora Término Atendimento</label>
                             <div class="time-group">
                                 <input type="text" id="f_h_termino_ate" placeholder="HH" maxlength="2">
+                                <span class="time-divider">:</span>
                                 <input type="text" id="f_m_termino_ate" placeholder="MM" maxlength="2">
                             </div>
                         </div>
@@ -150,7 +157,7 @@
     const CPF_FIXO = "327.190.648-31";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Mapeamento das coordenadas no PDF base original
+    // Coordenadas originais do mapeamento do PDF
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
@@ -159,9 +166,9 @@
         mac: { x: 91, y: 430 }, solucao: { x: 30, y: 232 }, resp: { x: 95, y: 174 },
         matri: { x: 83, y: 147 }, tecnico: { x: 347, y: 176 }, cpf: { x: 346, y: 149 },
         local: { x: 123, y: 56 }, dia: { x: 376, y: 58 }, mes: { x: 410, y: 58 }, ano: { x: 441, y: 58 },
-        h_partida: { x: 91, y: 747 }, m_partida: { x: 110, y: 747 },  // Mapeados conforme coordenadas antigas (h_ini/m_ini)
-        h_chegada: { x: 91, y: 736 }, m_chegada: { x: 110, y: 736 },  // Mapeados conforme coordenadas antigas (h_che/m_che)
-        h_termino_ate: { x: 418, y: 749 }, m_termino_ate: { x: 436, y: 749 } // Mapeados conforme coordenadas antigas (h_ate/m_ate)
+        h_partida: { x: 91, y: 747 }, m_partida: { x: 110, y: 747 },
+        h_chegada: { x: 91, y: 736 }, m_chegada: { x: 110, y: 736 },
+        h_termino_ate: { x: 418, y: 749 }, m_termino_ate: { x: 436, y: 749 }
     };
 
     let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO, partida:{h:null,m:null}, chegada:{h:null,m:null}, termino:{h:null,m:null} };
@@ -173,11 +180,11 @@
             const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
             modeloPdfBytes = await response.arrayBuffer();
             gerarERenderizar();
-            document.querySelectorAll('.form-grid input').forEach(input => {
-                input.addEventListener('input', () => {
-                    clearTimeout(timeoutRender);
-                    timeoutRender = setTimeout(gerarERenderizar, 500);
-                });
+            
+            // Ouvinte universal para atualizar o Canvas em tempo real ao digitar em qualquer campo
+            document.getElementById('editorBox').addEventListener('input', () => {
+                clearTimeout(timeoutRender);
+                timeoutRender = setTimeout(gerarERenderizar, 500);
             });
         } catch (e) { console.error("Erro ao carregar o PDF base:", e); }
     };
@@ -242,7 +249,6 @@
             if (mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
         }
 
-        // Regex adaptada para capturar os horários do texto de entrada
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
         const partida = reg("INÍCIO"), chegada = reg("CHEGADA"), termino = reg("ATENDIMENTO");
         dados.partida = partida ? {h:partida[1], m:partida[2]} : {h:'', m:''};
@@ -252,7 +258,7 @@
         document.getElementById('f_inc').value = dados.inc;
         document.getElementById('f_uniorg').value = dados.uniorg;
         
-        // Alimentando os novos inputs de horário
+        // Auto-preenchimento dos horários extraídos do texto
         document.getElementById('f_h_partida').value = dados.partida.h;
         document.getElementById('f_m_partida').value = dados.partida.m;
         document.getElementById('f_h_chegada').value = dados.chegada.h;
@@ -260,7 +266,7 @@
         document.getElementById('f_h_termino_ate').value = dados.termino.h;
         document.getElementById('f_m_termino_ate').value = dados.termino.m;
         
-        // Limpa o início do atendimento para preenchimento manual se necessário
+        // Campo manual limpo por padrão
         document.getElementById('f_h_inicio_ate').value = '';
         document.getElementById('f_m_inicio_ate').value = '';
 
@@ -269,13 +275,11 @@
         document.getElementById('f_cid').value = dados.cid || '';
         document.getElementById('f_uf').value = dados.uf || '';
         
-        // Mapeando dados do chamado na coluna do equipamento "Atual / Retirado"
         document.getElementById('f_patri_ret').value = dados.patri;
         document.getElementById('f_host_ret').value = dados.host;
         document.getElementById('f_sn_ret').value = dados.sn;
         document.getElementById('f_mac_ret').value = dados.mac;
         
-        // Coluna do "Novo / Instalado" limpa para digitação
         document.getElementById('f_patri_inst').value = '';
         document.getElementById('f_host_inst').value = '';
         document.getElementById('f_sn_inst').value = '';
@@ -308,7 +312,6 @@
         escrever('f_bai', POS.bai);
         page.drawText("EQUIPAMENTO INOPERANTE", { x: 30, y: 555, size: 11, color: fontColor });
         
-        // Escreve os dados da coluna "Atual / Retirado" no PDF
         escrever('f_modelo', POS.modelo); 
         escrever('f_host_ret', POS.host); 
         escrever('f_patri_ret', POS.patri);
@@ -329,7 +332,7 @@
         page.drawText(String(d.getMonth() + 1).padStart(2, '0'), { x: POS.mes.x, y: 58, size: 11, color: fontColor }); 
         page.drawText(String(d.getFullYear()), { x: POS.ano.x, y: 58, size: 11, color: fontColor }); 
 
-        // Carimba os horários coletados nas respectivas posições estruturadas no PDF
+        // Carimbando os horários do formulário no PDF
         escrever('f_h_partida', POS.h_partida); escrever('f_m_partida', POS.m_partida);
         escrever('f_h_chegada', POS.h_chegada); escrever('f_m_chegada', POS.m_chegada);
         escrever('f_h_termino_ate', POS.h_termino_ate); escrever('f_m_termino_ate', POS.m_termino_ate);
