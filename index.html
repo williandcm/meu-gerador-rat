@@ -31,7 +31,8 @@
         .full-width { grid-column: span 2; }
         
         .equip-container, .time-container { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .column-title { font-size: 11px; font-weight: bold; color: var(--primary); text-transform: uppercase; margin-bottom: 8px; text-align: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 3px; }
+        /* Título ainda maior para melhor leitura */
+        .column-title { font-size: 13px; font-weight: bold; color: #1e293b; text-transform: uppercase; margin-bottom: 8px; text-align: center; border-bottom: 3px solid var(--primary); padding-bottom: 8px; line-height: 1.4; }
         
         .field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
         .field label { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; }
@@ -89,7 +90,7 @@
 
                 <div class="equip-container">
                     <div>
-                        <div class="column-title">Atual / Retirado</div>
+                        <div class="column-title">SEMPRE PREENCHER<br>ATUAL RECONFIGURADO OU RETIRADO</div>
                         <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_ret"></div>
                         <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_ret"></div>
                         <div class="field"><label>Modelo</label><input type="text" id="f_modelo_ret"></div>
@@ -97,7 +98,7 @@
                         <div class="field"><label>MAC</label><input type="text" id="f_mac_ret" oninput="sincronizarMac()"></div>
                     </div>
                     <div>
-                        <div class="column-title">Novo / Instalado</div>
+                        <div class="column-title">PREENCHER EM CASO DE TROCA<br>EQUIPAMENTO NOVO</div>
                         <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_inst"></div>
                         <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_inst"></div>
                         <div class="field"><label>Modelo</label><input type="text" id="f_modelo_inst"></div>
@@ -119,7 +120,6 @@
         </div>
 
         <div class="preview-box" id="previewBox">
-            <span style="color:white; font-size: 11px; font-weight: bold; margin-bottom: 10px; display: block;">PRÉ-VISUALIZAÇÃO DA RAT:</span>
             <canvas id="pdfCanvas"></canvas>
         </div>
     </div>
@@ -302,7 +302,6 @@
         escrever('f_num', POS.num); escrever('f_cid', POS.cid); escrever('f_uf', POS.uf);
         escrever('f_bai', POS.bai);
         
-        // Pega o conteúdo do novo campo de Defeito
         const descDefeito = document.getElementById('f_defeito').value;
         if(descDefeito) page.drawText(descDefeito.toUpperCase(), { x: POS.inoperante.x, y: POS.inoperante.y, size: 11, color: fontColor });
         
