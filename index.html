@@ -18,7 +18,7 @@
         textarea { width: 100%; height: 80px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; box-sizing: border-box; resize: none; outline: none; }
 
         .workspace { display: flex; flex-direction: row; gap: 20px; width: 100%; justify-content: center; align-items: flex-start; }
-        .editor-box { flex: 1; min-width: 350px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .editor-box { flex: 1; min-width: 350px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box; }
         
         .preview-box { flex: 1; min-width: 350px; background: #525659; padding: 15px; border-radius: 12px; text-align: center; display: block; }
 
@@ -33,11 +33,12 @@
         .equip-container, .time-container { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .column-title { font-size: 11px; font-weight: bold; color: var(--primary); text-transform: uppercase; margin-bottom: 8px; text-align: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 3px; }
         
-        .field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
+        .field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; width: 100%; }
         .field label { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; }
-        .field input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; }
         
-        .field input.time-input { text-align: center; font-size: 16px; letter-spacing: 1px; }
+        /* CORREÇÃO DAS COLUNAS: Garante preenchimento e alinhamento fluído */
+        .field input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; box-sizing: border-box; }
+        .field input.time-input { text-align: center; font-size: 16px; letter-spacing: 1px; width: 100%; box-sizing: border-box; }
 
         canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
@@ -138,7 +139,6 @@
     const CPF_FIXO = "327.190.648-31";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Mapeamento de coordenadas físicas originais da RAT (separados em h e m)
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
@@ -169,9 +169,8 @@
         } catch (e) { console.error("Erro ao carregar o PDF base:", e); }
     };
 
-    // Função de Máscara em tempo real para o formato HH:MM
     function mascaraHora(input) {
-        let v = input.value.replace(/\D/g, ""); // Remove tudo que não for número
+        let v = input.value.replace(/\D/g, ""); 
         if (v.length > 2) {
             v = v.slice(0, 2) + ":" + v.slice(2, 4);
         }
@@ -238,20 +237,17 @@
             if (mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
         }
 
-        // CAPTURA AUTOMÁTICA DOS HORÁRIOS DO CHAMADO
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
         
         const partida = reg("PARTIDA") || reg("INÍCIO"); 
         const chegada = reg("CHEGADA"); 
         const termino = reg("ATENDIMENTO");
 
-        // Alimenta os campos unificados da tela aplicando a máscara visual HH:MM
         document.getElementById('f_partida').value = partida ? `${partida[1]}:${partida[2]}` : '';
         document.getElementById('f_chegada').value = chegada ? `${chegada[1]}:${chegada[2]}` : '';
         document.getElementById('f_inicio_ate').value = termino ? `${termino[1]}:${termino[2]}` : '';
         document.getElementById('f_termino_ate').value = '';
 
-        // Atualiza campos estruturais
         document.getElementById('f_inc').value = dados.inc;
         document.getElementById('f_uniorg').value = dados.uniorg;
         document.getElementById('f_rua').value = dados.rua || '';
@@ -284,15 +280,14 @@
         const page = pdfDoc.getPages()[0];
         const fontColor = PDFLib.rgb(0, 0, 0);
 
-        const escrever = (id, config) => {
+        const escribir = (id, config) => {
             const texto = document.getElementById(id).value;
             if(texto && texto !== '---' && texto !== '') {
                 page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
             }
         };
 
-        // Função interna para ler o campo único (HH:MM), remover os ":" e carimbar a hora e minuto nas células separadas do PDF
-        const escreverParHorario = (idCampoUnico, posHora, posMinuto) => {
+        const escribirParHorario = (idCampoUnico, posHora, posMinuto) => {
             const valor = document.getElementById(idCampoUnico).value.replace(":", "");
             if (valor && valor.length >= 2) {
                 const hh = valor.slice(0, 2);
@@ -329,7 +324,6 @@
         page.drawText(String(d.getMonth() + 1).padStart(2, '0'), { x: POS.mes.x, y: 58, size: 11, color: fontColor }); 
         page.drawText(String(d.getFullYear()), { x: POS.ano.x, y: 58, size: 11, color: fontColor }); 
 
-        // Processa e carimba os horários no PDF usando os campos unificados da interface
         escreverParHorario('f_partida', POS.h_partida, POS.m_partida);
         escreverParHorario('f_chegada', POS.h_chegada, POS.m_chegada);
         escreverParHorario('f_inicio_ate', POS.h_inicio_ate, POS.m_inicio_ate);
