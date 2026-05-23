@@ -24,7 +24,9 @@
         .full-width { grid-column: span 2; }
         .field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
         .field label { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; }
-        .field input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; background: #f8fafc; font-weight: bold; }
+        
+        /* ADICIONADO: text-transform: uppercase para forçar a visualização em maiúsculo */
+        .field input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; background: #f8fafc; font-weight: bold; text-transform: uppercase; }
 
         .preview-box { flex: 1; min-width: 320px; background: #525659; padding: 15px; border-radius: 12px; text-align: center; display: none; }
         canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
@@ -90,7 +92,6 @@
     const CPF_FIXO = "327.190.648-31";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // COORDENADAS ORIGINAIS
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
@@ -132,7 +133,7 @@
     }
 
     // ==========================================
-    // 3. LÓGICA DE EXTRAÇÃO INTACTA DO CÓDIGO BASE
+    // 3. LÓGICA DE EXTRAÇÃO
     // ==========================================
     async function extrairDados() {
         const textoInput = document.getElementById('textoBruto').value;
@@ -144,7 +145,6 @@
         dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
         dados.matricula = (/MATRÍCULA\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
-        // LOGICA EXATA DO PIN PAD
         if (texto.includes("PIN PAD")) {
             dados.sn = ''; 
             dados.mac = '';
@@ -176,7 +176,6 @@
         const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
 
-        // PREENCHENDO O FORMULÁRIO COM OS DADOS EXTRAÍDOS
         document.getElementById('f_inc').value = dados.inc || "";
         document.getElementById('f_uniorg').value = dados.uniorg || "";
         document.getElementById('f_rua').value = dados.rua || "";
@@ -208,11 +207,11 @@
 
             const escrever = (texto, config) => {
                 if(texto && texto !== '---' && texto !== '') {
-                    page.drawText(String(texto), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
+                    // ADICIONADO: .toUpperCase() para garantir que vá pro PDF em maiúsculo
+                    page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
                 }
             };
 
-            // PEGANDO OS DADOS DIRETAMENTE DO FORMULÁRIO PARA O PDF
             escrever(document.getElementById('f_inc').value, POS.inc);
             escrever(document.getElementById('f_uniorg').value, POS.uniorg);
             escrever(document.getElementById('f_rua').value, POS.rua);
@@ -258,7 +257,8 @@
     }
 
     async function salvarAtendimento() {
-        const inc = document.getElementById('f_inc').value;
+        // ADICIONADO: Forçando uppercase também na hora de salvar no banco de dados, para manter a consistência.
+        const inc = document.getElementById('f_inc').value.toUpperCase();
         if(!inc) return;
         try {
             const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: inc, texto_bruto: document.getElementById('textoBruto').value, analista: 'Willian' }]);
