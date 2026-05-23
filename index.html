@@ -35,9 +35,12 @@
         
         .field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
         .field label { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; }
-        .field input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; }
         
-        .field input.time-input { text-align: center; font-size: 16px; letter-spacing: 1px; }
+        /* Ajuste: unificado a base do input para todos */
+        .field input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; width: 100%; box-sizing: border-box; }
+        
+        /* Ajuste: removido letter-spacing que causava divergência no zoom */
+        .field input.time-input { text-align: center; font-size: 16px; letter-spacing: normal; }
 
         canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
