@@ -3,95 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAT Visualizador Pro - Willian</title>
+    <title>RAT Pro Editor - Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; box-sizing: border-box; }
-        h2 { color: #1e293b; text-align: center; font-size: 1.1rem; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; margin-top: 0; }
-        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; resize: none; }
+        :root { --primary: #3b82f6; --success: #10b981; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
         
-        .info-painel { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
-        .info-item { text-align: center; border-right: 1px solid #e2e8f0; padding: 2px; }
-        .info-item:last-child { border-right: none; }
-        .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
-        .info-value { font-size: 11px; color: #1e293b; font-weight: bold; word-break: break-all; }
+        .container { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; max-width: 1200px; margin: 0 auto; }
         
-        /* NOVO: Estilos do Formulário */
-        .form-grid { display: none; grid-template-columns: 1fr 1fr; gap: 8px; background: white; margin-bottom: 15px; }
-        .field-group { display: flex; flex-direction: column; }
-        .field-group.full { grid-column: span 2; }
-        .field-group label { font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
-        .field-group input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-family: inherit; font-weight: bold; background: #f8fafc; }
-        
-        .btn-group { display: flex; gap: 8px; margin-bottom: 15px; }
-        button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; }
-        .btn-save { background: #3b82f6; color: white; }
-        .btn-pdf { background: #10b981; color: white; }
+        .card-input { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; }
+        textarea { width: 100%; height: 80px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; box-sizing: border-box; resize: none; outline: none; }
+
+        .workspace { display: flex; flex-wrap: wrap; gap: 20px; width: 100%; justify-content: center; }
+
+        .editor-box { flex: 1; min-width: 320px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .full-width { grid-column: span 2; }
+        .field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
+        .field label { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+        .field input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; background: #f8fafc; font-weight: bold; }
+
+        .preview-box { flex: 1; min-width: 320px; background: #525659; padding: 15px; border-radius: 12px; text-align: center; display: none; }
+        canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+
+        .btn-group { display: flex; gap: 8px; margin-top: 15px; }
+        button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.2s; font-size: 14px; }
+        .btn-save { background: var(--primary); color: white; }
+        .btn-pdf { background: var(--success); color: white; }
         button:disabled { background: #cbd5e1; cursor: not-allowed; }
         
-        #viewerContainer { display: none; width: 100%; margin-top: 10px; background: #525659; border-radius: 8px; padding: 10px; box-sizing: border-box; text-align: center; }
-        canvas { width: 100% !important; height: auto !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 4px; }
-        .msg-view { color: white; font-size: 11px; margin-bottom: 8px; display: block; font-weight: bold; }
+        h2 { font-size: 1rem; color: #1e293b; margin: 0 0 10px 0; border-bottom: 2px solid var(--primary); padding-bottom: 5px; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>📄 Gerador de RAT Santander</h2>
-    <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
-    
-    <div class="info-painel">
-        <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN DO CARMO MORAIS</span></div>
-        <div class="info-item"><span class="info-label">Local</span><span id="pCidadeView" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Data</span><span id="pDataView" class="info-value">---</span></div>
+<div class="container">
+    <div class="card-input">
+        <h2>1. Cole o Chamado</h2>
+        <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     </div>
 
-    <div class="form-grid" id="formContainer">
-        <div class="field-group"><label>INC</label><input type="text" id="f_inc"></div>
-        <div class="field-group"><label>Uniorg</label><input type="text" id="f_uniorg"></div>
-        <div class="field-group full"><label>Endereço</label><input type="text" id="f_rua"></div>
-        <div class="field-group"><label>Número</label><input type="text" id="f_num"></div>
-        <div class="field-group"><label>Bairro</label><input type="text" id="f_bai"></div>
-        <div class="field-group"><label>Cidade</label><input type="text" id="f_cid"></div>
-        <div class="field-group"><label>UF</label><input type="text" id="f_uf"></div>
-        <div class="field-group"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri"></div>
-        <div class="field-group"><label>Hostname</label><input type="text" id="f_host"></div>
-        <div class="field-group"><label>Série (SN)</label><input type="text" id="f_sn"></div>
-        <div class="field-group"><label>MAC</label><input type="text" id="f_mac"></div>
-        <div class="field-group full"><label>Modelo</label><input type="text" id="f_modelo"></div>
-        <div class="field-group"><label>Solicitante</label><input type="text" id="f_resp"></div>
-        <div class="field-group"><label>Matrícula</label><input type="text" id="f_matricula"></div>
-        <div class="field-group full"><label>Solução</label><input type="text" id="f_solucao"></div>
-    </div>
+    <div class="workspace">
+        <div class="editor-box" id="editorBox">
+            <h2>2. Formulário de Edição (Dados Extraídos)</h2>
+            <div class="form-grid">
+                <div class="field"><label>INC</label><input type="text" id="f_inc"></div>
+                <div class="field"><label>Uniorg</label><input type="text" id="f_uniorg"></div>
+                <div class="field full-width"><label>Endereço</label><input type="text" id="f_rua"></div>
+                <div class="field"><label>Número</label><input type="text" id="f_num"></div>
+                <div class="field"><label>Bairro</label><input type="text" id="f_bai"></div>
+                <div class="field"><label>Cidade</label><input type="text" id="f_cid"></div>
+                <div class="field"><label>UF</label><input type="text" id="f_uf"></div>
+                <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri"></div>
+                <div class="field"><label>Hostname</label><input type="text" id="f_host"></div>
+                <div class="field"><label>Série (SN)</label><input type="text" id="f_sn"></div>
+                <div class="field"><label>MAC</label><input type="text" id="f_mac"></div>
+                <div class="field full-width"><label>Modelo</label><input type="text" id="f_modelo"></div>
+                <div class="field"><label>Solicitante</label><input type="text" id="f_resp"></div>
+                <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
+                <div class="field full-width"><label>Solução</label><input type="text" id="f_solucao"></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar</button>
+                <button class="btn-pdf" id="btnGerar" onclick="gerarERenderizar()">👁️ Visualizar RAT</button>
+            </div>
+        </div>
 
-    <div class="btn-group">
-        <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar</button>
-        <button class="btn-pdf" id="btnGerar" onclick="gerarERenderizar()">👁️ Visualizar RAT</button>
-    </div>
-
-    <div id="viewerContainer">
-        <span class="msg-view">PRÉ-VISUALIZAÇÃO DA RAT:</span>
-        <canvas id="pdfCanvas"></canvas>
+        <div class="preview-box" id="previewBox">
+            <span style="color:white; font-size: 11px; font-weight: bold; margin-bottom: 10px; display: block;">PRÉ-VISUALIZAÇÃO DA RAT:</span>
+            <canvas id="pdfCanvas"></canvas>
+        </div>
     </div>
 </div>
 
 <script>
     // ==========================================
-    // 1. CONFIGURAÇÕES E CONSTANTES
+    // 1. CONFIGURAÇÕES E CONSTANTES BASE
     // ==========================================
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
     const CPF_FIXO = "327.190.648-31";
-
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // COORDENADAS ORIGINAIS
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
@@ -128,22 +127,16 @@
         try {
             const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
             const data = await res.json();
-            if (!data.erro) {
-                dados.bai = data.bairro.toUpperCase();
-                document.getElementById('f_bai').value = dados.bai; // Atualiza o formulário se achar
-            }
+            if (!data.erro) document.getElementById('f_bai').value = data.bairro.toUpperCase();
         } catch (e) {}
     }
 
     // ==========================================
-    // 3. LÓGICA DE EXTRAÇÃO
+    // 3. LÓGICA DE EXTRAÇÃO INTACTA DO CÓDIGO BASE
     // ==========================================
     async function extrairDados() {
         const textoInput = document.getElementById('textoBruto').value;
-        if(!textoInput) {
-            document.getElementById('formContainer').style.display = 'none';
-            return;
-        }
+        if(!textoInput) return;
         const texto = textoInput.toUpperCase();
 
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
@@ -151,19 +144,21 @@
         dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
         dados.matricula = (/MATRÍCULA\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
+        // LOGICA EXATA DO PIN PAD
         if (texto.includes("PIN PAD")) {
-            dados.sn = ''; dados.mac = '';
+            dados.sn = ''; 
+            dados.mac = '';
             dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD";
+            dados.modelo = "---"; 
         } else {
             dados.mac = (/MAC\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
             dados.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
             dados.solucao = texto.includes("BAIXA DE IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
+            dados.modelo = dados.sn.startsWith('P') ? "LENOVO T14" : (dados.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "---");
         }
 
         let nomeCapturado = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
         dados.resp = limitarNomeSolicitante(nomeCapturado);
-
-        dados.modelo = dados.sn.startsWith('P') ? "LENOVO T14" : (dados.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "---");
         dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
         const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(texto);
@@ -175,21 +170,17 @@
             dados.uf = (/,\s*([A-Z]{2})/.exec(linhaEnd) || ["",""])[1];
             const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
             if (mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
-            document.getElementById('pCidadeView').innerText = dados.cid;
         }
-        
-        document.getElementById('pDataView').innerText = new Date().toLocaleDateString('pt-BR');
 
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
         const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
 
-        // NOVO: Preenche o formulário com os dados extraídos e exibe
+        // PREENCHENDO O FORMULÁRIO COM OS DADOS EXTRAÍDOS
         document.getElementById('f_inc').value = dados.inc || "";
         document.getElementById('f_uniorg').value = dados.uniorg || "";
         document.getElementById('f_rua').value = dados.rua || "";
         document.getElementById('f_num').value = dados.num || "";
-        document.getElementById('f_bai').value = dados.bai || "";
         document.getElementById('f_cid').value = dados.cid || "";
         document.getElementById('f_uf').value = dados.uf || "";
         document.getElementById('f_patri').value = dados.patri || "";
@@ -200,35 +191,14 @@
         document.getElementById('f_resp').value = dados.resp || "";
         document.getElementById('f_matricula').value = dados.matricula || "";
         document.getElementById('f_solucao').value = dados.solucao || "";
-        
-        document.getElementById('formContainer').style.display = 'grid';
     }
 
     // ==========================================
-    // 4. MOTOR DO PDF
+    // 4. MOTOR DO PDF LENDO O FORMULÁRIO
     // ==========================================
     async function gerarERenderizar() {
         const btn = document.getElementById('btnGerar');
         btn.disabled = true;
-
-        // NOVO: Atualiza a variável 'dados' com o que estiver escrito no formulário antes de gerar
-        if(document.getElementById('formContainer').style.display === 'grid') {
-            dados.inc = document.getElementById('f_inc').value;
-            dados.uniorg = document.getElementById('f_uniorg').value;
-            dados.rua = document.getElementById('f_rua').value;
-            dados.num = document.getElementById('f_num').value;
-            dados.bai = document.getElementById('f_bai').value;
-            dados.cid = document.getElementById('f_cid').value;
-            dados.uf = document.getElementById('f_uf').value;
-            dados.patri = document.getElementById('f_patri').value;
-            dados.host = document.getElementById('f_host').value;
-            dados.sn = document.getElementById('f_sn').value;
-            dados.mac = document.getElementById('f_mac').value;
-            dados.modelo = document.getElementById('f_modelo').value;
-            dados.resp = document.getElementById('f_resp').value;
-            dados.matricula = document.getElementById('f_matricula').value;
-            dados.solucao = document.getElementById('f_solucao').value;
-        }
 
         try {
             const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
@@ -242,55 +212,56 @@
                 }
             };
 
-            // Preenchimento de Campos
-            escrever(dados.inc, POS.inc);
-            escrever(dados.uniorg, POS.uniorg);
-            escrever(dados.rua, POS.rua);
-            escrever(dados.num, POS.num);
-            escrever(dados.cid, POS.cid);
-            escrever(dados.uf, POS.uf);
-            escrever(dados.bai, POS.bai);
+            // PEGANDO OS DADOS DIRETAMENTE DO FORMULÁRIO PARA O PDF
+            escrever(document.getElementById('f_inc').value, POS.inc);
+            escrever(document.getElementById('f_uniorg').value, POS.uniorg);
+            escrever(document.getElementById('f_rua').value, POS.rua);
+            escrever(document.getElementById('f_num').value, POS.num);
+            escrever(document.getElementById('f_cid').value, POS.cid);
+            escrever(document.getElementById('f_uf').value, POS.uf);
+            escrever(document.getElementById('f_bai').value, POS.bai);
             escrever("EQUIPAMENTO INOPERANTE", POS.inoperante);
-            escrever(dados.modelo, POS.modelo);
-            escrever(dados.host, POS.host);
-            escrever(dados.patri, POS.patri);
-            escrever(dados.sn, POS.sn);
-            escrever(dados.mac, POS.mac);
-            escrever(dados.solucao, POS.solucao);
-            escrever(dados.resp, POS.resp);
-            escrever(dados.matricula, POS.matri);
+            escrever(document.getElementById('f_modelo').value, POS.modelo);
+            escrever(document.getElementById('f_host').value, POS.host);
+            escrever(document.getElementById('f_patri').value, POS.patri);
+            escrever(document.getElementById('f_sn').value, POS.sn);
+            escrever(document.getElementById('f_mac').value, POS.mac);
+            escrever(document.getElementById('f_solucao').value, POS.solucao);
+            escrever(document.getElementById('f_resp').value, POS.resp);
+            escrever(document.getElementById('f_matricula').value, POS.matri);
+            
             escrever(dados.tecnico, POS.tecnico);
             escrever(dados.cpf, POS.cpf);
 
-            // Carimbos de Rodapé
-            escrever(dados.cid, POS.local);
+            escrever(document.getElementById('f_cid').value, POS.local);
             const d = new Date();
             escrever(String(d.getDate()).padStart(2, '0'), POS.dia);
             escrever(String(d.getMonth() + 1).padStart(2, '0'), POS.mes);
             escrever(String(d.getFullYear()), POS.ano);
 
-            // Horários
             escrever(dados.p.h, POS.h_ini); escrever(dados.p.m, POS.m_ini);
             escrever(dados.p.h ? dados.c.h : '00', POS.h_che); escrever(dados.p.h ? dados.c.m : '00', POS.m_che);
             escrever(dados.a.h, POS.h_ate); escrever(dados.a.m, POS.m_ate);
 
-            // Renderização
             const pdfBytes = await pdfDoc.save();
             const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
             const pdf = await loadingTask.promise;
             const pdfPage = await pdf.getPage(1);
             const viewport = pdfPage.getViewport({scale: 2.0}); 
+            
+            document.getElementById('previewBox').style.display = 'block';
             const canvas = document.getElementById('pdfCanvas');
             canvas.height = viewport.height; canvas.width = viewport.width;
             await pdfPage.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
-            document.getElementById('viewerContainer').style.display = 'block';
+            
         } catch (e) { alert("Erro: " + e.message); } finally { btn.disabled = false; }
     }
 
     async function salvarAtendimento() {
-        if(!dados.inc) return;
+        const inc = document.getElementById('f_inc').value;
+        if(!inc) return;
         try {
-            const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: dados.inc, texto_bruto: document.getElementById('textoBruto').value, analista: 'Willian' }]);
+            const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: inc, texto_bruto: document.getElementById('textoBruto').value, analista: 'Willian' }]);
             alert(error ? "Erro ao salvar" : "Salvo!");
         } catch (e) { alert(e.message); }
     }
