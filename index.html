@@ -350,10 +350,50 @@
     async function salvarAtendimento() {
         const inc = document.getElementById('f_inc').value.toUpperCase();
         if(!inc) { alert("Preencha ao menos o INC antes de salvar."); return; }
+        
+        // Coleta todos os campos do formulário para salvar no banco
+        const dadosSalvar = {
+            numero_inc: inc,
+            analista: 'Willian',
+            uniorg: document.getElementById('f_uniorg').value,
+            horarios: {
+                partida: document.getElementById('f_partida').value,
+                chegada: document.getElementById('f_chegada').value,
+                inicio_ate: document.getElementById('f_inicio_ate').value,
+                termino_ate: document.getElementById('f_termino_ate').value
+            },
+            localizacao: {
+                rua: document.getElementById('f_rua').value,
+                num: document.getElementById('f_num').value,
+                bai: document.getElementById('f_bai').value,
+                cid: document.getElementById('f_cid').value,
+                uf: document.getElementById('f_uf').value
+            },
+            equipamento_retirado: {
+                patri: document.getElementById('f_patri_ret').value,
+                sn: document.getElementById('f_sn_ret').value,
+                modelo: document.getElementById('f_modelo_ret').value,
+                host: document.getElementById('f_host_ret').value,
+                mac: document.getElementById('f_mac_ret').value
+            },
+            equipamento_instalado: {
+                patri: document.getElementById('f_patri_inst').value,
+                sn: document.getElementById('f_sn_inst').value,
+                modelo: document.getElementById('f_modelo_inst').value,
+                host: document.getElementById('f_host_inst').value,
+                mac: document.getElementById('f_mac_inst').value
+            },
+            solucao: document.getElementById('f_solucao').value,
+            solicitante: document.getElementById('f_resp').value,
+            matricula: document.getElementById('f_matricula').value,
+            data_atendimento: document.getElementById('f_data_completa').value,
+            texto_bruto: document.getElementById('textoBruto').value
+        };
+
         try {
-            const { error } = await supabaseClient.from('chamados').insert([{ numero_inc: inc, texto_bruto: document.getElementById('textoBruto').value, analista: 'Willian' }]);
-            alert(error ? "Erro ao salvar" : "Salvo no banco de dados!");
-        } catch (e) { alert(e.message); }
+            const { error } = await supabaseClient.from('chamados').insert([dadosSalvar]);
+            alert(error ? "Erro ao salvar: " + error.message : "Dados salvos com sucesso no banco!");
+        } catch (e) { alert("Erro inesperado: " + e.message); }
     }
 </script>
 </body>
