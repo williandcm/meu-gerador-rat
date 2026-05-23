@@ -141,7 +141,8 @@
         h_partida: { x: 91, y: 747 }, m_partida: { x: 110, y: 747 },
         h_chegada: { x: 91, y: 736 }, m_chegada: { x: 110, y: 736 },
         h_inicio_ate: { x: 418, y: 749 }, m_inicio_ate: { x: 436, y: 749 },
-        patri_inst: { x: 349, y: 486, s: 11 }
+        patri_inst: { x: 349, y: 486, s: 11 },
+        sn_inst: { x: 372, y: 473, s: 11 }
     };
 
     let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO };
@@ -281,6 +282,7 @@
         page.drawText("EQUIPAMENTO INOPERANTE", { x: 30, y: 555, size: 11, color: fontColor });
         escrever('f_modelo_ret', POS.modelo); escrever('f_host_ret', POS.host); escrever('f_patri_ret', POS.patri);
         escrever('f_patri_inst', POS.patri_inst);
+        escrever('f_sn_inst', POS.sn_inst);
         escrever('f_sn_ret', POS.sn); escrever('f_mac_ret', POS.mac); escrever('f_solucao', POS.solucao);
         escrever('f_resp', POS.resp); escrever('f_matricula', POS.matri);
         page.drawText(dados.tecnico, { x: POS.tecnico.x, y: 176, size: 11, color: fontColor });
