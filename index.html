@@ -39,8 +39,8 @@
     
     <div class="info-painel">
         <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN DO CARMO MORAIS</span></div>
-        <div class="info-item"><span class="info-label">Cidade / Local</span><span id="pCidadeView" class="info-value">---</span></div>
-        <div class="info-item"><span class="info-label">Responsável</span><span id="pRespView" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Local</span><span id="pCidadeView" class="info-value">---</span></div>
+        <div class="info-item"><span class="info-label">Data</span><span id="pDataView" class="info-value">---</span></div>
     </div>
 
     <div class="btn-group">
@@ -118,7 +118,6 @@
 
         let nomeCapturado = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
         dados.resp = limitarNomeSolicitante(nomeCapturado);
-        document.getElementById('pRespView').innerText = dados.resp;
 
         if (dados.sn && dados.sn.startsWith('P')) dados.modelo = "LENOVO T14";
         else if (dados.sn && dados.sn.startsWith('B')) dados.modelo = "HP ELITEBOOK 640 G9";
@@ -138,6 +137,11 @@
             document.getElementById('pCidadeView').innerText = dados.cid;
         }
         
+        // Pega data atual para exibição no painel
+        const hoje = new Date();
+        const dataFormatada = hoje.toLocaleDateString('pt-BR');
+        document.getElementById('pDataView').innerText = dataFormatada;
+
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
         const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
@@ -159,8 +163,9 @@
             const pdfDoc = await PDFLib.PDFDocument.load(await response.arrayBuffer());
             const page = pdfDoc.getPages()[0];
             const fontColor = PDFLib.rgb(0, 0, 0);
-            const txt = (t, x, y, s = 11) => { if(t && t !== '---' && t !== '') page.drawText(t, { x, y, size: s, color: fontColor }); };
+            const txt = (t, x, y, s = 11) => { if(t && t !== '---' && t !== '') page.drawText(String(t), { x, y, size: s, color: fontColor }); };
 
+            // Dados do Chamado
             txt(dados.inc, 123, 768);
             txt(dados.uniorg, 64, 714);
             txt(dados.rua, 79, 701, 10);
@@ -175,16 +180,27 @@
             txt(dados.sn, 110, 471, 11);
             txt(dados.mac, 91, 430, 11);
             txt(dados.solucao, 30, 232, 11); 
-            
             txt(dados.resp, 95, 174, 11); 
             txt(dados.matricula, 83, 147, 11);
             
+            // Carimbos do Técnico
             txt(dados.tecnico, 347, 176, 11);
             txt(dados.cpf, 346, 149, 11); 
-
-            // AJUSTE SOLICITADO PARA O CAMPO LOCAL (CIDADE)
             txt(dados.cid, 123, 56, 11); 
 
+            // LOGICA DA DATA ATUAL SEPARADA
+            const dataAtual = new Date();
+            const dia = String(dataAtual.getDate()).padStart(2, '0');
+            const mes = String(dataAtual.getMonth() + 1).padStart(2, '0');
+            const ano = String(dataAtual.getFullYear());
+
+            // COORDENADAS PROVISÓRIAS PARA DIA/MÊS/ANO
+            // Me passe as coordenadas X e Y reais depois
+            txt(dia, 245, 56, 11); // Campo DIA
+            txt(mes, 275, 56, 11); // Campo MÊS
+            txt(ano, 305, 56, 11); // Campo ANO
+
+            // Horários
             txt(dados.p.h, 91, 747); txt(dados.p.m, 110, 747);
             txt(dados.p.h ? dados.c.h : '00', 91, 736); txt(dados.p.h ? dados.c.m : '00', 110, 736);
             txt(dados.a.h, 418, 749); txt(dados.a.m, 436, 749);
