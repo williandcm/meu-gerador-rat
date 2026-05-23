@@ -22,15 +22,16 @@
         
         .preview-box { flex: 1; min-width: 350px; background: #525659; padding: 15px; border-radius: 12px; text-align: center; display: block; }
 
-        /* CORREÇÃO: Alterado de 1024px para 600px para impedir que a RAT vá para baixo no tablet */
-        @media (max-width: 600px) {
+        @media (max-width: 1024px) {
             .workspace { flex-direction: column; align-items: center; }
             .editor-box, .preview-box { width: 100%; min-width: unset; }
         }
 
+        /* Estrutura principal do formulário */
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
         .full-width { grid-column: span 2; }
         
+        /* Ajuste fino dos blocos de contêineres para alinhamento simétrico */
         .equip-container, .time-container { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; box-sizing: border-box; }
         .column-title { font-size: 11px; font-weight: bold; color: var(--primary); text-transform: uppercase; margin-bottom: 8px; text-align: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 3px; }
         
@@ -38,6 +39,7 @@
         .field label { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; }
         .field input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; box-sizing: border-box; }
         
+        /* Ajuste do tamanho dos inputs de tempo para preencher as colunas alinhadas */
         .field input.time-input { text-align: center; font-size: 16px; letter-spacing: 1px; width: 100%; box-sizing: border-box; }
 
         canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
@@ -67,7 +69,7 @@
                 
                 <div class="time-container">
                     <div>
-                        <div class="column-title">PERCURSO</div>
+                        <div class="column-title">Percurso</div>
                         <div class="field">
                             <label>Hora Partida</label>
                             <input type="text" id="f_partida" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)">
@@ -78,7 +80,7 @@
                         </div>
                     </div>
                     <div>
-                        <div class="column-title">ATENDIMENTO</div>
+                        <div class="column-title">Atendimento</div>
                         <div class="field">
                             <label>Hora Início Atendimento</label>
                             <input type="text" id="f_inicio_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)">
@@ -280,14 +282,14 @@
         const page = pdfDoc.getPages()[0];
         const fontColor = PDFLib.rgb(0, 0, 0);
 
-        const escribir = (id, config) => {
+        const escrever = (id, config) => {
             const texto = document.getElementById(id).value;
             if(texto && texto !== '---' && texto !== '') {
                 page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
             }
         };
 
-        const escribirParHorario = (idCampoUnico, posHora, posMinuto) => {
+        const escreverParHorario = (idCampoUnico, posHora, posMinuto) => {
             const valor = document.getElementById(idCampoUnico).value.replace(":", "");
             if (valor && valor.length >= 2) {
                 const hh = valor.slice(0, 2);
