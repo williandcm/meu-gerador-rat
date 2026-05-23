@@ -13,16 +13,26 @@
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; box-sizing: border-box; }
         h2 { color: #1e293b; text-align: center; font-size: 1.1rem; border-bottom: 2px solid #3b82f6; padding-bottom: 8px; margin-top: 0; }
         textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; resize: none; }
+        
         .info-painel { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
         .info-item { text-align: center; border-right: 1px solid #e2e8f0; padding: 2px; }
         .info-item:last-child { border-right: none; }
         .info-label { display: block; font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
         .info-value { font-size: 11px; color: #1e293b; font-weight: bold; word-break: break-all; }
+        
+        /* NOVO: Estilos do Formulário */
+        .form-grid { display: none; grid-template-columns: 1fr 1fr; gap: 8px; background: white; margin-bottom: 15px; }
+        .field-group { display: flex; flex-direction: column; }
+        .field-group.full { grid-column: span 2; }
+        .field-group label { font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+        .field-group input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-family: inherit; font-weight: bold; background: #f8fafc; }
+        
         .btn-group { display: flex; gap: 8px; margin-bottom: 15px; }
         button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; font-size: 14px; transition: 0.2s; }
         .btn-save { background: #3b82f6; color: white; }
         .btn-pdf { background: #10b981; color: white; }
         button:disabled { background: #cbd5e1; cursor: not-allowed; }
+        
         #viewerContainer { display: none; width: 100%; margin-top: 10px; background: #525659; border-radius: 8px; padding: 10px; box-sizing: border-box; text-align: center; }
         canvas { width: 100% !important; height: auto !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 4px; }
         .msg-view { color: white; font-size: 11px; margin-bottom: 8px; display: block; font-weight: bold; }
@@ -38,6 +48,24 @@
         <div class="info-item"><span class="info-label">Técnico</span><span class="info-value">WILLIAN DO CARMO MORAIS</span></div>
         <div class="info-item"><span class="info-label">Local</span><span id="pCidadeView" class="info-value">---</span></div>
         <div class="info-item"><span class="info-label">Data</span><span id="pDataView" class="info-value">---</span></div>
+    </div>
+
+    <div class="form-grid" id="formContainer">
+        <div class="field-group"><label>INC</label><input type="text" id="f_inc"></div>
+        <div class="field-group"><label>Uniorg</label><input type="text" id="f_uniorg"></div>
+        <div class="field-group full"><label>Endereço</label><input type="text" id="f_rua"></div>
+        <div class="field-group"><label>Número</label><input type="text" id="f_num"></div>
+        <div class="field-group"><label>Bairro</label><input type="text" id="f_bai"></div>
+        <div class="field-group"><label>Cidade</label><input type="text" id="f_cid"></div>
+        <div class="field-group"><label>UF</label><input type="text" id="f_uf"></div>
+        <div class="field-group"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri"></div>
+        <div class="field-group"><label>Hostname</label><input type="text" id="f_host"></div>
+        <div class="field-group"><label>Série (SN)</label><input type="text" id="f_sn"></div>
+        <div class="field-group"><label>MAC</label><input type="text" id="f_mac"></div>
+        <div class="field-group full"><label>Modelo</label><input type="text" id="f_modelo"></div>
+        <div class="field-group"><label>Solicitante</label><input type="text" id="f_resp"></div>
+        <div class="field-group"><label>Matrícula</label><input type="text" id="f_matricula"></div>
+        <div class="field-group full"><label>Solução</label><input type="text" id="f_solucao"></div>
     </div>
 
     <div class="btn-group">
@@ -64,7 +92,6 @@
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // MAPA DE COORDENADAS (Todas as suas posições originais aqui)
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
@@ -72,9 +99,7 @@
         host: { x: 78, y: 443 }, patri: { x: 88, y: 485 }, sn: { x: 110, y: 471 },
         mac: { x: 91, y: 430 }, solucao: { x: 30, y: 232 }, resp: { x: 95, y: 174 },
         matri: { x: 83, y: 147 }, tecnico: { x: 347, y: 176 }, cpf: { x: 346, y: 149 },
-        // Carimbos finais
         local: { x: 123, y: 56 }, dia: { x: 376, y: 58 }, mes: { x: 410, y: 58 }, ano: { x: 441, y: 58 },
-        // Horários
         h_ini: { x: 91, y: 747 }, m_ini: { x: 110, y: 747 },
         h_che: { x: 91, y: 736 }, m_che: { x: 110, y: 736 },
         h_ate: { x: 418, y: 749 }, m_ate: { x: 436, y: 749 }
@@ -103,7 +128,10 @@
         try {
             const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
             const data = await res.json();
-            if (!data.erro) dados.bai = data.bairro.toUpperCase();
+            if (!data.erro) {
+                dados.bai = data.bairro.toUpperCase();
+                document.getElementById('f_bai').value = dados.bai; // Atualiza o formulário se achar
+            }
         } catch (e) {}
     }
 
@@ -112,7 +140,10 @@
     // ==========================================
     async function extrairDados() {
         const textoInput = document.getElementById('textoBruto').value;
-        if(!textoInput) return;
+        if(!textoInput) {
+            document.getElementById('formContainer').style.display = 'none';
+            return;
+        }
         const texto = textoInput.toUpperCase();
 
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
@@ -152,6 +183,25 @@
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
         const p = reg("INÍCIO"), c = reg("CHEGADA"), a = reg("ATENDIMENTO");
         if(p) dados.p = {h:p[1], m:p[2]}; if(c) dados.c = {h:c[1], m:c[2]}; if(a) dados.a = {h:a[1], m:a[2]};
+
+        // NOVO: Preenche o formulário com os dados extraídos e exibe
+        document.getElementById('f_inc').value = dados.inc || "";
+        document.getElementById('f_uniorg').value = dados.uniorg || "";
+        document.getElementById('f_rua').value = dados.rua || "";
+        document.getElementById('f_num').value = dados.num || "";
+        document.getElementById('f_bai').value = dados.bai || "";
+        document.getElementById('f_cid').value = dados.cid || "";
+        document.getElementById('f_uf').value = dados.uf || "";
+        document.getElementById('f_patri').value = dados.patri || "";
+        document.getElementById('f_host').value = dados.host || "";
+        document.getElementById('f_sn').value = dados.sn || "";
+        document.getElementById('f_mac').value = dados.mac || "";
+        document.getElementById('f_modelo').value = dados.modelo || "";
+        document.getElementById('f_resp').value = dados.resp || "";
+        document.getElementById('f_matricula').value = dados.matricula || "";
+        document.getElementById('f_solucao').value = dados.solucao || "";
+        
+        document.getElementById('formContainer').style.display = 'grid';
     }
 
     // ==========================================
@@ -160,13 +210,32 @@
     async function gerarERenderizar() {
         const btn = document.getElementById('btnGerar');
         btn.disabled = true;
+
+        // NOVO: Atualiza a variável 'dados' com o que estiver escrito no formulário antes de gerar
+        if(document.getElementById('formContainer').style.display === 'grid') {
+            dados.inc = document.getElementById('f_inc').value;
+            dados.uniorg = document.getElementById('f_uniorg').value;
+            dados.rua = document.getElementById('f_rua').value;
+            dados.num = document.getElementById('f_num').value;
+            dados.bai = document.getElementById('f_bai').value;
+            dados.cid = document.getElementById('f_cid').value;
+            dados.uf = document.getElementById('f_uf').value;
+            dados.patri = document.getElementById('f_patri').value;
+            dados.host = document.getElementById('f_host').value;
+            dados.sn = document.getElementById('f_sn').value;
+            dados.mac = document.getElementById('f_mac').value;
+            dados.modelo = document.getElementById('f_modelo').value;
+            dados.resp = document.getElementById('f_resp').value;
+            dados.matricula = document.getElementById('f_matricula').value;
+            dados.solucao = document.getElementById('f_solucao').value;
+        }
+
         try {
             const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
             const pdfDoc = await PDFLib.PDFDocument.load(await response.arrayBuffer());
             const page = pdfDoc.getPages()[0];
             const fontColor = PDFLib.rgb(0, 0, 0);
 
-            // Função ajudante para escrever no PDF usando o mapa POS
             const escrever = (texto, config) => {
                 if(texto && texto !== '---' && texto !== '') {
                     page.drawText(String(texto), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
