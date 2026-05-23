@@ -110,7 +110,7 @@
                 <div class="field"><label>Responsável</label><input type="text" id="f_resp"></div>
                 <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
                 <div class="field"><label>Local</label><input type="text" id="f_local_data_cidade"></div>
-                <div class="field"><label>Data</label><input type="text" id="f_data_completa" placeholder="DD/MM/AAAA"></div>
+                <div class="field"><label>Data</label><input type="date" id="f_data_completa"></div>
             </div>
             <div class="btn-group">
                 <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar</button>
@@ -158,8 +158,8 @@
         try {
             const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
             modeloPdfBytes = await response.arrayBuffer();
-            const d = new Date();
-            document.getElementById('f_data_completa').value = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+            // Define a data atual no input de data
+            document.getElementById('f_data_completa').valueAsDate = new Date();
             gerarERenderizar();
             document.getElementById('editorBox').addEventListener('input', () => {
                 clearTimeout(timeoutRender);
@@ -315,11 +315,14 @@
         page.drawText(dados.tecnico, { x: POS.tecnico.x, y: 176, size: 11, color: fontColor });
         page.drawText(dados.cpf, { x: POS.cpf.x, y: 149, size: 11, color: fontColor }); 
         
-        const dataStr = document.getElementById('f_data_completa').value.split('/');
-        if(dataStr.length === 3) {
-            page.drawText(dataStr[0], { x: POS.dia.x, y: 58, size: 11, color: fontColor }); 
-            page.drawText(dataStr[1], { x: POS.mes.x, y: 58, size: 11, color: fontColor }); 
-            page.drawText(dataStr[2], { x: POS.ano.x, y: 58, size: 11, color: fontColor }); 
+        const dataInput = document.getElementById('f_data_completa').value;
+        if(dataInput) {
+            const dataParts = dataInput.split('-');
+            if(dataParts.length === 3) {
+                page.drawText(dataParts[2], { x: POS.dia.x, y: 58, size: 11, color: fontColor }); 
+                page.drawText(dataParts[1], { x: POS.mes.x, y: 58, size: 11, color: fontColor }); 
+                page.drawText(dataParts[0], { x: POS.ano.x, y: 58, size: 11, color: fontColor }); 
+            }
         }
         
         escrever('f_local_data_cidade', POS.local);
