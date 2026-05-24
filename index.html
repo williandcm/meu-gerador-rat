@@ -98,7 +98,7 @@
                 </div>
 
                 <div class="field full-width"><label>Solução</label><input type="text" id="f_solucao" oninput="sincronizarMac()"></div>
-                <div class="field"><label>Solicitante</label><input type="text" id="f_resp"></div>
+                <div class="field"><label>responsavel</label><input type="text" id="f_resp"></div>
                 <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
                 <div class="field"><label>Local</label><input type="text" id="f_local_data_cidade"></div>
                 <div class="field"><label>Data</label><input type="date" id="f_data_picker" onchange="atualizarDataFormatada()"></div>
@@ -193,7 +193,7 @@
         return context.measureText(texto.toUpperCase()).width;
     }
 
-    function limitarNomeSolicitante(nome) {
+    function limitarNomeresponsavel(nome) {
         const LARGURA_MAXIMA_PX = 155;
         let partes = nome.split(' ').filter(p => !(['da', 'de', 'do', 'das', 'dos'].includes(p.toLowerCase())));
         while (partes.length > 1 && medirLarguraTexto(partes.join(' ')) > LARGURA_MAXIMA_PX) partes.pop();
@@ -238,8 +238,8 @@
             document.getElementById('f_mac_inst').value = "";
         }
 
-        let nomeCapturado = (/SOLICITANTE\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
-        dados.resp = limitarNomeSolicitante(nomeCapturado);
+        let nomeCapturado = (/responsavel\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
+        dados.resp = limitarNomeresponsavel(nomeCapturado);
         dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
         const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(texto);
@@ -379,7 +379,7 @@
             host_inst: document.getElementById('f_host_inst').value,
             mac_inst: document.getElementById('f_mac_inst').value,
             solucao: document.getElementById('f_solucao').value,
-            solicitante: document.getElementById('f_resp').value,
+            responsavel: document.getElementById('f_resp').value,
             matricula: document.getElementById('f_matricula').value,
             data_atendimento: document.getElementById('f_data_completa').value,
             chamado_cerb: document.getElementById('chamado_cerb').value,
