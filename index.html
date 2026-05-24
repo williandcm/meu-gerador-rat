@@ -41,6 +41,68 @@
 
         canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
+        /* Área de Assinatura */
+        .signature-section {
+            grid-column: span 2;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 10px;
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px dashed #cbd5e1;
+        }
+        .signature-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .signature-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #475569;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .sig-canvas-container {
+            position: relative;
+            background: #ffffff;
+            border: 2px solid #cbd5e1;
+            border-radius: 6px;
+            width: 100%;
+            height: 110px;
+            overflow: hidden;
+            touch-action: none; /* Previne scroll acidental ao assinar com o dedo */
+        }
+        .sig-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+            cursor: crosshair;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+        }
+        .btn-clear-sig {
+            margin-top: 5px;
+            padding: 4px 10px;
+            font-size: 10px;
+            background: #ef4444;
+            color: white;
+            border-radius: 4px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            width: auto;
+            align-self: flex-end;
+            transition: 0.1s;
+        }
+        .btn-clear-sig:hover {
+            background: #dc2626;
+        }
+
         .btn-group { display: flex; gap: 8px; margin-top: 15px; }
         button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.2s; font-size: 14px; }
         button:disabled { opacity: 0.7; cursor: not-allowed; }
@@ -62,6 +124,7 @@
         <div class="editor-box" id="editorBox">
             <h2>2. Editor em Tempo Real</h2>
             <div class="form-grid">
+                <!-- Alterado o rótulo de "INC" para "Chamado" -->
                 <div class="field full-width"><label>Chamado</label><input type="text" id="f_inc"></div>
                 
                 <div class="time-container">
@@ -79,10 +142,12 @@
                 <div class="field"><label>Cidade</label><input type="text" id="f_cid"></div>
                 <div class="field"><label>UF</label><input type="text" id="f_uf"></div>
                 
+                <!-- Novo Campo Adicionado -->
                 <div class="field full-width"><label>Descritivo Defeito / Solução</label><input type="text" id="f_descritivo_defeito" value="EQUIPAMENTO INOPERANTE"></div>
                 
                 <div class="equip-container">
                     <div>
+                        <!-- Título da coluna 1: Centralizado, aumentado de 12px para 15px para maior destaque visual -->
                         <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center;">
                             Sempre Preencher<br>
                             Atual Reconfigurado ou Retirado
@@ -94,6 +159,7 @@
                         <div class="field"><label>MAC</label><input type="text" id="f_mac_ret" oninput="sincronizarMac()"></div>
                     </div>
                     <div>
+                        <!-- Título da coluna 2: Centralizado, aumentado de 12px para 15px para maior destaque visual -->
                         <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center;">
                             Preencher em caso de troca<br>
                             Equipamento Novo
@@ -113,6 +179,25 @@
                 <div class="field"><label>Data</label><input type="date" id="f_data_picker" onchange="atualizarDataFormatada()"></div>
                 <!-- Campo oculto para guardar a data formatada para o PDF -->
                 <input type="hidden" id="f_data_completa">
+
+                <!-- Campos de Assinaturas Digitais para Tablet/Touch -->
+                <div class="signature-section">
+                    <div class="signature-box">
+                        <span class="signature-title">Assinatura do Responsável</span>
+                        <div class="sig-canvas-container">
+                            <canvas id="sigCanvas_resp" class="sig-canvas"></canvas>
+                        </div>
+                        <button type="button" class="btn-clear-sig" onclick="limparAssinatura('sigCanvas_resp')">🗑️ Limpar</button>
+                    </div>
+                    <div class="signature-box">
+                        <span class="signature-title">Assinatura do Técnico</span>
+                        <div class="sig-canvas-container">
+                            <canvas id="sigCanvas_tec" class="sig-canvas"></canvas>
+                        </div>
+                        <button type="button" class="btn-clear-sig" onclick="limparAssinatura('sigCanvas_tec')">🗑️ Limpar</button>
+                    </div>
+                </div>
+
             </div>
             <div class="btn-group">
                 <button class="btn-save" id="btnSalvar" onclick="salvarAtendimento()">💾 Salvar</button>
@@ -135,6 +220,7 @@
     const CPF_FIXO = "327.190.648-31";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // Ajustadas as coordenadas de Hora e Minuto do Término Atendimento conforme suas instruções
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
@@ -146,17 +232,27 @@
         h_partida: { x: 91, y: 747 }, m_partida: { x: 110, y: 747 },
         h_chegada: { x: 91, y: 736 }, m_chegada: { x: 110, y: 736 },
         h_inicio_ate: { x: 418, y: 749 }, m_inicio_ate: { x: 436, y: 749 },
-        h_termino_ate: { x: 418, y: 738 }, m_termino_ate: { x: 436, y: 738 },
+        h_termino_ate: { x: 418, y: 738 }, m_termino_ate: { x: 436, y: 738 }, // Hora e minuto definidos exatamente na linha y: 738
         patri_inst: { x: 349, y: 486, s: 11 },
         sn_inst: { x: 372, y: 473, s: 11 },
         modelo_inst: { x: 334, y: 458, s: 11 },
         host_inst: { x: 342, y: 445, s: 11 },
-        mac_inst: { x: 356, y: 431, s: 11 }
+        mac_inst: { x: 356, y: 431, s: 11 },
+        
+        // Coordenadas das assinaturas no PDF da RAT original
+        sig_resp: { x: 30, y: 115, w: 220, h: 50 },  // Retângulo do responsável
+        sig_tec: { x: 285, y: 115, w: 220, h: 50 }   // Retângulo do técnico
     };
 
     let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO };
     let modeloPdfBytes = null;
     let timeoutRender = null;
+
+    // Estruturas de controle para capturar os traços das assinaturas
+    const assinaturas = {
+        sigCanvas_resp: [],
+        sigCanvas_tec: []
+    };
 
     window.onload = async () => {
         try {
@@ -167,12 +263,137 @@
             document.getElementById('f_data_picker').value = d.toISOString().split('T')[0];
             atualizarDataFormatada();
             
+            // Inicializar painéis de assinaturas digitais
+            initSignatureCanvas('sigCanvas_resp');
+            initSignatureCanvas('sigCanvas_tec');
+
             document.getElementById('editorBox').addEventListener('input', () => {
                 clearTimeout(timeoutRender);
                 timeoutRender = setTimeout(gerarERenderizar, 500);
             });
         } catch (e) { console.error("Erro ao carregar o PDF base:", e); }
     };
+
+    // Inicialização e configuração do Touch/Mouse Canvas para cada painel de assinatura
+    function initSignatureCanvas(id) {
+        const canvas = document.getElementById(id);
+        const ctx = canvas.getContext('2d');
+        
+        // Função para redimensionar o canvas e considerar a proporção de retina se necessário
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            // Desenhar linha pontilhada guia de assinatura
+            limparCanvasCompleto(canvas);
+        }
+        
+        // Executa o redimensionamento após renderizar na tela
+        setTimeout(resizeCanvas, 300);
+        window.addEventListener('resize', resizeCanvas);
+
+        let desenhando = false;
+        let ultimoX = 0;
+        let ultimoY = 0;
+
+        // Configuração de Estilo do Traço
+        ctx.strokeStyle = '#1e3a8a'; // Azul escuro para parecer caneta esferográfica
+        ctx.lineWidth = 2.5;         // Espessura equilibrada para dedo e caneta
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        function obterCoordenadas(e) {
+            const rect = canvas.getBoundingClientRect();
+            // Se for touch (dedo/caneta tablet)
+            if (e.touches && e.touches.length > 0) {
+                return {
+                    x: e.touches[0].clientX - rect.left,
+                    y: e.touches[0].clientY - rect.top
+                };
+            }
+            // Se for mouse
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        function iniciarDesenho(e) {
+            desenhando = true;
+            const coords = obterCoordenadas(e);
+            ultimoX = coords.x;
+            ultimoY = coords.y;
+            
+            // Iniciar traço na estrutura de dados
+            assinaturas[id].push([{ x: ultimoX / canvas.width, y: ultimoY / canvas.height }]);
+        }
+
+        function desenhar(e) {
+            if (!desenhando) return;
+            e.preventDefault(); // Evita scroll do tablet enquanto desenha
+            
+            const coords = obterCoordenadas(e);
+            ctx.beginPath();
+            ctx.moveTo(ultimoX, ultimoY);
+            ctx.lineTo(coords.x, coords.y);
+            ctx.stroke();
+
+            ultimoX = coords.x;
+            ultimoY = coords.y;
+
+            // Salvar coordenadas normalizadas (0 a 1) para redesenhar no PDF vetorialmente
+            const traçoAtual = assinaturas[id][assinaturas[id].length - 1];
+            traçoAtual.push({ x: ultimoX / canvas.width, y: ultimoY / canvas.height });
+        }
+
+        function pararDesenho() {
+            if (desenhando) {
+                desenhando = false;
+                // Atualizar visualização do PDF quando soltar o dedo
+                clearTimeout(timeoutRender);
+                timeoutRender = setTimeout(gerarERenderizar, 400);
+            }
+        }
+
+        // Eventos Touch (Tablet, Smartphone, Caneta)
+        canvas.addEventListener('touchstart', iniciarDesenho, { passive: false });
+        canvas.addEventListener('touchmove', desenhar, { passive: false });
+        canvas.addEventListener('touchend', pararDesenho);
+
+        // Eventos de Mouse (Fallback Desktop)
+        canvas.addEventListener('mousedown', iniciarDesenho);
+        canvas.addEventListener('mousemove', desenhar);
+        canvas.addEventListener('mouseup', pararDesenho);
+        canvas.addEventListener('mouseleave', pararDesenho);
+    }
+
+    function limparCanvasCompleto(canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Desenha uma linha guia cinza bem leve na parte inferior
+        ctx.beginPath();
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.moveTo(15, canvas.height - 15);
+        ctx.lineTo(canvas.width - 15, canvas.height - 15);
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset
+        ctx.strokeStyle = '#1e3a8a'; // Volta a caneta azul
+        ctx.lineWidth = 2.5;
+    }
+
+    function limparAssinatura(id) {
+        const canvas = document.getElementById(id);
+        limparCanvasCompleto(canvas);
+        assinaturas[id] = []; // Limpa histórico de traços
+        
+        // Atualiza a visualização da RAT instantaneamente
+        clearTimeout(timeoutRender);
+        timeoutRender = setTimeout(gerarERenderizar, 200);
+    }
 
     function atualizarDataFormatada() {
         const picker = document.getElementById('f_data_picker').value;
@@ -347,7 +568,42 @@
         escreverParHorario('f_inicio_ate', POS.h_inicio_ate, POS.m_inicio_ate);
         escreverParHorario('f_termino_ate', POS.h_termino_ate, POS.m_termino_ate); 
 
+        // Carimbar traços vetoriais das Assinaturas diretamente no PDF
+        escreverAssinaturaVetorial(page, 'sigCanvas_resp', POS.sig_resp);
+        escreverAssinaturaVetorial(page, 'sigCanvas_tec', POS.sig_tec);
+
         return pdfDoc;
+    }
+
+    // Desenha os traços vetoriais capturados no Canvas diretamente no PDF
+    function escreverAssinaturaVetorial(page, canvasId, pos) {
+        const traços = assinaturas[canvasId];
+        if (!traços || traços.length === 0) return;
+
+        // Cor da caneta azul escuro no PDF
+        const corAssinatura = PDFLib.rgb(0.12, 0.23, 0.54);
+
+        for (let t = 0; t < traços.length; t++) {
+            const traço = traços[t];
+            if (traço.length < 2) continue;
+
+            for (let i = 0; i < traço.length - 1; i++) {
+                // Mapeia coordenadas relativas (0 a 1) para a posição física no PDF
+                const x1 = pos.x + (traço[i].x * pos.w);
+                // Inverte o eixo Y pois no PDF o 0 é embaixo e no canvas o 0 é em cima
+                const y1 = pos.y + ((1 - traço[i].y) * pos.h);
+                const x2 = pos.x + (traço[i+1].x * pos.w);
+                const y2 = pos.y + ((1 - traço[i+1].y) * pos.h);
+
+                page.drawLine({
+                    start: { x: x1, y: y1 },
+                    end: { x: x2, y: y2 },
+                    thickness: 1.8,
+                    color: corAssinatura,
+                    opacity: 1
+                });
+            }
+        }
     }
 
     async function gerarERenderizar() {
@@ -383,7 +639,7 @@
         btnSave.disabled = true;
 
         try {
-            // Gerar o PDF para conversão
+            // Gerar o PDF para conversão com as assinaturas vetoriais já embutidas
             let pdfBase64 = null;
             const pdfDoc = await aplicarDadosNoPdf();
             if (pdfDoc) {
@@ -427,7 +683,7 @@
                 data_atendimento: document.getElementById('f_data_completa').value,
                 chamado_cerb: document.getElementById('chamado_cerb').value,
                 tecnico: 'Willian',
-                pdf_base64: pdfBase64 // <-- PDF salvo aqui na nova coluna!
+                pdf_base64: pdfBase64 // <-- Salva o PDF já assinado de forma definitiva!
             };
 
             const { error } = await supabaseClient.from('chamados').insert([dadosParaSalvar]);
@@ -436,7 +692,7 @@
                 console.error(error);
                 alert("Erro ao salvar no banco de dados: " + error.message);
             } else {
-                alert("Dados e PDF salvos com sucesso no banco de dados!");
+                alert("Dados e PDF assinado salvos com sucesso no banco de dados!");
             }
         } catch (e) { 
             alert("Erro inesperado: " + e.message); 
