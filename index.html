@@ -102,9 +102,9 @@
                 
                 <div class="equip-container">
                     <div>
-                        <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center;">
-                            Sempre Preencher<br>
-                            Atual Reconfigurado ou Retirado
+                        <!-- Título com min-height e flexbox para alinhar pela parte inferior -->
+                        <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-end;">
+                            <span>Sempre Preencher<br>Atual Reconfigurado ou Retirado</span>
                         </div>
                         <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_ret"></div>
                         <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_ret"></div>
@@ -113,9 +113,9 @@
                         <div class="field"><label>MAC</label><input type="text" id="f_mac_ret" oninput="sincronizarMac()"></div>
                     </div>
                     <div>
-                        <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center;">
-                            Preencher em caso de troca<br>
-                            Equipamento Novo
+                        <!-- Título com min-height e flexbox para alinhar pela parte inferior -->
+                        <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-end;">
+                            <span>Preencher em caso de troca<br>Equipamento Novo</span>
                         </div>
                         <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_inst"></div>
                         <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_inst"></div>
