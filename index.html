@@ -101,7 +101,9 @@
                 <div class="field"><label>Solicitante</label><input type="text" id="f_resp"></div>
                 <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
                 <div class="field"><label>Local</label><input type="text" id="f_local_data_cidade"></div>
-                <div class="field"><label>Data</label><input type="text" id="f_data_completa" placeholder="DD/MM/AAAA"></div>
+                <div class="field"><label>Data</label><input type="date" id="f_data_picker" onchange="atualizarDataFormatada()"></div>
+                <!-- Campo oculto para guardar a data formatada para o PDF -->
+                <input type="hidden" id="f_data_completa">
             </div>
             <div class="btn-group">
                 <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar</button>
@@ -151,14 +153,24 @@
             const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
             modeloPdfBytes = await response.arrayBuffer();
             const d = new Date();
-            document.getElementById('f_data_completa').value = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-            gerarERenderizar();
+            // Define o valor do picker (AAAA-MM-DD) e inicializa o hidden
+            document.getElementById('f_data_picker').value = d.toISOString().split('T')[0];
+            atualizarDataFormatada();
+            
             document.getElementById('editorBox').addEventListener('input', () => {
                 clearTimeout(timeoutRender);
                 timeoutRender = setTimeout(gerarERenderizar, 500);
             });
         } catch (e) { console.error("Erro ao carregar o PDF base:", e); }
     };
+
+    function atualizarDataFormatada() {
+        const picker = document.getElementById('f_data_picker').value;
+        if (!picker) return;
+        const [ano, mes, dia] = picker.split('-');
+        document.getElementById('f_data_completa').value = `${dia}/${mes}/${ano}`;
+        gerarERenderizar();
+    }
 
     function sincronizarMac() {
         const solucao = document.getElementById('f_solucao').value.toUpperCase();
