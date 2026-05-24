@@ -31,7 +31,6 @@
         .full-width { grid-column: span 2; }
         
         .equip-container, .time-container { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .column-title { font-size: 11px; font-weight: bold; color: var(--primary); text-transform: uppercase; margin-bottom: 8px; text-align: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 3px; }
         
         .field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
         .field label { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; }
@@ -65,16 +64,10 @@
                 <div class="field full-width"><label>INC</label><input type="text" id="f_inc"></div>
                 
                 <div class="time-container">
-                    <div>
-                        <div class="column-title">Percurso</div>
-                        <div class="field"><label>Hora Partida</label><input type="text" id="f_partida" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
-                        <div class="field"><label>Hora Chegada</label><input type="text" id="f_chegada" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
-                    </div>
-                    <div>
-                        <div class="column-title">Atendimento</div>
-                        <div class="field"><label>Hora Início Atendimento</label><input type="text" id="f_inicio_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
-                        <div class="field"><label>Hora Término Atendimento</label><input type="text" id="f_termino_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
-                    </div>
+                    <div class="field"><label>Hora Partida</label><input type="text" id="f_partida" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                    <div class="field"><label>Hora Chegada</label><input type="text" id="f_chegada" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                    <div class="field"><label>Hora Início Atendimento</label><input type="text" id="f_inicio_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                    <div class="field"><label>Hora Término Atendimento</label><input type="text" id="f_termino_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
                 </div>
 
                 <div class="field full-width"><label>Uniorg</label><input type="text" id="f_uniorg"></div>
