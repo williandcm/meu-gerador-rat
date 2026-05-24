@@ -54,7 +54,7 @@
 <div class="container">
     <div class="card-input">
         <h2>1. Cole o Chamado</h2>
-        <textarea id="textoBruto" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
+        <textarea id="chamado_cerb" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
     </div>
 
     <div class="workspace">
@@ -214,7 +214,7 @@
     }
 
     async function extrairDados() {
-        const textoInput = document.getElementById('textoBruto').value;
+        const textoInput = document.getElementById('chamado_cerb').value;
         if(!textoInput) return;
         const texto = textoInput.toUpperCase();
 
@@ -382,7 +382,7 @@
             solicitante: document.getElementById('f_resp').value,
             matricula: document.getElementById('f_matricula').value,
             data_atendimento: document.getElementById('f_data_completa').value,
-            chamado_cerb: document.getElementById('textoBruto').value,
+            chamado_cerb: document.getElementById('chamado_cerb').value,
             analista: 'Willian'
         };
 
