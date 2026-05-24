@@ -471,7 +471,7 @@
 
             if (error) {
                 console.error(error);
-                alert("Erro ao pesquisar chamado: " + error.message);
+                alert("Erro ao pesquisar chamado: " + error.message + "\n\n💡 Verifique se as políticas RLS estão ativas/bloqueadas no seu banco de dados Supabase.");
                 return;
             }
 
@@ -619,14 +619,14 @@
         const page = pdfDoc.getPages()[0];
         const fontColor = PDFLib.rgb(0, 0, 0);
 
-        const escrever = (id, config) => {
+        const escribir = (id, config) => {
             const elemento = document.getElementById(id);
             if (!elemento) return;
             const texto = elemento.value;
             if(texto && texto !== '---' && texto !== '') page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
         };
 
-        const escreverParHorario = (idCampoUnico, posHora, posMinuto) => {
+        const escribirParHorario = (idCampoUnico, posHora, posMinuto) => {
             const elemento = document.getElementById(idCampoUnico);
             if (!elemento) return;
             const valor = elemento.value.replace(":", "");
