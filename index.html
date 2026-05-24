@@ -9,7 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     
     <style>
-        :root { --primary: #3b82f6; --success: #10b981; --bg: #f0f2f5; }
+        :root { --primary: #3b82f6; --success: #10b981; --bg: #f0f2f5; --warning: #f59e0b; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
         
         .container { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; max-width: 1200px; margin: 0 auto; }
@@ -38,6 +38,10 @@
         .field input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; width: 100%; box-sizing: border-box; }
         
         .field input.time-input { text-align: center; font-size: 16px; letter-spacing: normal; }
+
+        .search-group { display: flex; gap: 8px; }
+        .btn-search { background: var(--warning); color: white; border: none; border-radius: 6px; padding: 0 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-search:hover { opacity: 0.9; }
 
         canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
@@ -124,8 +128,14 @@
         <div class="editor-box" id="editorBox">
             <h2>2. Editor em Tempo Real</h2>
             <div class="form-grid">
-                <!-- Alterado o rótulo de "INC" para "Chamado" -->
-                <div class="field full-width"><label>Chamado</label><input type="text" id="f_inc"></div>
+                <!-- Barra de pesquisa de Chamado -->
+                <div class="field full-width">
+                    <label>Chamado</label>
+                    <div class="search-group">
+                        <input type="text" id="f_inc" style="flex: 1;">
+                        <button type="button" class="btn-search" onclick="pesquisarChamadoExistente()">🔍 Pesquisar</button>
+                    </div>
+                </div>
                 
                 <div class="time-container">
                     <div class="field"><label>Hora Partida</label><input type="text" id="f_partida" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
@@ -444,6 +454,89 @@
         } catch (e) {}
     }
 
+    // NOVA FUNÇÃO: Busca o chamado no banco Supabase e carrega as informações na tela para edição
+    async function pesquisarChamadoExistente() {
+        const chamadoBusca = document.getElementById('f_inc').value.trim().toUpperCase();
+        if (!chamadoBusca) {
+            alert("Por favor, digite o número do chamado para pesquisar.");
+            return;
+        }
+
+        try {
+            const { data, error } = await supabaseClient
+                .from('chamados')
+                .select('*')
+                .eq('chamado', chamadoBusca)
+                .maybeSingle();
+
+            if (error) {
+                console.error(error);
+                alert("Erro ao pesquisar chamado: " + error.message);
+                return;
+            }
+
+            if (!data) {
+                alert("Nenhum chamado encontrado com este número no banco de dados. Você pode continuar preenchendo para inseri-lo pela primeira vez.");
+                return;
+            }
+
+            // Chamado encontrado! Preencher o formulário com os dados recuperados
+            document.getElementById('f_uniorg').value = data.uniorg || '';
+            document.getElementById('f_partida').value = data.hora_partida || '';
+            document.getElementById('f_chegada').value = data.hora_chegada || '';
+            document.getElementById('f_inicio_ate').value = data.hora_inicio_ate || '';
+            document.getElementById('f_termino_ate').value = data.hora_termino_ate || '';
+            document.getElementById('f_rua').value = data.endereco || '';
+            document.getElementById('f_num').value = data.numero || '';
+            document.getElementById('f_bai').value = data.bairro || '';
+            document.getElementById('f_cid').value = data.cidade || '';
+            document.getElementById('f_uf').value = data.uf || '';
+            document.getElementById('f_descritivo_defeito').value = data.descritivo_defeito_causa || 'EQUIPAMENTO INOPERANTE';
+            
+            document.getElementById('f_patri_ret').value = data.patri_ret || '';
+            document.getElementById('f_sn_ret').value = data.sn_ret || '';
+            document.getElementById('f_modelo_ret').value = data.modelo_ret || '';
+            document.getElementById('f_host_ret').value = data.host_ret || '';
+            document.getElementById('f_mac_ret').value = data.mac_ret || '';
+
+            document.getElementById('f_patri_inst').value = data.patri_inst || '';
+            document.getElementById('f_sn_inst').value = data.sn_inst || '';
+            document.getElementById('f_modelo_inst').value = data.modelo_inst || '';
+            document.getElementById('f_host_inst').value = data.host_inst || '';
+            document.getElementById('f_mac_inst').value = data.mac_inst || '';
+
+            document.getElementById('f_solucao').value = data.solucao || '';
+            document.getElementById('f_resp').value = data.responsavel || '';
+            document.getElementById('f_matricula').value = data.matricula || '';
+            document.getElementById('f_local_data_cidade').value = data.cidade || '';
+
+            if (data.data_atendimento) {
+                document.getElementById('f_data_completa').value = data.data_atendimento;
+                const partes = data.data_atendimento.split('/');
+                if (partes.length === 3) {
+                    // Converter DD/MM/AAAA para AAAA-MM-DD
+                    document.getElementById('f_data_picker').value = `${partes[2]}-${partes[1]}-${partes[0]}`;
+                }
+            }
+
+            if (data.chamado_cerb) {
+                document.getElementById('chamado_cerb').value = data.chamado_cerb;
+            }
+
+            // Limpa as assinaturas anteriores da tela de desenho para colher novas se necessário
+            limparAssinatura('sigCanvas_resp');
+            limparAssinatura('sigCanvas_tec');
+
+            alert("Chamado localizado! Os dados foram carregados com sucesso. Agora você pode continuar o atendimento e colher as assinaturas.");
+            
+            // Renderiza o preview da RAT com os dados carregados do BD
+            gerarERenderizar();
+
+        } catch (e) {
+            alert("Erro inesperado ao pesquisar: " + e.message);
+        }
+    }
+
     async function extrairDados() {
         const textoInput = document.getElementById('chamado_cerb').value;
         if(!textoInput) return;
@@ -527,12 +620,16 @@
         const fontColor = PDFLib.rgb(0, 0, 0);
 
         const escrever = (id, config) => {
-            const texto = document.getElementById(id).value;
+            const elemento = document.getElementById(id);
+            if (!elemento) return;
+            const texto = elemento.value;
             if(texto && texto !== '---' && texto !== '') page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
         };
 
         const escreverParHorario = (idCampoUnico, posHora, posMinuto) => {
-            const valor = document.getElementById(idCampoUnico).value.replace(":", "");
+            const elemento = document.getElementById(idCampoUnico);
+            if (!elemento) return;
+            const valor = elemento.value.replace(":", "");
             if (valor && valor.length >= 2) page.drawText(valor.slice(0, 2), { x: posHora.x, y: posHora.y, size: 11, color: fontColor });
             if (valor && valor.length === 4) page.drawText(valor.slice(2, 4), { x: posMinuto.x, y: posMinuto.y, size: 11, color: fontColor });
         };
@@ -629,8 +726,9 @@
         link.click();
     }
 
+    // ATUALIZADO: Agora realiza uma operação inteligente (Upsert). Verifica se o chamado já existe antes de inserir/atualizar.
     async function salvarAtendimento() {
-        const inc = document.getElementById('f_inc').value.toUpperCase();
+        const inc = document.getElementById('f_inc').value.toUpperCase().trim();
         if(!inc) { alert("Preencha ao menos o chamado antes de salvar."); return; }
 
         const btnSave = document.getElementById('btnSalvar');
@@ -686,13 +784,36 @@
                 pdf_base64: pdfBase64 // <-- Salva o PDF já assinado de forma definitiva!
             };
 
-            const { error } = await supabaseClient.from('chamados').insert([dadosParaSalvar]);
-            
-            if (error) {
-                console.error(error);
-                alert("Erro ao salvar no banco de dados: " + error.message);
+            // VERIFICAÇÃO SE O CHAMADO JÁ EXISTE NO BANCO (UPSERT)
+            const { data: chamadoExistente, error: errorBusca } = await supabaseClient
+                .from('chamados')
+                .select('id, chamado')
+                .eq('chamado', inc)
+                .maybeSingle();
+
+            if (errorBusca) {
+                throw new Error("Erro ao verificar duplicidade do chamado: " + errorBusca.message);
+            }
+
+            let responseDb;
+            if (chamadoExistente) {
+                // Se existe, atualiza o registro específico no banco usando o ID como âncora
+                responseDb = await supabaseClient
+                    .from('chamados')
+                    .update(dadosParaSalvar)
+                    .eq('id', chamadoExistente.id);
             } else {
-                alert("Dados e PDF assinado salvos com sucesso no banco de dados!");
+                // Se não existe, faz a inserção de um novo registro normalmente
+                responseDb = await supabaseClient
+                    .from('chamados')
+                    .insert([dadosParaSalvar]);
+            }
+
+            if (responseDb.error) {
+                console.error(responseDb.error);
+                alert("Erro ao salvar no banco de dados: " + responseDb.error.message);
+            } else {
+                alert("Dados e PDF atualizados com sucesso no banco de dados!");
             }
         } catch (e) { 
             alert("Erro inesperado: " + e.message); 
