@@ -78,6 +78,9 @@
                 <div class="field"><label>Cidade</label><input type="text" id="f_cid"></div>
                 <div class="field"><label>UF</label><input type="text" id="f_uf"></div>
                 
+                <!-- Novo Campo Adicionado -->
+                <div class="field full-width"><label>Descritivo Defeito / Solução</label><input type="text" id="f_descritivo_defeito" value="EQUIPAMENTO INOPERANTE"></div>
+                
                 <div class="equip-container">
                     <div>
                         <div class="column-title">Atual / Retirado</div>
@@ -244,12 +247,12 @@
 
         const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(texto);
         if (mFullEnd) {
-            const linhaEnd = mFullEnd[1];
-            dados.rua = (/^([^0-9,]+)/.exec(linhaEnd) || ["","---"])[1].trim();
-            dados.num = (/(\d+)/.exec(linhaEnd.replace(dados.rua, "")) || ["","---"])[1];
-            dados.cid = (/-\s*([^,]+)/.exec(linhaEnd) || ["","---"])[1].trim().toUpperCase();
-            dados.uf = (/,\s*([A-Z]{2})/.exec(linhaEnd) || ["",""])[1];
-            const mCep = /(\d{8})/.exec(linhaEnd.replace(/\s/g, ""));
+            const inlineEnd = mFullEnd[1];
+            dados.rua = (/^([^0-9,]+)/.exec(inlineEnd) || ["","---"])[1].trim();
+            dados.num = (/(\d+)/.exec(inlineEnd.replace(dados.rua, "")) || ["","---"])[1];
+            dados.cid = (/-\s*([^,]+)/.exec(inlineEnd) || ["","---"])[1].trim().toUpperCase();
+            dados.uf = (/,\s*([A-Z]{2})/.exec(inlineEnd) || ["",""])[1];
+            const mCep = /(\d{8})/.exec(inlineEnd.replace(/\s/g, ""));
             if (mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
         }
 
@@ -278,6 +281,9 @@
         document.getElementById('f_solucao').value = dados.solucao;
         document.getElementById('f_local_data_cidade').value = dados.cid || '';
         
+        // Garante que o campo continue preenchido com "EQUIPAMENTO INOPERANTE" na extração de novos chamados
+        document.getElementById('f_descritivo_defeito').value = "EQUIPAMENTO INOPERANTE";
+        
         clearTimeout(timeoutRender);
         timeoutRender = setTimeout(gerarERenderizar, 500);
     }
@@ -302,7 +308,10 @@
         escrever('f_inc', POS.inc); escrever('f_uniorg', POS.uniorg); escrever('f_rua', POS.rua);
         escrever('f_num', POS.num); escrever('f_cid', POS.cid); escrever('f_uf', POS.uf);
         escrever('f_bai', POS.bai);
+        
+        // Mantém a escrita fixa no local POS.inoperante
         page.drawText("EQUIPAMENTO INOPERANTE", { x: 30, y: 555, size: 11, color: fontColor });
+        
         escrever('f_modelo_ret', POS.modelo); escrever('f_host_ret', POS.host); escrever('f_patri_ret', POS.patri);
         escrever('f_patri_inst', POS.patri_inst);
         escrever('f_sn_inst', POS.sn_inst);
