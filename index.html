@@ -238,7 +238,7 @@
             document.getElementById('f_mac_inst').value = "";
         }
 
-        let nomeCapturado = (/responsavel\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
+        let nomeCapturado = (/solicitante\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
         dados.resp = limitarNomeresponsavel(nomeCapturado);
         dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
