@@ -43,6 +43,7 @@
 
         .btn-group { display: flex; gap: 8px; margin-top: 15px; }
         button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.2s; font-size: 14px; }
+        button:disabled { opacity: 0.7; cursor: not-allowed; }
         .btn-save { background: var(--primary); color: white; }
         .btn-pdf { background: var(--success); color: white; }
         
@@ -61,7 +62,6 @@
         <div class="editor-box" id="editorBox">
             <h2>2. Editor em Tempo Real</h2>
             <div class="form-grid">
-                <!-- Alterado o rótulo de "INC" para "Chamado" -->
                 <div class="field full-width"><label>Chamado</label><input type="text" id="f_inc"></div>
                 
                 <div class="time-container">
@@ -79,12 +79,10 @@
                 <div class="field"><label>Cidade</label><input type="text" id="f_cid"></div>
                 <div class="field"><label>UF</label><input type="text" id="f_uf"></div>
                 
-                <!-- Novo Campo Adicionado -->
                 <div class="field full-width"><label>Descritivo Defeito / Solução</label><input type="text" id="f_descritivo_defeito" value="EQUIPAMENTO INOPERANTE"></div>
                 
                 <div class="equip-container">
                     <div>
-                        <!-- Título da coluna 1: Centralizado, aumentado de 12px para 15px para maior destaque visual -->
                         <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center;">
                             Sempre Preencher<br>
                             Atual Reconfigurado ou Retirado
@@ -96,7 +94,6 @@
                         <div class="field"><label>MAC</label><input type="text" id="f_mac_ret" oninput="sincronizarMac()"></div>
                     </div>
                     <div>
-                        <!-- Título da coluna 2: Centralizado, aumentado de 12px para 15px para maior destaque visual -->
                         <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center;">
                             Preencher em caso de troca<br>
                             Equipamento Novo
@@ -118,7 +115,7 @@
                 <input type="hidden" id="f_data_completa">
             </div>
             <div class="btn-group">
-                <button class="btn-save" onclick="salvarAtendimento()">💾 Salvar</button>
+                <button class="btn-save" id="btnSalvar" onclick="salvarAtendimento()">💾 Salvar</button>
                 <button class="btn-pdf" onclick="baixarPdf()">📥 Baixar PDF</button>
             </div>
         </div>
@@ -138,7 +135,6 @@
     const CPF_FIXO = "327.190.648-31";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Ajustadas as coordenadas de Hora e Minuto do Término Atendimento conforme suas instruções
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
@@ -150,7 +146,7 @@
         h_partida: { x: 91, y: 747 }, m_partida: { x: 110, y: 747 },
         h_chegada: { x: 91, y: 736 }, m_chegada: { x: 110, y: 736 },
         h_inicio_ate: { x: 418, y: 749 }, m_inicio_ate: { x: 436, y: 749 },
-        h_termino_ate: { x: 418, y: 738 }, m_termino_ate: { x: 436, y: 738 }, // Hora e minuto definidos exatamente na linha y: 738
+        h_termino_ate: { x: 418, y: 738 }, m_termino_ate: { x: 436, y: 738 },
         patri_inst: { x: 349, y: 486, s: 11 },
         sn_inst: { x: 372, y: 473, s: 11 },
         modelo_inst: { x: 334, y: 458, s: 11 },
@@ -314,7 +310,6 @@
             if(texto && texto !== '---' && texto !== '') page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
         };
 
-        // Corrigido de escribirParHorario para escreverParHorario para evitar ReferenceError
         const escreverParHorario = (idCampoUnico, posHora, posMinuto) => {
             const valor = document.getElementById(idCampoUnico).value.replace(":", "");
             if (valor && valor.length >= 2) page.drawText(valor.slice(0, 2), { x: posHora.x, y: posHora.y, size: 11, color: fontColor });
@@ -350,7 +345,7 @@
         escreverParHorario('f_partida', POS.h_partida, POS.m_partida);
         escreverParHorario('f_chegada', POS.h_chegada, POS.m_chegada);
         escreverParHorario('f_inicio_ate', POS.h_inicio_ate, POS.m_inicio_ate);
-        escreverParHorario('f_termino_ate', POS.h_termino_ate, POS.m_termino_ate); // Carimbando término de atendimento na RAT
+        escreverParHorario('f_termino_ate', POS.h_termino_ate, POS.m_termino_ate); 
 
         return pdfDoc;
     }
@@ -382,47 +377,72 @@
         const inc = document.getElementById('f_inc').value.toUpperCase();
         if(!inc) { alert("Preencha ao menos o chamado antes de salvar."); return; }
 
-        const dadosParaSalvar = {
-            chamado: inc,
-            uniorg: document.getElementById('f_uniorg').value,
-            hora_partida: document.getElementById('f_partida').value,
-            hora_chegada: document.getElementById('f_chegada').value,
-            hora_inicio_ate: document.getElementById('f_inicio_ate').value,
-            hora_termino_ate: document.getElementById('f_termino_ate').value,
-            endereco: document.getElementById('f_rua').value,
-            numero: document.getElementById('f_num').value,
-            bairro: document.getElementById('f_bai').value,
-            cidade: document.getElementById('f_cid').value,
-            uf: document.getElementById('f_uf').value,
-            descritivo_defeito_causa: document.getElementById('f_descritivo_defeito').value, // Nome da coluna ajustado conforme solicitado
-            patri_ret: document.getElementById('f_patri_ret').value,
-            sn_ret: document.getElementById('f_sn_ret').value,
-            modelo_ret: document.getElementById('f_modelo_ret').value,
-            host_ret: document.getElementById('f_host_ret').value,
-            mac_ret: document.getElementById('f_mac_ret').value,
-            patri_inst: document.getElementById('f_patri_inst').value,
-            sn_inst: document.getElementById('f_sn_inst').value,
-            modelo_inst: document.getElementById('f_modelo_inst').value,
-            host_inst: document.getElementById('f_host_inst').value,
-            mac_inst: document.getElementById('f_mac_inst').value,
-            solucao: document.getElementById('f_solucao').value,
-            responsavel: document.getElementById('f_resp').value,
-            matricula: document.getElementById('f_matricula').value,
-            data_atendimento: document.getElementById('f_data_completa').value,
-            chamado_cerb: document.getElementById('chamado_cerb').value,
-            tecnico: 'Willian'
-        };
+        const btnSave = document.getElementById('btnSalvar');
+        const txtOriginal = btnSave.innerHTML;
+        btnSave.innerHTML = "⏳ Gerando PDF e Salvando...";
+        btnSave.disabled = true;
 
         try {
+            // Gerar o PDF para conversão
+            let pdfBase64 = null;
+            const pdfDoc = await aplicarDadosNoPdf();
+            if (pdfDoc) {
+                const pdfBytes = await pdfDoc.save();
+                // Conversão do ArrayBuffer do PDF para Base64 para envio direto ao BD
+                let binary = '';
+                const bytes = new Uint8Array(pdfBytes);
+                const len = bytes.byteLength;
+                for (let i = 0; i < len; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                pdfBase64 = window.btoa(binary);
+            }
+
+            const dadosParaSalvar = {
+                chamado: inc,
+                uniorg: document.getElementById('f_uniorg').value,
+                hora_partida: document.getElementById('f_partida').value,
+                hora_chegada: document.getElementById('f_chegada').value,
+                hora_inicio_ate: document.getElementById('f_inicio_ate').value,
+                hora_termino_ate: document.getElementById('f_termino_ate').value,
+                endereco: document.getElementById('f_rua').value,
+                numero: document.getElementById('f_num').value,
+                bairro: document.getElementById('f_bai').value,
+                cidade: document.getElementById('f_cid').value,
+                uf: document.getElementById('f_uf').value,
+                descritivo_defeito_causa: document.getElementById('f_descritivo_defeito').value,
+                patri_ret: document.getElementById('f_patri_ret').value,
+                sn_ret: document.getElementById('f_sn_ret').value,
+                modelo_ret: document.getElementById('f_modelo_ret').value,
+                host_ret: document.getElementById('f_host_ret').value,
+                mac_ret: document.getElementById('f_mac_ret').value,
+                patri_inst: document.getElementById('f_patri_inst').value,
+                sn_inst: document.getElementById('f_sn_inst').value,
+                modelo_inst: document.getElementById('f_modelo_inst').value,
+                host_inst: document.getElementById('f_host_inst').value,
+                mac_inst: document.getElementById('f_mac_inst').value,
+                solucao: document.getElementById('f_solucao').value,
+                responsavel: document.getElementById('f_resp').value,
+                matricula: document.getElementById('f_matricula').value,
+                data_atendimento: document.getElementById('f_data_completa').value,
+                chamado_cerb: document.getElementById('chamado_cerb').value,
+                tecnico: 'Willian',
+                pdf_base64: pdfBase64 // <-- PDF salvo aqui na nova coluna!
+            };
+
             const { error } = await supabaseClient.from('chamados').insert([dadosParaSalvar]);
+            
             if (error) {
                 console.error(error);
-                alert("Erro ao salvar: " + error.message);
+                alert("Erro ao salvar no banco de dados: " + error.message);
             } else {
-                alert("Dados salvos com sucesso!");
+                alert("Dados e PDF salvos com sucesso no banco de dados!");
             }
         } catch (e) { 
             alert("Erro inesperado: " + e.message); 
+        } finally {
+            btnSave.innerHTML = txtOriginal;
+            btnSave.disabled = false;
         }
     }
 </script>
