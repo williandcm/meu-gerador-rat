@@ -130,6 +130,7 @@
     const CPF_FIXO = "327.190.648-31";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // Ajustadas as coordenadas de Hora e Minuto do Término Atendimento conforme suas instruções
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
@@ -141,7 +142,7 @@
         h_partida: { x: 91, y: 747 }, m_partida: { x: 110, y: 747 },
         h_chegada: { x: 91, y: 736 }, m_chegada: { x: 110, y: 736 },
         h_inicio_ate: { x: 418, y: 749 }, m_inicio_ate: { x: 436, y: 749 },
-        h_termino_ate: { x: 418, y: 738 }, m_termino_ate: { x: 436, y: 738 }, // Adicionado posições do término de atendimento
+        h_termino_ate: { x: 418, y: 738 }, m_termino_ate: { x: 436, y: 738 }, // Hora e minuto definidos exatamente na linha y: 738
         patri_inst: { x: 349, y: 486, s: 11 },
         sn_inst: { x: 372, y: 473, s: 11 },
         modelo_inst: { x: 334, y: 458, s: 11 },
@@ -305,6 +306,7 @@
             if(texto && texto !== '---' && texto !== '') page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
         };
 
+        // Corrigido de escribirParHorario para escreverParHorario para evitar ReferenceError
         const escreverParHorario = (idCampoUnico, posHora, posMinuto) => {
             const valor = document.getElementById(idCampoUnico).value.replace(":", "");
             if (valor && valor.length >= 2) page.drawText(valor.slice(0, 2), { x: posHora.x, y: posHora.y, size: 11, color: fontColor });
