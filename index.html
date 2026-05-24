@@ -154,25 +154,16 @@
 
     window.onload = async () => {
         try {
-            console.log("A carregar PDF...");
             const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
-            if (!response.ok) throw new Error("Não foi possível aceder ao PDF.");
             modeloPdfBytes = await response.arrayBuffer();
-            
             const d = new Date();
             document.getElementById('f_data_completa').value = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-            
-            await gerarERenderizar();
-            
+            gerarERenderizar();
             document.getElementById('editorBox').addEventListener('input', () => {
                 clearTimeout(timeoutRender);
                 timeoutRender = setTimeout(gerarERenderizar, 500);
             });
-            console.log("Sistema pronto.");
-        } catch (e) { 
-            console.error("Erro ao carregar o PDF base:", e); 
-            alert("Erro ao carregar o modelo de PDF. Verifique se o ficheiro existe no Storage.");
-        }
+        } catch (e) { console.error("Erro ao carregar o PDF base:", e); }
     };
 
     function sincronizarMac() {
@@ -292,10 +283,8 @@
         const fontColor = PDFLib.rgb(0, 0, 0);
 
         const escrever = (id, config) => {
-            const input = document.getElementById(id);
-            if(input && input.value && input.value !== '---' && input.value !== '') {
-                page.drawText(String(input.value).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
-            }
+            const texto = document.getElementById(id).value;
+            if(texto && texto !== '---' && texto !== '') page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
         };
 
         const escreverParHorario = (idCampoUnico, posHora, posMinuto) => {
@@ -327,7 +316,6 @@
         }
         
         escrever('f_local_data_cidade', POS.local);
-
         escreverParHorario('f_partida', POS.h_partida, POS.m_partida);
         escreverParHorario('f_chegada', POS.h_chegada, POS.m_chegada);
         escreverParHorario('f_inicio_ate', POS.h_inicio_ate, POS.m_inicio_ate);
@@ -336,22 +324,15 @@
     }
 
     async function gerarERenderizar() {
-        try {
-            const pdfDoc = await aplicarDadosNoPdf();
-            if (!pdfDoc) return;
-            const pdfBytes = await pdfDoc.save();
-            const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
-            const pdf = await loadingTask.promise;
-            const pdfPage = await pdf.getPage(1);
-            const viewport = pdfPage.getViewport({scale: 2.0}); 
-            const canvas = document.getElementById('pdfCanvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height; 
-            canvas.width = viewport.width;
-            await pdfPage.render({canvasContext: context, viewport: viewport}).promise;
-        } catch (err) {
-            console.error("Erro ao renderizar PDF no Canvas:", err);
-        }
+        const pdfDoc = await aplicarDadosNoPdf();
+        if (!pdfDoc) return;
+        const pdfBytes = await pdfDoc.save();
+        const pdf = await pdfjsLib.getDocument({data: pdfBytes}).promise;
+        const pdfPage = await pdf.getPage(1);
+        const viewport = pdfPage.getViewport({scale: 2.0}); 
+        const canvas = document.getElementById('pdfCanvas');
+        canvas.height = viewport.height; canvas.width = viewport.width;
+        await pdfPage.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
     }
 
     async function baixarPdf() {
@@ -371,8 +352,6 @@
 
         const dadosParaSalvar = {
             numero_inc: inc,
-            texto_bruto: document.getElementById('textoBruto').value,
-            analista: 'Willian',
             uniorg: document.getElementById('f_uniorg').value,
             hora_partida: document.getElementById('f_partida').value,
             hora_chegada: document.getElementById('f_chegada').value,
@@ -396,13 +375,22 @@
             solucao: document.getElementById('f_solucao').value,
             solicitante: document.getElementById('f_resp').value,
             matricula: document.getElementById('f_matricula').value,
-            data: document.getElementById('f_data_completa').value
+            data_atendimento: document.getElementById('f_data_completa').value,
+            texto_bruto: document.getElementById('textoBruto').value,
+            analista: 'Willian'
         };
 
         try {
             const { error } = await supabaseClient.from('chamados').insert([dadosParaSalvar]);
-            alert(error ? "Erro ao salvar: " + error.message : "Atendimento salvo com sucesso!");
-        } catch (e) { alert("Erro inesperado: " + e.message); }
+            if (error) {
+                console.error(error);
+                alert("Erro ao salvar: " + error.message);
+            } else {
+                alert("Dados salvos com sucesso!");
+            }
+        } catch (e) { 
+            alert("Erro inesperado: " + e.message); 
+        }
     }
 </script>
 </body>
