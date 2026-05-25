@@ -3,359 +3,594 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAT Dashboard Profissional</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>RAT Pro Editor - Willian</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
-    <!-- Ícones para enriquecer a UI -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
     <style>
-        :root {
-            --bg: #f3f4f6;
-            --surface: rgba(255, 255, 255, 0.85); /* Efeito de vidro */
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --text: #1e293b;
-            --text-light: #64748b;
-            --border: rgba(226, 232, 240, 0.6);
-            --accent-retirada: #ef4444;
-            --accent-instalacao: #10b981;
-            --shadow-soft: 0 10px 40px -10px rgba(0,0,0,0.08);
-            --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.3);
-        }
-
-        /* Fundo Animado e Suave */
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background: linear-gradient(135deg, var(--bg) 0%, #e2e8f0 100%);
-            background-size: 200% 200%;
-            animation: gradientBG 15s ease infinite;
-            color: var(--text); 
-            margin: 0; 
-            padding: 40px 20px; 
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-        }
-
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .dashboard { 
-            display: grid; 
-            grid-template-columns: 1fr 450px; 
-            gap: 30px; 
-            width: 100%;
-            max-width: 1400px; 
-            animation: fadeIn 0.8s ease-out;
-        }
+        :root { --primary: #3b82f6; --success: #10b981; --warning: #f59e0b; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
         
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Cards Glassmorphism */
-        .card { 
-            background: var(--surface); 
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--border); 
-            border-radius: 24px; 
-            padding: 40px; 
-            box-shadow: var(--shadow-soft); 
-            transition: transform 0.3s ease;
-        }
-
-        h1 { margin: 0 0 8px 0; font-weight: 700; font-size: 28px; color: #0f172a; display: flex; align-items: center; gap: 12px; }
-        p.subtitle { margin: 0 0 32px 0; color: var(--text-light); font-size: 14px; }
+        .container { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; max-width: 1200px; margin: 0 auto; }
         
-        h2 { margin: 0 0 20px 0; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 10px; }
+        .card-input { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; }
         
-        /* Área de "Magia" (Extração Rápida) */
-        .magic-box {
-            position: relative;
-            margin-bottom: 32px;
-            padding: 2px;
-            border-radius: 14px;
-            background: linear-gradient(45deg, var(--primary), #8b5cf6, var(--primary));
-            background-size: 200% 200%;
-            animation: gradientBG 5s ease infinite;
-        }
+        /* Estilo para a caixa de pesquisa */
+        .search-box { background: #e0f2fe; border: 1px solid #bae6fd; display: flex; gap: 10px; align-items: center; }
+        .search-input { flex: 1; padding: 12px; border: 1px solid #93c5fd; border-radius: 8px; font-size: 16px; font-weight: bold; text-transform: uppercase; outline: none; }
+        .btn-search { background: #0ea5e9; color: white; padding: 12px 25px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-search:hover { background: #0284c7; }
 
-        .magic-box .inner {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 20px;
-        }
+        textarea { width: 100%; height: 80px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; box-sizing: border-box; resize: none; outline: none; }
 
-        .magic-box label {
-            color: var(--primary);
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
-            font-size: 13px;
-        }
-
-        .magic-box textarea {
-            border: none;
-            background: #f8fafc;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-            resize: none;
-            transition: all 0.3s ease;
-        }
+        .workspace { display: flex; flex-direction: row; gap: 20px; width: 100%; justify-content: center; align-items: flex-start; }
+        .editor-box { flex: 1; min-width: 350px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
-        .magic-box textarea:focus {
-            background: #fff;
-            outline: none;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-        }
+        .preview-box { flex: 1; min-width: 350px; background: #525659; padding: 15px; border-radius: 12px; text-align: center; display: block; }
 
-        /* Inputs Modernos */
-        .input-group { position: relative; margin-bottom: 20px; }
-        label { display: block; font-size: 12px; font-weight: 600; color: var(--text-light); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-        
-        input, textarea { 
-            width: 100%; 
-            padding: 14px 16px; 
-            border: 2px solid transparent; 
-            background: #f1f5f9;
-            border-radius: 12px; 
-            font-size: 15px; 
-            color: var(--text);
-            box-sizing: border-box; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-family: 'Inter', sans-serif;
-        }
-
-        input:focus, textarea:focus {
-            border-color: var(--primary);
-            background: #ffffff;
-            outline: none;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-        }
-        
-        /* Divisores Visuais */
-        .section-header { 
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-weight: 700;
-            font-size: 16px;
-            color: #0f172a;
-            margin: 40px 0 20px; 
-        }
-        .section-header::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
-        
-        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-        
-        /* Estilo de Equipamentos com Efeito Hover */
-        .hardware-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-        .hw-card { 
-            padding: 24px; 
-            border-radius: 16px; 
-            background: #ffffff;
-            border: 1px solid var(--border); 
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .hw-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-soft); }
-
-        .retirada { border-top: 4px solid var(--accent-retirada); }
-        .retirada::before { content: ''; position: absolute; top:0; left:0; width:100%; height:100%; background: linear-gradient(180deg, rgba(239, 68, 68, 0.05) 0%, transparent 100%); pointer-events: none; }
-        
-        .instalacao { border-top: 4px solid var(--accent-instalacao); }
-        .instalacao::before { content: ''; position: absolute; top:0; left:0; width:100%; height:100%; background: linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, transparent 100%); pointer-events: none; }
-
-        .hw-card label.badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            margin-bottom: 16px;
-        }
-
-        .retirada label.badge { background: rgba(239, 68, 68, 0.1); color: var(--accent-retirada); }
-        .instalacao label.badge { background: rgba(16, 185, 129, 0.1); color: var(--accent-instalacao); }
-
-        /* Botão de Ação Mágico */
-        .btn-action { 
-            background: var(--primary); 
-            color: white; 
-            border: none; 
-            padding: 16px 24px; 
-            border-radius: 12px; 
-            font-size: 16px;
-            font-weight: 600; 
-            cursor: pointer; 
-            width: 100%; 
-            margin-top: 32px; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
-        }
-
-        .btn-action:hover { 
-            background: var(--primary-hover);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-glow);
-        }
-        
-        .btn-action:active { transform: translateY(0); }
-
-        /* Sidebar Preview */
-        .preview-pane { position: sticky; top: 40px; }
-        .preview-pane .card { padding: 32px; display: flex; flex-direction: column; height: calc(100vh - 80px); box-sizing: border-box; }
-        
-        .canvas-container {
-            flex: 1;
-            background: #f8fafc;
-            border-radius: 12px;
-            border: 2px dashed var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            position: relative;
-        }
-
-        canvas { 
-            width: 100%; 
-            height: 100%;
-            object-fit: contain;
-            border-radius: 8px; 
-            transition: opacity 0.3s ease;
-        }
-
-        .canvas-placeholder {
-            position: absolute;
-            color: var(--text-light);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            font-size: 14px;
-        }
-
-        /* Responsividade */
         @media (max-width: 1024px) {
-            .dashboard { grid-template-columns: 1fr; }
-            .preview-pane { position: static; }
-            .preview-pane .card { height: 500px; }
+            .workspace { flex-direction: column; align-items: center; }
+            .editor-box, .preview-box { width: 100%; min-width: unset; }
         }
-        @media (max-width: 600px) {
-            .grid-3 { grid-template-columns: 1fr; }
-            .hardware-grid { grid-template-columns: 1fr; }
-            body { padding: 16px; }
-            .card { padding: 24px; }
-        }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .full-width { grid-column: span 2; }
+        
+        .equip-container, .time-container { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        
+        .field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
+        .field label { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+        
+        .field input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; width: 100%; box-sizing: border-box; }
+        
+        .field input.time-input { text-align: center; font-size: 16px; letter-spacing: normal; }
+
+        canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+
+        .btn-group { display: flex; gap: 8px; margin-top: 15px; }
+        button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.2s; font-size: 14px; }
+        button:disabled { opacity: 0.7; cursor: not-allowed; }
+        .btn-save { background: var(--primary); color: white; }
+        .btn-update { background: var(--warning); color: white; } /* Cor para o botão de atualizar */
+        .btn-pdf { background: var(--success); color: white; }
+        
+        h2 { font-size: 1rem; color: #1e293b; margin: 0 0 10px 0; border-bottom: 2px solid var(--primary); padding-bottom: 5px; }
     </style>
 </head>
 <body>
 
-<div class="dashboard">
-    <!-- Area Principal -->
-    <main>
-        <div class="card">
-            <h1><i class="ph-fill ph-headset"></i> Painel de Atendimento</h1>
-            <p class="subtitle">Preencha os dados do chamado ou utilize a extração inteligente.</p>
-            
-            <div class="magic-box">
-                <div class="inner">
-                    <label><i class="ph-fill ph-magic-wand"></i> Extração Rápida (Colar Chamado)</label>
-                    <textarea id="chamado_cerb" placeholder="Cole o texto do chamado aqui para preenchimento automático..." rows="3"></textarea>
-                </div>
+<div class="container">
+    <!-- NOVO: Seção de Pesquisa -->
+    <div class="card-input search-box">
+        <div style="flex: 1;">
+            <h2 style="border: none; margin: 0 0 5px 0; color: #0284c7;">🔍 Pesquisar Chamado Salvo</h2>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="busca_inc" class="search-input" placeholder="Ex: INC1234567">
+                <button class="btn-search" onclick="buscarChamado()" id="btnBuscar">Buscar Banco</button>
             </div>
+        </div>
+    </div>
 
-            <div class="section-header"><i class="ph-bold ph-file-text"></i> Dados do Chamado</div>
-            <div class="grid-3">
-                <div class="input-group">
-                    <label>Incidente</label>
-                    <input type="text" id="f_inc" placeholder="Ex: INC000000">
-                </div>
-                <div class="input-group">
-                    <label>Uniorg</label>
-                    <input type="text" id="f_uniorg" placeholder="Ex: 1234">
-                </div>
-                <div class="input-group">
-                    <label>Data</label>
-                    <input type="date" id="f_data_picker">
-                </div>
-            </div>
+    <div class="card-input">
+        <h2>1. Cole o Novo Chamado (Para Criar um Novo)</h2>
+        <textarea id="chamado_cerb" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
+    </div>
 
-            <div class="section-header"><i class="ph-bold ph-desktop"></i> Controle de Hardware</div>
-            <div class="hardware-grid">
-                <div class="hw-card retirada">
-                    <label class="badge"><i class="ph-bold ph-arrow-down-right"></i> Equipamento Retirado</label>
-                    <div class="input-group">
-                        <input type="text" id="f_patri_ret" placeholder="Nº do Patrimônio">
-                    </div>
-                    <div class="input-group" style="margin-bottom: 0;">
-                        <input type="text" id="f_sn_ret" placeholder="Número de Série">
-                    </div>
-                </div>
+    <div class="workspace">
+        <div class="editor-box" id="editorBox">
+            <h2>2. Editor em Tempo Real <span id="modo_edicao_label" style="color: var(--warning); font-size: 12px; display: none;">(Modo de Edição)</span></h2>
+            <div class="form-grid">
+                <div class="field full-width"><label>Chamado</label><input type="text" id="f_inc"></div>
                 
-                <div class="hw-card instalacao">
-                    <label class="badge"><i class="ph-bold ph-arrow-up-right"></i> Novo Equipamento</label>
-                    <div class="input-group">
-                        <input type="text" id="f_patri_inst" placeholder="Nº do Patrimônio">
-                    </div>
-                    <div class="input-group" style="margin-bottom: 0;">
-                        <input type="text" id="f_sn_inst" placeholder="Número de Série">
-                    </div>
+                <div class="time-container">
+                    <div class="field"><label>Hora Partida</label><input type="text" id="f_partida" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                    <div class="field"><label>Hora Chegada</label><input type="text" id="f_chegada" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                    <div class="field"><label>Hora Início Atendimento</label><input type="text" id="f_inicio_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                    <div class="field"><label>Hora Término Atendimento</label><input type="text" id="f_termino_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
                 </div>
-            </div>
-            
-            <button class="btn-action" onclick="salvarAtendimento()">
-                <i class="ph-bold ph-check-circle"></i> Salvar e Processar Documento
-            </button>
-        </div>
-    </main>
 
-    <!-- Sidebar Preview -->
-    <aside class="preview-pane">
-        <div class="card">
-            <h2><i class="ph-bold ph-file-pdf"></i> Visualização do RAT</h2>
-            <div class="canvas-container">
-                <div class="canvas-placeholder" id="placeholder-text">
-                    <i class="ph-light ph-file-dashed" style="font-size: 48px;"></i>
-                    <span>O PDF gerado aparecerá aqui</span>
+                <div class="field full-width"><label>Uniorg</label><input type="text" id="f_uniorg"></div>
+                <div class="field full-width"><label>Endereço</label><input type="text" id="f_rua"></div>
+                
+                <div class="field"><label>Número</label><input type="text" id="f_num"></div>
+                <div class="field"><label>Bairro</label><input type="text" id="f_bai"></div>
+                <div class="field"><label>Cidade</label><input type="text" id="f_cid"></div>
+                <div class="field"><label>UF</label><input type="text" id="f_uf"></div>
+                
+                <div class="field full-width"><label>Descritivo Defeito / Solução</label><input type="text" id="f_descritivo_defeito" value="EQUIPAMENTO INOPERANTE"></div>
+                
+                <div class="equip-container">
+                    <div>
+                        <!-- Título com min-height e flexbox para alinhar pela parte inferior -->
+                        <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-end;">
+                            <span>Sempre Preencher<br>Atual Reconfigurado ou Retirado</span>
+                        </div>
+                        <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_ret"></div>
+                        <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_ret"></div>
+                        <div class="field"><label>Modelo</label><input type="text" id="f_modelo_ret"></div>
+                        <div class="field"><label>Hostname</label><input type="text" id="f_host_ret"></div>
+                        <div class="field"><label>MAC</label><input type="text" id="f_mac_ret" oninput="sincronizarMac()"></div>
+                    </div>
+                    <div>
+                        <!-- Título com min-height e flexbox para alinhar pela parte inferior -->
+                        <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-end;">
+                            <span>Preencher em caso de troca<br>Equipamento Novo</span>
+                        </div>
+                        <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_inst"></div>
+                        <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_inst"></div>
+                        <div class="field"><label>Modelo</label><input type="text" id="f_modelo_inst"></div>
+                        <div class="field"><label>Hostname</label><input type="text" id="f_host_inst"></div>
+                        <div class="field"><label>MAC</label><input type="text" id="f_mac_inst"></div>
+                    </div>
                 </div>
-                <!-- O canvas fica invisível até que o PDF seja gerado para não sobrepor o placeholder vazio -->
-                <canvas id="pdfCanvas" style="opacity: 0; position: absolute; z-index: 10;"></canvas> 
+
+                <div class="field full-width"><label>Solução</label><input type="text" id="f_solucao" oninput="sincronizarMac()"></div>
+                <div class="field"><label>responsavel</label><input type="text" id="f_resp"></div>
+                <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
+                <div class="field"><label>Local</label><input type="text" id="f_local_data_cidade"></div>
+                <div class="field"><label>Data</label><input type="date" id="f_data_picker" onchange="atualizarDataFormatada()"></div>
+                <!-- Campo oculto para guardar a data formatada para o PDF -->
+                <input type="hidden" id="f_data_completa">
+            </div>
+            <div class="btn-group">
+                <button class="btn-save" id="btnSalvar" onclick="salvarAtendimento()">💾 Salvar</button>
+                <button class="btn-pdf" onclick="baixarPdf()">📥 Baixar PDF</button>
             </div>
         </div>
-    </aside>
+
+        <div class="preview-box" id="previewBox">
+            <span style="color:white; font-size: 11px; font-weight: bold; margin-bottom: 10px; display: block;">PRÉ-VISUALIZAÇÃO DA RAT:</span>
+            <canvas id="pdfCanvas"></canvas>
+        </div>
+    </div>
 </div>
 
 <script>
-    // Mantém a mesma lógica de backend original.
-    // Lógica para mostrar/esconder o placeholder do Canvas (exemplo opcional):
-    // Quando renderizar o PDF no seu JS, basta rodar:
-    // document.getElementById('pdfCanvas').style.opacity = 1;
-    // document.getElementById('placeholder-text').style.display = 'none';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
+    const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
+    const CPF_FIXO = "327.190.648-31";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const POS = {
+        inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
+        num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
+        bai: { x: 65, y: 688 }, inoperante: { x: 30, y: 555 }, modelo: { x: 69, y: 457 },
+        host: { x: 78, y: 443 }, patri: { x: 88, y: 485 }, sn: { x: 110, y: 471 },
+        mac: { x: 91, y: 430 }, solucao: { x: 30, y: 232 }, resp: { x: 95, y: 174 },
+        matri: { x: 83, y: 147 }, tecnico: { x: 347, y: 176 }, cpf: { x: 346, y: 149 },
+        local: { x: 123, y: 56 }, dia: { x: 376, y: 58 }, mes: { x: 410, y: 58 }, ano: { x: 441, y: 58 },
+        h_partida: { x: 91, y: 747 }, m_partida: { x: 110, y: 747 },
+        h_chegada: { x: 91, y: 736 }, m_chegada: { x: 110, y: 736 },
+        h_inicio_ate: { x: 418, y: 749 }, m_inicio_ate: { x: 436, y: 749 },
+        h_termino_ate: { x: 418, y: 738 }, m_termino_ate: { x: 436, y: 738 },
+        patri_inst: { x: 349, y: 486, s: 11 },
+        sn_inst: { x: 372, y: 473, s: 11 },
+        modelo_inst: { x: 334, y: 458, s: 11 },
+        host_inst: { x: 342, y: 445, s: 11 },
+        mac_inst: { x: 356, y: 431, s: 11 }
+    };
+
+    let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO };
+    let modeloPdfBytes = null;
+    let timeoutRender = null;
+    
+    // VARIÁVEL DE ESTADO PARA CONTROLE DE EDIÇÃO
+    let idRegistroAtual = null; // Guardará o 'id' do banco caso seja uma edição
+
+    window.onload = async () => {
+        try {
+            const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
+            modeloPdfBytes = await response.arrayBuffer();
+            const d = new Date();
+            document.getElementById('f_data_picker').value = d.toISOString().split('T')[0];
+            atualizarDataFormatada();
+            
+            document.getElementById('editorBox').addEventListener('input', () => {
+                clearTimeout(timeoutRender);
+                timeoutRender = setTimeout(gerarERenderizar, 500);
+            });
+        } catch (e) { console.error("Erro ao carregar o PDF base:", e); }
+    };
+
+    // ==========================================
+    // NOVA FUNÇÃO: BUSCAR CHAMADO NO SUPABASE
+    // ==========================================
+    async function buscarChamado() {
+        const incBusca = document.getElementById('busca_inc').value.toUpperCase().trim();
+        if (!incBusca) { alert("Digite o número do chamado (ex: INC1234)!"); return; }
+
+        const btnBuscar = document.getElementById('btnBuscar');
+        btnBuscar.innerHTML = "⏳ Buscando...";
+        btnBuscar.disabled = true;
+
+        try {
+            // Busca o registro onde a coluna 'chamado' é igual ao digitado
+            const { data, error } = await supabaseClient
+                .from('chamados')
+                .select('*')
+                .eq('chamado', incBusca)
+                .single(); 
+
+            if (error || !data) {
+                alert("Chamado não encontrado no banco de dados.");
+                resetarModoEdicao();
+                return;
+            }
+
+            // Ativa o modo de edição
+            idRegistroAtual = data.id; // Guarda a chave primária para fazer UPDATE depois
+            document.getElementById('modo_edicao_label').style.display = 'inline';
+            
+            const btnSalvar = document.getElementById('btnSalvar');
+            btnSalvar.innerHTML = "💾 Atualizar Alterações";
+            btnSalvar.classList.remove('btn-save');
+            btnSalvar.classList.add('btn-update');
+
+            // Preenche todos os campos do formulário com os dados do banco
+            document.getElementById('f_inc').value = data.chamado || '';
+            document.getElementById('f_uniorg').value = data.uniorg || '';
+            document.getElementById('f_partida').value = data.hora_partida || '';
+            document.getElementById('f_chegada').value = data.hora_chegada || '';
+            document.getElementById('f_inicio_ate').value = data.hora_inicio_ate || '';
+            document.getElementById('f_termino_ate').value = data.hora_termino_ate || '';
+            document.getElementById('f_rua').value = data.endereco || '';
+            document.getElementById('f_num').value = data.numero || '';
+            document.getElementById('f_bai').value = data.bairro || '';
+            document.getElementById('f_cid').value = data.cidade || '';
+            document.getElementById('f_uf').value = data.uf || '';
+            document.getElementById('f_descritivo_defeito').value = data.descritivo_defeito_causa || 'EQUIPAMENTO INOPERANTE';
+            
+            document.getElementById('f_patri_ret').value = data.patri_ret || '';
+            document.getElementById('f_sn_ret').value = data.sn_ret || '';
+            document.getElementById('f_modelo_ret').value = data.modelo_ret || '';
+            document.getElementById('f_host_ret').value = data.host_ret || '';
+            document.getElementById('f_mac_ret').value = data.mac_ret || '';
+            
+            document.getElementById('f_patri_inst').value = data.patri_inst || '';
+            document.getElementById('f_sn_inst').value = data.sn_inst || '';
+            document.getElementById('f_modelo_inst').value = data.modelo_inst || '';
+            document.getElementById('f_host_inst').value = data.host_inst || '';
+            document.getElementById('f_mac_inst').value = data.mac_inst || '';
+            
+            document.getElementById('f_solucao').value = data.solucao || '';
+            document.getElementById('f_resp').value = data.responsavel || '';
+            document.getElementById('f_matricula').value = data.matricula || '';
+            document.getElementById('f_local_data_cidade').value = data.cidade || ''; // Geralmente é a cidade
+
+            // Restaurar a data corretamente no picker
+            if (data.data_atendimento) { // Formato esperado DD/MM/AAAA
+                const partesData = data.data_atendimento.split('/');
+                if (partesData.length === 3) {
+                    const dataFormatada = `${partesData[2]}-${partesData[1]}-${partesData[0]}`; // AAAA-MM-DD
+                    document.getElementById('f_data_picker').value = dataFormatada;
+                    document.getElementById('f_data_completa').value = data.data_atendimento;
+                }
+            }
+
+            // Opcional: preenche a caixa de extração crua também, se salva
+            if (data.chamado_cerb) {
+                document.getElementById('chamado_cerb').value = data.chamado_cerb;
+            } else {
+                document.getElementById('chamado_cerb').value = ""; // Limpa se não existir
+            }
+
+            alert("Chamado carregado com sucesso para edição!");
+            
+            // Atualiza o PDF
+            clearTimeout(timeoutRender);
+            timeoutRender = setTimeout(gerarERenderizar, 500);
+
+        } catch (e) {
+            alert("Erro na requisição: " + e.message);
+        } finally {
+            btnBuscar.innerHTML = "Buscar Banco";
+            btnBuscar.disabled = false;
+        }
+    }
+
+    // Função auxiliar para resetar o estado se for colar um novo chamado
+    function resetarModoEdicao() {
+        idRegistroAtual = null;
+        document.getElementById('modo_edicao_label').style.display = 'none';
+        const btnSalvar = document.getElementById('btnSalvar');
+        btnSalvar.innerHTML = "💾 Salvar Novo";
+        btnSalvar.classList.remove('btn-update');
+        btnSalvar.classList.add('btn-save');
+    }
+
+    function atualizarDataFormatada() {
+        const picker = document.getElementById('f_data_picker').value;
+        if (!picker) return;
+        const [ano, mes, dia] = picker.split('-');
+        document.getElementById('f_data_completa').value = `${dia}/${mes}/${ano}`;
+        gerarERenderizar();
+    }
+
+    function sincronizarMac() {
+        const solucao = document.getElementById('f_solucao').value.toUpperCase();
+        const macRet = document.getElementById('f_mac_ret').value;
+        if(solucao.includes("PIN PAD")) {
+            document.getElementById('f_mac_inst').value = macRet;
+        }
+    }
+
+    function mascaraHora(input) {
+        let v = input.value.replace(/\D/g, "");
+        if (v.length > 2) v = v.slice(0, 2) + ":" + v.slice(2, 4);
+        input.value = v;
+    }
+
+    function medirLarguraTexto(texto) {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        context.font = "bold 11px Arial";
+        return context.measureText(texto.toUpperCase()).width;
+    }
+
+    function limitarNomeresponsavel(nome) {
+        const LARGURA_MAXIMA_PX = 155;
+        let partes = nome.split(' ').filter(p => !(['da', 'de', 'do', 'das', 'dos'].includes(p.toLowerCase())));
+        while (partes.length > 1 && medirLarguraTexto(partes.join(' ')) > LARGURA_MAXIMA_PX) partes.pop();
+        return partes.join(' ').toUpperCase();
+    }
+
+    async function buscarBairro(cep) {
+        try {
+            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            const data = await res.json();
+            if (!data.erro) {
+                document.getElementById('f_bai').value = data.bairro.toUpperCase();
+                document.getElementById('f_local_data_cidade').value = data.localidade.toUpperCase();
+                clearTimeout(timeoutRender);
+                timeoutRender = setTimeout(gerarERenderizar, 500);
+            }
+        } catch (e) {}
+    }
+
+    async function extrairDados() {
+        const textoInput = document.getElementById('chamado_cerb').value;
+        if(!textoInput) return;
+        
+        // Se o usuário colou um chamado novo, removemos o modo de edição
+        resetarModoEdicao(); 
+
+        const texto = textoInput.toUpperCase();
+
+        dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
+        dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+        dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
+        dados.mac = (/MAC\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
+        dados.matricula = (/MATRÍCULA\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+
+        if (texto.includes("PIN PAD")) {
+            dados.sn = ''; dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD"; dados.modelo = ""; 
+            document.getElementById('f_patri_inst').value = dados.patri;
+            document.getElementById('f_host_inst').value = dados.host;
+            document.getElementById('f_mac_inst').value = dados.mac;
+        } else {
+            dados.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
+            dados.solucao = texto.includes("BAIXA DE IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
+            dados.modelo = dados.sn.startsWith('P') ? "LENOVO T14" : (dados.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "");
+            document.getElementById('f_patri_inst').value = "";
+            document.getElementById('f_host_inst').value = "";
+            document.getElementById('f_mac_inst').value = "";
+        }
+
+        let nomeCapturado = (/solicitante\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
+        dados.resp = limitarNomeresponsavel(nomeCapturado);
+        dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+
+        const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(texto);
+        if (mFullEnd) {
+            const inlineEnd = mFullEnd[1];
+            dados.rua = (/^([^0-9,]+)/.exec(inlineEnd) || ["","---"])[1].trim();
+            dados.num = (/(\d+)/.exec(inlineEnd.replace(dados.rua, "")) || ["","---"])[1];
+            dados.cid = (/-\s*([^,]+)/.exec(inlineEnd) || ["","---"])[1].trim().toUpperCase();
+            dados.uf = (/,\s*([A-Z]{2})/.exec(inlineEnd) || ["",""])[1];
+            const mCep = /(\d{8})/.exec(inlineEnd.replace(/\s/g, ""));
+            if (mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
+        }
+
+        const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
+        const partida = reg("PARTIDA") || reg("INÍCIO"); 
+        const chegada = reg("CHEGADA"); 
+        const termino = reg("ATENDIMENTO");
+
+        document.getElementById('f_partida').value = partida ? `${partida[1]}:${partida[2]}` : '';
+        document.getElementById('f_chegada').value = chegada ? `${chegada[1]}:${chegada[2]}` : '';
+        document.getElementById('f_inicio_ate').value = termino ? `${termino[1]}:${termino[2]}` : '';
+
+        const terminoTotal = reg("TÉRMINO") || reg("FIM") || reg("CONCLUÍDO");
+        document.getElementById('f_termino_ate').value = terminoTotal ? `${terminoTotal[1]}:${terminoTotal[2]}` : '';
+
+        document.getElementById('f_inc').value = dados.inc;
+        document.getElementById('f_uniorg').value = dados.uniorg;
+        document.getElementById('f_rua').value = dados.rua || '';
+        document.getElementById('f_num').value = dados.num || '';
+        document.getElementById('f_cid').value = dados.cid || '';
+        document.getElementById('f_uf').value = dados.uf || '';
+        document.getElementById('f_patri_ret').value = dados.patri;
+        document.getElementById('f_host_ret').value = dados.host;
+        document.getElementById('f_sn_ret').value = dados.sn === '---' ? '' : dados.sn;
+        document.getElementById('f_mac_ret').value = dados.mac;
+        document.getElementById('f_modelo_ret').value = dados.modelo;
+        document.getElementById('f_resp').value = dados.resp;
+        document.getElementById('f_matricula').value = dados.matricula;
+        document.getElementById('f_solucao').value = dados.solucao;
+        document.getElementById('f_local_data_cidade').value = dados.cid || '';
+        
+        document.getElementById('f_descritivo_defeito').value = "EQUIPAMENTO INOPERANTE";
+        
+        clearTimeout(timeoutRender);
+        timeoutRender = setTimeout(gerarERenderizar, 500);
+    }
+
+    async function aplicarDadosNoPdf() {
+        if (!modeloPdfBytes) return null;
+        const pdfDoc = await PDFLib.PDFDocument.load(modeloPdfBytes);
+        const page = pdfDoc.getPages()[0];
+        const fontColor = PDFLib.rgb(0, 0, 0);
+
+        const escrever = (id, config) => {
+            const texto = document.getElementById(id).value;
+            if(texto && texto !== '---' && texto !== '') page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
+        };
+
+        const escreverParHorario = (idCampoUnico, posHora, posMinuto) => {
+            const valor = document.getElementById(idCampoUnico).value.replace(":", "");
+            if (valor && valor.length >= 2) page.drawText(valor.slice(0, 2), { x: posHora.x, y: posHora.y, size: 11, color: fontColor });
+            if (valor && valor.length === 4) page.drawText(valor.slice(2, 4), { x: posMinuto.x, y: posMinuto.y, size: 11, color: fontColor });
+        };
+
+        escrever('f_inc', POS.inc); escrever('f_uniorg', POS.uniorg); escrever('f_rua', POS.rua);
+        escrever('f_num', POS.num); escrever('f_cid', POS.cid); escrever('f_uf', POS.uf);
+        escrever('f_bai', POS.bai);
+        
+        page.drawText("EQUIPAMENTO INOPERANTE", { x: 30, y: 555, size: 11, color: fontColor });
+        
+        escrever('f_modelo_ret', POS.modelo); escrever('f_host_ret', POS.host); escrever('f_patri_ret', POS.patri);
+        escrever('f_patri_inst', POS.patri_inst);
+        escrever('f_sn_inst', POS.sn_inst);
+        escrever('f_modelo_inst', POS.modelo_inst);
+        escrever('f_host_inst', POS.host_inst);
+        escrever('f_mac_inst', POS.mac_inst);
+        escrever('f_sn_ret', POS.sn); escrever('f_mac_ret', POS.mac); escrever('f_solucao', POS.solucao);
+        escrever('f_resp', POS.resp); escrever('f_matricula', POS.matri);
+        page.drawText(dados.tecnico, { x: POS.tecnico.x, y: 176, size: 11, color: fontColor });
+        page.drawText(dados.cpf, { x: POS.cpf.x, y: 149, size: 11, color: fontColor }); 
+        
+        const dataStr = document.getElementById('f_data_completa').value.split('/');
+        if(dataStr.length === 3) {
+            page.drawText(dataStr[0], { x: POS.dia.x, y: 58, size: 11, color: fontColor }); 
+            page.drawText(dataStr[1], { x: POS.mes.x, y: 58, size: 11, color: fontColor }); 
+            page.drawText(dataStr[2], { x: POS.ano.x, y: 58, size: 11, color: fontColor }); 
+        }
+        
+        escrever('f_local_data_cidade', POS.local);
+        escreverParHorario('f_partida', POS.h_partida, POS.m_partida);
+        escreverParHorario('f_chegada', POS.h_chegada, POS.m_chegada);
+        escreverParHorario('f_inicio_ate', POS.h_inicio_ate, POS.m_inicio_ate);
+        escreverParHorario('f_termino_ate', POS.h_termino_ate, POS.m_termino_ate); 
+
+        return pdfDoc;
+    }
+
+    async function gerarERenderizar() {
+        const pdfDoc = await aplicarDadosNoPdf();
+        if (!pdfDoc) return;
+        const pdfBytes = await pdfDoc.save();
+        const pdf = await pdfjsLib.getDocument({data: pdfBytes}).promise;
+        const pdfPage = await pdf.getPage(1);
+        const viewport = pdfPage.getViewport({scale: 2.0}); 
+        const canvas = document.getElementById('pdfCanvas');
+        canvas.height = viewport.height; canvas.width = viewport.width;
+        await pdfPage.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
+    }
+
+    async function baixarPdf() {
+        const pdfDoc = await aplicarDadosNoPdf();
+        if (!pdfDoc) return;
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `RAT_${document.getElementById('f_inc').value || 'Nova'}.pdf`;
+        link.click();
+    }
+
+    async function salvarAtendimento() {
+        const inc = document.getElementById('f_inc').value.toUpperCase();
+        if(!inc) { alert("Preencha ao menos o chamado antes de salvar."); return; }
+
+        const btnSave = document.getElementById('btnSalvar');
+        const txtOriginal = btnSave.innerHTML;
+        btnSave.innerHTML = "⏳ Gerando PDF e Salvando...";
+        btnSave.disabled = true;
+
+        try {
+            let pdfBase64 = null;
+            const pdfDoc = await aplicarDadosNoPdf();
+            if (pdfDoc) {
+                const pdfBytes = await pdfDoc.save();
+                let binary = '';
+                const bytes = new Uint8Array(pdfBytes);
+                const len = bytes.byteLength;
+                for (let i = 0; i < len; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                pdfBase64 = window.btoa(binary);
+            }
+
+            const dadosParaSalvar = {
+                chamado: inc,
+                uniorg: document.getElementById('f_uniorg').value,
+                hora_partida: document.getElementById('f_partida').value,
+                hora_chegada: document.getElementById('f_chegada').value,
+                hora_inicio_ate: document.getElementById('f_inicio_ate').value,
+                hora_termino_ate: document.getElementById('f_termino_ate').value,
+                endereco: document.getElementById('f_rua').value,
+                numero: document.getElementById('f_num').value,
+                bairro: document.getElementById('f_bai').value,
+                cidade: document.getElementById('f_cid').value,
+                uf: document.getElementById('f_uf').value,
+                descritivo_defeito_causa: document.getElementById('f_descritivo_defeito').value,
+                patri_ret: document.getElementById('f_patri_ret').value,
+                sn_ret: document.getElementById('f_sn_ret').value,
+                modelo_ret: document.getElementById('f_modelo_ret').value,
+                host_ret: document.getElementById('f_host_ret').value,
+                mac_ret: document.getElementById('f_mac_ret').value,
+                patri_inst: document.getElementById('f_patri_inst').value,
+                sn_inst: document.getElementById('f_sn_inst').value,
+                modelo_inst: document.getElementById('f_modelo_inst').value,
+                host_inst: document.getElementById('f_host_inst').value,
+                mac_inst: document.getElementById('f_mac_inst').value,
+                solucao: document.getElementById('f_solucao').value,
+                responsavel: document.getElementById('f_resp').value,
+                matricula: document.getElementById('f_matricula').value,
+                data_atendimento: document.getElementById('f_data_completa').value,
+                chamado_cerb: document.getElementById('chamado_cerb').value,
+                tecnico: 'Willian',
+                pdf_base64: pdfBase64 
+            };
+
+            // VERIFICA SE É UM UPDATE OU INSERT
+            if (idRegistroAtual !== null) {
+                // ATUALIZAR CHAMADO EXISTENTE
+                const { error } = await supabaseClient
+                    .from('chamados')
+                    .update(dadosParaSalvar)
+                    .eq('id', idRegistroAtual); // Usa o ID salvo na busca
+                
+                if (error) {
+                    throw error;
+                } else {
+                    alert("Chamado ATUALIZADO com sucesso no banco de dados!");
+                }
+            } else {
+                // INSERIR NOVO CHAMADO
+                const { error } = await supabaseClient
+                    .from('chamados')
+                    .insert([dadosParaSalvar]);
+                
+                if (error) {
+                    throw error;
+                } else {
+                    alert("Novo chamado SALVO com sucesso no banco de dados!");
+                }
+            }
+
+        } catch (e) { 
+            console.error(e);
+            alert("Erro na operação: " + e.message); 
+        } finally {
+            btnSave.innerHTML = txtOriginal;
+            btnSave.disabled = false;
+        }
+    }
 </script>
 </body>
 </html>
+
