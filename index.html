@@ -9,19 +9,39 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     
     <style>
-        :root { --primary: #3b82f6; --success: #10b981; --warning: #f59e0b; --bg: #f0f2f5; }
+        :root { 
+            --primary: #3b82f6; 
+            --success: #10b981; 
+            --warning: #f59e0b; 
+            --danger: #ef4444;
+            --bg: #f0f2f5; 
+            --dark: #1e293b;
+        }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
         
         .container { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; max-width: 1200px; margin: 0 auto; }
         
         .card-input { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; }
         
-        /* Estilo para a caixa de pesquisa */
-        .search-box { background: #e0f2fe; border: 1px solid #bae6fd; display: flex; gap: 10px; align-items: center; }
+        /* Seção de Pesquisa e Lista */
+        .search-box { background: #e0f2fe; border: 1px solid #bae6fd; display: flex; flex-direction: column; gap: 10px; }
+        .search-row { display: flex; gap: 10px; align-items: center; width: 100%; }
         .search-input { flex: 1; padding: 12px; border: 1px solid #93c5fd; border-radius: 8px; font-size: 16px; font-weight: bold; text-transform: uppercase; outline: none; }
+        
         .btn-search { background: #0ea5e9; color: white; padding: 12px 25px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-search:hover { background: #0284c7; }
+        .btn-load-all { background: #64748b; color: white; padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-load-all:hover { background: #475569; }
 
+        /* Estilo da Tabela de Chamados do Banco */
+        .table-container { margin-top: 15px; overflow-x: auto; max-height: 300px; border: 1px solid #e2e8f0; border-radius: 8px; background: white; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+        th { background: #f1f5f9; color: #475569; font-weight: 700; padding: 10px; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; }
+        td { padding: 10px; border-bottom: 1px solid #e2e8f0; color: #334155; }
+        tr:hover { background: #f8fafc; }
+        .btn-edit-table { background: var(--primary); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; border: none; }
+        .btn-edit-table:hover { background: #2563eb; }
+        
         textarea { width: 100%; height: 80px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; box-sizing: border-box; resize: none; outline: none; }
 
         .workspace { display: flex; flex-direction: row; gap: 20px; width: 100%; justify-content: center; align-items: flex-start; }
@@ -32,6 +52,7 @@
         @media (max-width: 1024px) {
             .workspace { flex-direction: column; align-items: center; }
             .editor-box, .preview-box { width: 100%; min-width: unset; }
+            .search-row { flex-direction: column; align-items: stretch; }
         }
 
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -52,8 +73,9 @@
         button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.2s; font-size: 14px; }
         button:disabled { opacity: 0.7; cursor: not-allowed; }
         .btn-save { background: var(--primary); color: white; }
-        .btn-update { background: var(--warning); color: white; } /* Cor para o botão de atualizar */
+        .btn-update { background: var(--warning); color: white; }
         .btn-pdf { background: var(--success); color: white; }
+        .btn-clear { background: #94a3b8; color: white; }
         
         h2 { font-size: 1rem; color: #1e293b; margin: 0 0 10px 0; border-bottom: 2px solid var(--primary); padding-bottom: 5px; }
     </style>
@@ -61,14 +83,38 @@
 <body>
 
 <div class="container">
-    <!-- NOVO: Seção de Pesquisa -->
+    <!-- Seção de Pesquisa e Lista de Chamados -->
     <div class="card-input search-box">
-        <div style="flex: 1;">
-            <h2 style="border: none; margin: 0 0 5px 0; color: #0284c7;">🔍 Pesquisar Chamado Salvo</h2>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="busca_inc" class="search-input" placeholder="Ex: INC1234567">
-                <button class="btn-search" onclick="buscarChamado()" id="btnBuscar">Buscar Banco</button>
+        <div>
+            <h2 style="border: none; margin: 0 0 10px 0; color: #0284c7;">🔍 Chamados no Banco de Dados</h2>
+            <div class="search-row">
+                <input type="text" id="busca_inc" class="search-input" placeholder="Pesquisar Chamado, Uniorg, Cidade, Responsável..." oninput="filtrarListaLocal()">
+                <button class="btn-search" onclick="buscarChamado()" id="btnBuscar">Buscar Único</button>
+                <button class="btn-load-all" onclick="carregarTodosChamados()" id="btnCarregarTodos">🔄 Atualizar Tabela</button>
             </div>
+        </div>
+
+        <!-- Tabela Dinâmica de Registros do Supabase -->
+        <div class="table-container" id="containerTabela" style="display:none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ação</th>
+                        <th>Chamado</th>
+                        <th>Data</th>
+                        <th>Uniorg</th>
+                        <th>Endereço / Cidade</th>
+                        <th>Responsável</th>
+                        <th>Instalado (S/N)</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabelaChamados">
+                    <!-- Registros inseridos dinamicamente por JS -->
+                </tbody>
+            </table>
+        </div>
+        <div id="statusTabela" style="text-align: center; color: #64748b; font-size: 12px; margin-top: 5px;">
+            Clique em "Atualizar Tabela" para listar os atendimentos salvos.
         </div>
     </div>
 
@@ -79,7 +125,7 @@
 
     <div class="workspace">
         <div class="editor-box" id="editorBox">
-            <h2>2. Editor em Tempo Real <span id="modo_edicao_label" style="color: var(--warning); font-size: 12px; display: none;">(Modo de Edição)</span></h2>
+            <h2 id="tituloEditor">2. Editor em Tempo Real <span id="modo_edicao_label" style="color: var(--warning); font-size: 12px; display: none;">(Modo de Edição)</span></h2>
             <div class="form-grid">
                 <div class="field full-width"><label>Chamado</label><input type="text" id="f_inc"></div>
                 
@@ -102,7 +148,6 @@
                 
                 <div class="equip-container">
                     <div>
-                        <!-- Título com min-height e flexbox para alinhar pela parte inferior -->
                         <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-end;">
                             <span>Sempre Preencher<br>Atual Reconfigurado ou Retirado</span>
                         </div>
@@ -113,7 +158,6 @@
                         <div class="field"><label>MAC</label><input type="text" id="f_mac_ret" oninput="sincronizarMac()"></div>
                     </div>
                     <div>
-                        <!-- Título com min-height e flexbox para alinhar pela parte inferior -->
                         <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-end;">
                             <span>Preencher em caso de troca<br>Equipamento Novo</span>
                         </div>
@@ -126,15 +170,15 @@
                 </div>
 
                 <div class="field full-width"><label>Solução</label><input type="text" id="f_solucao" oninput="sincronizarMac()"></div>
-                <div class="field"><label>responsavel</label><input type="text" id="f_resp"></div>
+                <div class="field"><label>Responsável</label><input type="text" id="f_resp"></div>
                 <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
                 <div class="field"><label>Local</label><input type="text" id="f_local_data_cidade"></div>
                 <div class="field"><label>Data</label><input type="date" id="f_data_picker" onchange="atualizarDataFormatada()"></div>
-                <!-- Campo oculto para guardar a data formatada para o PDF -->
                 <input type="hidden" id="f_data_completa">
             </div>
             <div class="btn-group">
-                <button class="btn-save" id="btnSalvar" onclick="salvarAtendimento()">💾 Salvar</button>
+                <button class="btn-save" id="btnSalvar" onclick="salvarAtendimento()">💾 Salvar Novo</button>
+                <button class="btn-clear" onclick="limparFormulario()">🧹 Limpar</button>
                 <button class="btn-pdf" onclick="baixarPdf()">📥 Baixar PDF</button>
             </div>
         </div>
@@ -176,9 +220,10 @@
     let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO };
     let modeloPdfBytes = null;
     let timeoutRender = null;
+    let todosChamadosCache = []; // Guarda todos os chamados carregados para pesquisa em tempo real
     
     // VARIÁVEL DE ESTADO PARA CONTROLE DE EDIÇÃO
-    let idRegistroAtual = null; // Guardará o 'id' do banco caso seja uma edição
+    let idRegistroAtual = null;
 
     window.onload = async () => {
         try {
@@ -192,12 +237,163 @@
                 clearTimeout(timeoutRender);
                 timeoutRender = setTimeout(gerarERenderizar, 500);
             });
+
+            // Carrega a listagem inicialmente
+            carregarTodosChamados();
         } catch (e) { console.error("Erro ao carregar o PDF base:", e); }
     };
 
     // ==========================================
-    // NOVA FUNÇÃO: BUSCAR CHAMADO NO SUPABASE
+    // NOVA FUNÇÃO: CARREGAR TODOS OS REGISTROS DO BANCO
     // ==========================================
+    async function carregarTodosChamados() {
+        const btn = document.getElementById('btnCarregarTodos');
+        const status = document.getElementById('statusTabela');
+        btn.innerHTML = "⏳ Carregando...";
+        btn.disabled = true;
+
+        try {
+            const { data, error } = await supabaseClient
+                .from('chamados')
+                .select('*')
+                .order('id', { ascending: false });
+
+            if (error) throw error;
+
+            todosChamadosCache = data || [];
+            atualizarInterfaceTabela(todosChamadosCache);
+            
+            status.innerHTML = `Mostrando ${todosChamadosCache.length} chamados registrados no banco.`;
+            document.getElementById('containerTabela').style.display = todosChamadosCache.length > 0 ? "block" : "none";
+        } catch (e) {
+            console.error("Erro ao carregar chamados:", e);
+            status.innerHTML = "Erro ao carregar lista do banco de dados.";
+        } finally {
+            btn.innerHTML = "🔄 Atualizar Tabela";
+            btn.disabled = false;
+        }
+    }
+
+    function atualizarInterfaceTabela(lista) {
+        const corpoTabela = document.getElementById('corpoTabelaChamados');
+        corpoTabela.innerHTML = "";
+
+        if (lista.length === 0) {
+            corpoTabela.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#94a3b8;">Nenhum chamado encontrado.</td></tr>`;
+            return;
+        }
+
+        lista.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <button class="btn-edit-table" onclick="carregarChamadoDireto(${item.id})">Editar</button>
+                </td>
+                <td style="font-weight: bold; color: var(--primary);">${item.chamado || '---'}</td>
+                <td>${item.data_atendimento || '---'}</td>
+                <td>${item.uniorg || '---'}</td>
+                <td>${item.endereco || '---'} / ${item.cidade || '---'}</td>
+                <td style="font-weight: bold;">${item.responsavel || '---'}</td>
+                <td>${item.sn_inst ? `SÉRIE: ${item.sn_inst}` : '<span style="color:#94a3b8;">Sem Troca</span>'}</td>
+            `;
+            corpoTabela.appendChild(tr);
+        });
+    }
+
+    // ==========================================
+    // NOVA FUNÇÃO: PESQUISAR LOCALMENTE NA TABELA
+    // ==========================================
+    function filtrarListaLocal() {
+        const query = document.getElementById('busca_inc').value.toUpperCase().trim();
+        if (!query) {
+            atualizarInterfaceTabela(todosChamadosCache);
+            document.getElementById('statusTabela').innerHTML = `Mostrando ${todosChamadosCache.length} chamados registrados no banco.`;
+            return;
+        }
+
+        const filtrados = todosChamadosCache.filter(item => {
+            return (
+                (item.chamado && item.chamado.toUpperCase().includes(query)) ||
+                (item.uniorg && item.uniorg.toUpperCase().includes(query)) ||
+                (item.responsavel && item.responsavel.toUpperCase().includes(query)) ||
+                (item.cidade && item.cidade.toUpperCase().includes(query)) ||
+                (item.endereco && item.endereco.toUpperCase().includes(query))
+            );
+        });
+
+        atualizarInterfaceTabela(filtrados);
+        document.getElementById('statusTabela').innerHTML = `Encontrados ${filtrados.length} correspondentes para "${query}".`;
+    }
+
+    // ==========================================
+    // CARREGA UM CHAMADO SELECIONADO NA TABELA NO EDITOR
+    // ==========================================
+    function carregarChamadoDireto(id) {
+        const chamado = todosChamadosCache.find(x => x.id === id);
+        if (!chamado) return;
+
+        // Ativa o modo de edição
+        idRegistroAtual = chamado.id;
+        document.getElementById('modo_edicao_label').style.display = 'inline';
+        
+        const btnSalvar = document.getElementById('btnSalvar');
+        btnSalvar.innerHTML = "💾 Atualizar Alterações";
+        btnSalvar.className = 'btn-update';
+
+        // Preenche o formulário
+        document.getElementById('f_inc').value = chamado.chamado || '';
+        document.getElementById('f_uniorg').value = chamado.uniorg || '';
+        document.getElementById('f_partida').value = chamado.hora_partida || '';
+        document.getElementById('f_chegada').value = chamado.hora_chegada || '';
+        document.getElementById('f_inicio_ate').value = chamado.hora_inicio_ate || '';
+        document.getElementById('f_termino_ate').value = chamado.hora_termino_ate || '';
+        document.getElementById('f_rua').value = chamado.endereco || '';
+        document.getElementById('f_num').value = chamado.numero || '';
+        document.getElementById('f_bai').value = chamado.bairro || '';
+        document.getElementById('f_cid').value = chamado.cidade || '';
+        document.getElementById('f_uf').value = chamado.uf || '';
+        document.getElementById('f_descritivo_defeito').value = chamado.descritivo_defeito_causa || 'EQUIPAMENTO INOPERANTE';
+        
+        document.getElementById('f_patri_ret').value = chamado.patri_ret || '';
+        document.getElementById('f_sn_ret').value = chamado.sn_ret || '';
+        document.getElementById('f_modelo_ret').value = chamado.modelo_ret || '';
+        document.getElementById('f_host_ret').value = chamado.host_ret || '';
+        document.getElementById('f_mac_ret').value = chamado.mac_ret || '';
+        
+        document.getElementById('f_patri_inst').value = chamado.patri_inst || '';
+        document.getElementById('f_sn_inst').value = chamado.sn_inst || '';
+        document.getElementById('f_modelo_inst').value = chamado.modelo_inst || '';
+        document.getElementById('f_host_inst').value = chamado.host_inst || '';
+        document.getElementById('f_mac_inst').value = chamado.mac_inst || '';
+        
+        document.getElementById('f_solucao').value = chamado.solucao || '';
+        document.getElementById('f_resp').value = chamado.responsavel || '';
+        document.getElementById('f_matricula').value = chamado.matricula || '';
+        document.getElementById('f_local_data_cidade').value = chamado.cidade || '';
+
+        if (chamado.data_atendimento) {
+            const partesData = chamado.data_atendimento.split('/');
+            if (partesData.length === 3) {
+                const dataFormatada = `${partesData[2]}-${partesData[1]}-${partesData[0]}`;
+                document.getElementById('f_data_picker').value = dataFormatada;
+                document.getElementById('f_data_completa').value = chamado.data_atendimento;
+            }
+        }
+
+        if (chamado.chamado_cerb) {
+            document.getElementById('chamado_cerb').value = chamado.chamado_cerb;
+        } else {
+            document.getElementById('chamado_cerb').value = "";
+        }
+
+        // Rolar suavemente para o formulário de edição
+        document.getElementById('editorBox').scrollIntoView({ behavior: 'smooth' });
+
+        // Atualiza a pré-visualização do PDF
+        clearTimeout(timeoutRender);
+        timeoutRender = setTimeout(gerarERenderizar, 500);
+    }
+
     async function buscarChamado() {
         const incBusca = document.getElementById('busca_inc').value.toUpperCase().trim();
         if (!incBusca) { alert("Digite o número do chamado (ex: INC1234)!"); return; }
@@ -207,7 +403,6 @@
         btnBuscar.disabled = true;
 
         try {
-            // Busca o registro onde a coluna 'chamado' é igual ao digitado
             const { data, error } = await supabaseClient
                 .from('chamados')
                 .select('*')
@@ -220,16 +415,13 @@
                 return;
             }
 
-            // Ativa o modo de edição
-            idRegistroAtual = data.id; // Guarda a chave primária para fazer UPDATE depois
+            idRegistroAtual = data.id;
             document.getElementById('modo_edicao_label').style.display = 'inline';
             
             const btnSalvar = document.getElementById('btnSalvar');
             btnSalvar.innerHTML = "💾 Atualizar Alterações";
-            btnSalvar.classList.remove('btn-save');
-            btnSalvar.classList.add('btn-update');
+            btnSalvar.className = 'btn-update';
 
-            // Preenche todos os campos do formulário com os dados do banco
             document.getElementById('f_inc').value = data.chamado || '';
             document.getElementById('f_uniorg').value = data.uniorg || '';
             document.getElementById('f_partida').value = data.hora_partida || '';
@@ -258,47 +450,77 @@
             document.getElementById('f_solucao').value = data.solucao || '';
             document.getElementById('f_resp').value = data.responsavel || '';
             document.getElementById('f_matricula').value = data.matricula || '';
-            document.getElementById('f_local_data_cidade').value = data.cidade || ''; // Geralmente é a cidade
+            document.getElementById('f_local_data_cidade').value = data.cidade || '';
 
-            // Restaurar a data corretamente no picker
-            if (data.data_atendimento) { // Formato esperado DD/MM/AAAA
+            if (data.data_atendimento) {
                 const partesData = data.data_atendimento.split('/');
                 if (partesData.length === 3) {
-                    const dataFormatada = `${partesData[2]}-${partesData[1]}-${partesData[0]}`; // AAAA-MM-DD
+                    const dataFormatada = `${partesData[2]}-${partesData[1]}-${partesData[0]}`;
                     document.getElementById('f_data_picker').value = dataFormatada;
                     document.getElementById('f_data_completa').value = data.data_atendimento;
                 }
             }
 
-            // Opcional: preenche a caixa de extração crua também, se salva
             if (data.chamado_cerb) {
                 document.getElementById('chamado_cerb').value = data.chamado_cerb;
             } else {
-                document.getElementById('chamado_cerb').value = ""; // Limpa se não existir
+                document.getElementById('chamado_cerb').value = "";
             }
 
             alert("Chamado carregado com sucesso para edição!");
+            document.getElementById('editorBox').scrollIntoView({ behavior: 'smooth' });
             
-            // Atualiza o PDF
             clearTimeout(timeoutRender);
             timeoutRender = setTimeout(gerarERenderizar, 500);
 
         } catch (e) {
             alert("Erro na requisição: " + e.message);
         } finally {
-            btnBuscar.innerHTML = "Buscar Banco";
+            btnBuscar.innerHTML = "Buscar Único";
             btnBuscar.disabled = false;
         }
     }
 
-    // Função auxiliar para resetar o estado se for colar um novo chamado
     function resetarModoEdicao() {
         idRegistroAtual = null;
         document.getElementById('modo_edicao_label').style.display = 'none';
         const btnSalvar = document.getElementById('btnSalvar');
         btnSalvar.innerHTML = "💾 Salvar Novo";
-        btnSalvar.classList.remove('btn-update');
-        btnSalvar.classList.add('btn-save');
+        btnSalvar.className = 'btn-save';
+    }
+
+    function limparFormulario() {
+        resetarModoEdicao();
+        document.getElementById('chamado_cerb').value = '';
+        document.getElementById('f_inc').value = '';
+        document.getElementById('f_partida').value = '';
+        document.getElementById('f_chegada').value = '';
+        document.getElementById('f_inicio_ate').value = '';
+        document.getElementById('f_termino_ate').value = '';
+        document.getElementById('f_uniorg').value = '';
+        document.getElementById('f_rua').value = '';
+        document.getElementById('f_num').value = '';
+        document.getElementById('f_bai').value = '';
+        document.getElementById('f_cid').value = '';
+        document.getElementById('f_uf').value = '';
+        document.getElementById('f_descritivo_defeito').value = 'EQUIPAMENTO INOPERANTE';
+        document.getElementById('f_patri_ret').value = '';
+        document.getElementById('f_sn_ret').value = '';
+        document.getElementById('f_modelo_ret').value = '';
+        document.getElementById('f_host_ret').value = '';
+        document.getElementById('f_mac_ret').value = '';
+        document.getElementById('f_patri_inst').value = '';
+        document.getElementById('f_sn_inst').value = '';
+        document.getElementById('f_modelo_inst').value = '';
+        document.getElementById('f_host_inst').value = '';
+        document.getElementById('f_mac_inst').value = '';
+        document.getElementById('f_solucao').value = '';
+        document.getElementById('f_resp').value = '';
+        document.getElementById('f_matricula').value = '';
+        
+        const d = new Date();
+        document.getElementById('f_data_picker').value = d.toISOString().split('T')[0];
+        atualizarDataFormatada();
     }
 
     function atualizarDataFormatada() {
@@ -354,7 +576,6 @@
         const textoInput = document.getElementById('chamado_cerb').value;
         if(!textoInput) return;
         
-        // Se o usuário colou um chamado novo, removemos o modo de edição
         resetarModoEdicao(); 
 
         const texto = textoInput.toUpperCase();
@@ -435,7 +656,9 @@
         const fontColor = PDFLib.rgb(0, 0, 0);
 
         const escrever = (id, config) => {
-            const texto = document.getElementById(id).value;
+            const elemento = document.getElementById(id);
+            if(!elemento) return;
+            const texto = elemento.value;
             if(texto && texto !== '---' && texto !== '') page.drawText(String(texto).toUpperCase(), { x: config.x, y: config.y, size: config.s || 11, color: fontColor });
         };
 
@@ -507,7 +730,7 @@
 
         const btnSave = document.getElementById('btnSalvar');
         const txtOriginal = btnSave.innerHTML;
-        btnSave.innerHTML = "⏳ Gerando PDF e Salvando...";
+        btnSave.innerHTML = "⏳ Salvando...";
         btnSave.disabled = true;
 
         try {
@@ -556,31 +779,25 @@
                 pdf_base64: pdfBase64 
             };
 
-            // VERIFICA SE É UM UPDATE OU INSERT
             if (idRegistroAtual !== null) {
-                // ATUALIZAR CHAMADO EXISTENTE
                 const { error } = await supabaseClient
                     .from('chamados')
                     .update(dadosParaSalvar)
-                    .eq('id', idRegistroAtual); // Usa o ID salvo na busca
+                    .eq('id', idRegistroAtual);
                 
-                if (error) {
-                    throw error;
-                } else {
-                    alert("Chamado ATUALIZADO com sucesso no banco de dados!");
-                }
+                if (error) throw error;
+                alert("Chamado ATUALIZADO com sucesso no banco de dados!");
             } else {
-                // INSERIR NOVO CHAMADO
                 const { error } = await supabaseClient
                     .from('chamados')
                     .insert([dadosParaSalvar]);
                 
-                if (error) {
-                    throw error;
-                } else {
-                    alert("Novo chamado SALVO com sucesso no banco de dados!");
-                }
+                if (error) throw error;
+                alert("Novo chamado SALVO com sucesso no banco de dados!");
             }
+
+            // Recarregar a lista do banco para refletir as mudanças
+            carregarTodosChamados();
 
         } catch (e) { 
             console.error(e);
@@ -593,4 +810,3 @@
 </script>
 </body>
 </html>
-
