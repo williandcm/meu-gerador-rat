@@ -821,18 +821,31 @@
         dados.mac = (/MAC\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
         dados.matricula = (/MATRÍCULA\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
-        if (texto.includes("PIN PAD")) {
-            dados.sn = ''; dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD"; dados.modelo = ""; 
+        const isPinPad = texto.includes("PIN PAD");
+        const isBaixaImagem = texto.includes("BAIXA DE IMAGEM");
+
+        if (isPinPad) {
+            dados.sn = ''; 
+            dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD"; 
+            dados.modelo = ""; 
             document.getElementById('f_patri_inst').value = dados.patri;
             document.getElementById('f_host_inst').value = dados.host;
             document.getElementById('f_mac_inst').value = dados.mac;
         } else {
             dados.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
-            dados.solucao = texto.includes("BAIXA DE IMAGEM") ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
+            dados.solucao = isBaixaImagem ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
             dados.modelo = dados.sn.startsWith('P') ? "LENOVO T14" : (dados.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "");
-            document.getElementById('f_patri_inst').value = "";
-            document.getElementById('f_host_inst').value = "";
-            document.getElementById('f_mac_inst').value = "";
+            
+            // Tratamento especial para Baixa de Imagem conforme solicitado
+            if (isBaixaImagem) {
+                document.getElementById('f_patri_inst').value = "";
+                document.getElementById('f_host_inst').value = "";
+                document.getElementById('f_mac_inst').value = dados.mac; // Mac vai para o equipamento novo!
+            } else {
+                document.getElementById('f_patri_inst').value = "";
+                document.getElementById('f_host_inst').value = "";
+                document.getElementById('f_mac_inst').value = "";
+            }
         }
 
         let nomeCapturado = (/solicitante\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
@@ -871,7 +884,14 @@
         document.getElementById('f_patri_ret').value = dados.patri;
         document.getElementById('f_host_ret').value = dados.host;
         document.getElementById('f_sn_ret').value = dados.sn === '---' ? '' : dados.sn;
-        document.getElementById('f_mac_ret').value = dados.mac;
+        
+        // Se for Baixa de Imagem ou PIN PAD, o MAC já foi para o equipamento instalado. Limpamos o retirado.
+        if (isBaixaImagem || isPinPad) {
+            document.getElementById('f_mac_ret').value = "";
+        } else {
+            document.getElementById('f_mac_ret').value = dados.mac;
+        }
+
         document.getElementById('f_modelo_ret').value = dados.modelo;
         document.getElementById('f_resp').value = dados.resp;
         document.getElementById('f_matricula').value = dados.matricula;
