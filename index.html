@@ -303,7 +303,7 @@
                 <button class="btn-login" id="btnCriarUsuario" style="background: var(--dark); margin: 0;" onclick="cadastrarNovoUsuario()">Cadastrar Usuário</button>
                 <button class="btn-logout" style="margin: 0; padding: 14px;" onclick="toggleAdminPanel()">Fechar Painel</button>
             </div>
-            <div id="adminStatusMsg" style="margin-top: 10px; font-size: 14px; font-weight: bold;"></div>
+            <div id="adminStatusMsg" style="margin-top: 15px; font-size: 14px; font-weight: normal; line-height: 1.5; padding: 10px; border-radius: 6px; display: none;"></div>
         </div>
 
         <br>
@@ -563,6 +563,7 @@
         const panel = document.getElementById('adminPanel');
         if (panel.style.display === 'none' || panel.style.display === '') {
             panel.style.display = 'block';
+            document.getElementById('adminStatusMsg').style.display = 'none';
             document.getElementById('adminStatusMsg').textContent = '';
         } else {
             panel.style.display = 'none';
@@ -576,19 +577,26 @@
         const msgDiv = document.getElementById('adminStatusMsg');
 
         if (!email || !senha) {
-            msgDiv.style.color = 'var(--danger)';
+            msgDiv.style.display = 'block';
+            msgDiv.style.backgroundColor = '#fee2e2';
+            msgDiv.style.color = '#b91c1c';
+            msgDiv.style.borderLeft = '4px solid var(--danger)';
             msgDiv.textContent = "Preencha o e-mail e a senha do novo usuário.";
             return;
         }
 
         if (senha.length < 6) {
-            msgDiv.style.color = 'var(--warning)';
+            msgDiv.style.display = 'block';
+            msgDiv.style.backgroundColor = '#fef3c7';
+            msgDiv.style.color = '#d97706';
+            msgDiv.style.borderLeft = '4px solid var(--warning)';
             msgDiv.textContent = "A senha deve ter no mínimo 6 caracteres.";
             return;
         }
 
         btn.disabled = true;
         btn.textContent = "Cadastrando...";
+        msgDiv.style.display = 'none';
         msgDiv.textContent = "";
 
         try {
@@ -600,7 +608,10 @@
 
             if (error) throw error;
 
-            msgDiv.style.color = 'var(--success)';
+            msgDiv.style.display = 'block';
+            msgDiv.style.backgroundColor = '#d1fae5';
+            msgDiv.style.color = '#065f46';
+            msgDiv.style.borderLeft = '4px solid var(--success)';
             msgDiv.textContent = "✅ Usuário criado com sucesso! Ele já pode fazer login.";
             
             // Limpa os campos após sucesso
@@ -609,8 +620,28 @@
 
         } catch (e) {
             console.error("Erro ao criar usuário:", e.message);
-            msgDiv.style.color = 'var(--danger)';
-            msgDiv.textContent = "❌ Erro ao criar: " + (e.message.includes('already registered') ? "Este e-mail já existe." : e.message);
+            msgDiv.style.display = 'block';
+            msgDiv.style.backgroundColor = '#fee2e2';
+            msgDiv.style.color = '#b91c1c';
+            msgDiv.style.borderLeft = '4px solid var(--danger)';
+
+            if (e.message.includes('already registered') || e.message.includes('already exists')) {
+                msgDiv.textContent = "❌ Erro ao criar: Este e-mail já está cadastrado.";
+            } else if (e.message.includes('rate limit exceeded') || e.message.includes('rate limit')) {
+                msgDiv.innerHTML = `
+                    <strong>❌ Limite de envios do Supabase excedido!</strong><br>
+                    O Supabase bloqueou temporariamente novos cadastros a partir deste IP para prevenir spam.<br><br>
+                    <strong>Como resolver isso permanentemente no seu Supabase:</strong><br>
+                    1. Acesse o painel do seu projeto no <a href="https://supabase.com" target="_blank" style="color: #b91c1c; font-weight: bold; text-decoration: underline;">Supabase</a>.<br>
+                    2. Vá em <strong>Authentication</strong> > <strong>Settings</strong>.<br>
+                    3. Role a página até a seção <strong>Security</strong>.<br>
+                    4. Encontre a opção <strong>"Email Rate Limit"</strong> (geralmente configurada para 3 por hora por padrão) e aumente para um valor maior (ex: 20 ou 30), ou desative temporariamente para testes.<br>
+                    5. Clique em <strong>Save</strong>.<br><br>
+                    <em>Se preferir não alterar, basta aguardar alguns minutos para tentar cadastrar novamente.</em>
+                `;
+            } else {
+                msgDiv.textContent = "❌ Erro ao criar: " + e.message;
+            }
         } finally {
             btn.disabled = false;
             btn.textContent = "Cadastrar Usuário";
