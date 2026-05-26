@@ -115,11 +115,17 @@
             justify-content: space-between;
             align-items: center;
             box-sizing: border-box;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         .user-info {
             font-size: 14px;
             color: var(--dark);
             font-weight: bold;
+        }
+        .user-actions {
+            display: flex;
+            gap: 10px;
         }
         .btn-logout {
             background: #e2e8f0;
@@ -136,6 +142,37 @@
             background: #cbd5e1;
             color: #1e293b;
         }
+        .btn-admin {
+            background: var(--dark);
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+        .btn-admin:hover {
+            background: #0f172a;
+        }
+
+        /* Painel Admin */
+        .admin-panel {
+            display: none;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid var(--dark);
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+        .admin-panel h2 {
+            color: var(--dark);
+            border-bottom: 2px solid var(--dark);
+        }
 
         /* Ocultar o aplicativo principal até que esteja autenticado */
         .app-content {
@@ -143,7 +180,6 @@
             width: 100%;
         }
         
-        /* Demais estilos já existentes mantidos intactos */
         .card-input { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; margin-bottom: 15px; }
         .search-box { background: #e0f2fe; border: 1px solid #bae6fd; display: flex; flex-direction: column; gap: 10px; }
         .search-row { display: flex; gap: 10px; align-items: center; width: 100%; }
@@ -186,6 +222,9 @@
         .field input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; width: 100%; box-sizing: border-box; }
         
         .field input.time-input { text-align: center; font-size: 16px; letter-spacing: normal; }
+        
+        /* Ajuste para inputs que não devem ser maiúsculos no admin */
+        .field input.lowercase-input { text-transform: none; font-weight: normal; }
 
         canvas { width: 100% !important; height: auto !important; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
@@ -204,7 +243,7 @@
 
 <div class="container">
     
-    <!-- TELA DE LOGIN (Mostrada por padrão) -->
+    <!-- TELA DE LOGIN -->
     <div id="loginSection" class="login-wrapper">
         <div class="login-card">
             <h1>RAT Pro Editor</h1>
@@ -228,7 +267,7 @@
         </div>
     </div>
 
-    <!-- CONTEÚDO PRINCIPAL DO APP (Oculto até o login ser validado) -->
+    <!-- CONTEÚDO PRINCIPAL DO APP -->
     <div id="appContent" class="app-content">
         
         <!-- Barra superior do usuário logado -->
@@ -237,8 +276,36 @@
                 <span>👤 Usuário: </span>
                 <span id="labelUserEmail" style="color: var(--primary);">carregando...</span>
             </div>
-            <button class="btn-logout" onclick="realizarLogout()">🚪 Sair do Sistema</button>
+            <div class="user-actions">
+                <!-- Botão Admin (Fica oculto por padrão) -->
+                <button id="btnToggleAdmin" class="btn-admin" style="display: none;" onclick="toggleAdminPanel()">⚙️ Painel Admin</button>
+                <button class="btn-logout" onclick="realizarLogout()">🚪 Sair</button>
+            </div>
         </div>
+
+        <!-- Painel de Administração (Exclusivo para Willian) -->
+        <div id="adminPanel" class="admin-panel">
+            <h2>⚙️ Cadastro de Novos Usuários (Área Restrita)</h2>
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Cadastre novos técnicos para acessarem o sistema. A senha deve ter no mínimo 6 caracteres.</p>
+            
+            <div class="form-grid" style="max-width: 600px;">
+                <div class="field">
+                    <label>E-mail do Novo Usuário</label>
+                    <input type="email" id="admin_new_email" class="lowercase-input" placeholder="email@tecnico.com">
+                </div>
+                <div class="field">
+                    <label>Senha Provisória</label>
+                    <input type="text" id="admin_new_senha" class="lowercase-input" placeholder="Senha (Mín. 6 char)">
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; max-width: 600px; margin-top: 10px;">
+                <button class="btn-login" id="btnCriarUsuario" style="background: var(--dark); margin: 0;" onclick="cadastrarNovoUsuario()">Cadastrar Usuário</button>
+                <button class="btn-logout" style="margin: 0; padding: 14px;" onclick="toggleAdminPanel()">Fechar Painel</button>
+            </div>
+            <div id="adminStatusMsg" style="margin-top: 10px; font-size: 14px; font-weight: bold;"></div>
+        </div>
+
         <br>
 
         <!-- Seção de Pesquisa e Lista de Chamados -->
@@ -352,13 +419,22 @@
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
     
-    // SUAS CONFIGURAÇÕES ORIGINAIS DO SUPABASE (Continuam idênticas)
+    // SUAS CONFIGURAÇÕES ORIGINAIS DO SUPABASE
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
     const CPF_FIXO = "327.190.648-31";
     
+    // Cliente Principal (Para Auth e Banco de Dados)
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Cliente Secundário (EXCLUSIVO PARA ADMIN CRIAR USUÁRIO)
+    // Isso evita que ao criar um usuário, o administrador seja deslogado
+    const authRegistrationClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { persistSession: false } 
+    });
+
+    const ADMIN_EMAIL = 'williandcm@hotmail.com';
 
     const POS = {
         inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 }, 
@@ -385,21 +461,15 @@
     let todosChamadosCache = []; 
     let idRegistroAtual = null;
 
-    // Monitora a sessão ativa do usuário assim que a página é carregada
     window.onload = async () => {
         try {
-            // Verifica se o usuário já tem uma sessão ativa salva no navegador
             const { data: { session }, error } = await supabaseClient.auth.getSession();
-            
             if (session) {
-                // Se o usuário já estiver logado, inicializa a aplicação direto
                 inicializarAplicacao(session.user);
             } else {
-                // Se não estiver logado, garante que a tela de login esteja visível
                 mostrarTelaLogin();
             }
 
-            // Carrega o PDF do modelo em segundo plano
             const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
             modeloPdfBytes = await response.arrayBuffer();
             
@@ -418,7 +488,7 @@
     };
 
     // ==========================================
-    // FUNÇÕES DE CONTROLE DE INTERFACE DE ACESSO
+    // FUNÇÕES DE CONTROLE DE INTERFACE E LOGIN
     // ==========================================
     function mostrarTelaLogin() {
         document.getElementById('loginSection').style.display = 'flex';
@@ -431,16 +501,18 @@
         document.getElementById('appContent').style.display = 'block';
         document.getElementById('labelUserEmail').textContent = user.email;
         
-        // Limpa campos de senha por segurança
+        // Verifica se o usuário é o Administrador (Willian)
+        if (user.email.toLowerCase() === ADMIN_EMAIL) {
+            document.getElementById('btnToggleAdmin').style.display = 'inline-block';
+        } else {
+            document.getElementById('btnToggleAdmin').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'none';
+        }
+
         document.getElementById('login_senha').value = '';
-        
-        // Carrega a listagem de chamados do banco de dados automaticamente
         carregarTodosChamados();
     }
 
-    // ==========================================
-    // LOGIN E LOGOUT UTILIZANDO SUPABASE AUTH
-    // ==========================================
     async function realizarLogin() {
         const email = document.getElementById('login_email').value.trim();
         const senha = document.getElementById('login_senha').value;
@@ -463,11 +535,7 @@
                 password: senha
             });
 
-            if (error) {
-                throw error;
-            }
-
-            // Login efetuado com sucesso!
+            if (error) throw error;
             inicializarAplicacao(data.user);
 
         } catch (e) {
@@ -487,6 +555,68 @@
             limparFormulario();
         }
     }
+
+    // ==========================================
+    // FUNÇÕES DO PAINEL DE ADMINISTRAÇÃO
+    // ==========================================
+    function toggleAdminPanel() {
+        const panel = document.getElementById('adminPanel');
+        if (panel.style.display === 'none' || panel.style.display === '') {
+            panel.style.display = 'block';
+            document.getElementById('adminStatusMsg').textContent = '';
+        } else {
+            panel.style.display = 'none';
+        }
+    }
+
+    async function cadastrarNovoUsuario() {
+        const email = document.getElementById('admin_new_email').value.trim();
+        const senha = document.getElementById('admin_new_senha').value;
+        const btn = document.getElementById('btnCriarUsuario');
+        const msgDiv = document.getElementById('adminStatusMsg');
+
+        if (!email || !senha) {
+            msgDiv.style.color = 'var(--danger)';
+            msgDiv.textContent = "Preencha o e-mail e a senha do novo usuário.";
+            return;
+        }
+
+        if (senha.length < 6) {
+            msgDiv.style.color = 'var(--warning)';
+            msgDiv.textContent = "A senha deve ter no mínimo 6 caracteres.";
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Cadastrando...";
+        msgDiv.textContent = "";
+
+        try {
+            // Usamos o authRegistrationClient (secundário) para não deslogar o Admin
+            const { data, error } = await authRegistrationClient.auth.signUp({
+                email: email,
+                password: senha
+            });
+
+            if (error) throw error;
+
+            msgDiv.style.color = 'var(--success)';
+            msgDiv.textContent = "✅ Usuário criado com sucesso! Ele já pode fazer login.";
+            
+            // Limpa os campos após sucesso
+            document.getElementById('admin_new_email').value = '';
+            document.getElementById('admin_new_senha').value = '';
+
+        } catch (e) {
+            console.error("Erro ao criar usuário:", e.message);
+            msgDiv.style.color = 'var(--danger)';
+            msgDiv.textContent = "❌ Erro ao criar: " + (e.message.includes('already registered') ? "Este e-mail já existe." : e.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Cadastrar Usuário";
+        }
+    }
+
 
     // ==========================================
     // FUNÇÕES DE INTERAÇÃO COM O BANCO (CHAMADOS)
@@ -836,11 +966,10 @@
             dados.solucao = isBaixaImagem ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
             dados.modelo = dados.sn.startsWith('P') ? "LENOVO T14" : (dados.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "");
             
-            // Tratamento especial para Baixa de Imagem conforme solicitado
             if (isBaixaImagem) {
                 document.getElementById('f_patri_inst').value = "";
                 document.getElementById('f_host_inst').value = "";
-                document.getElementById('f_mac_inst').value = dados.mac; // Mac vai para o equipamento novo!
+                document.getElementById('f_mac_inst').value = dados.mac; 
             } else {
                 document.getElementById('f_patri_inst').value = "";
                 document.getElementById('f_host_inst').value = "";
@@ -885,7 +1014,6 @@
         document.getElementById('f_host_ret').value = dados.host;
         document.getElementById('f_sn_ret').value = dados.sn === '---' ? '' : dados.sn;
         
-        // Se for Baixa de Imagem ou PIN PAD, o MAC já foi para o equipamento instalado. Limpamos o retirado.
         if (isBaixaImagem || isPinPad) {
             document.getElementById('f_mac_ret').value = "";
         } else {
@@ -1002,6 +1130,10 @@
                 pdfBase64 = window.btoa(binary);
             }
 
+            // O Nome do Técnico salvo no banco deve idealmente puxar de quem está logado, 
+            // mas como estava fixo no original, vou manter ou você pode trocar por document.getElementById('labelUserEmail').textContent
+            const tecnicoAtual = document.getElementById('labelUserEmail').textContent;
+
             const dadosParaSalvar = {
                 chamado: inc,
                 uniorg: document.getElementById('f_uniorg').value,
@@ -1030,7 +1162,7 @@
                 matricula: document.getElementById('f_matricula').value,
                 data_atendimento: document.getElementById('f_data_completa').value,
                 chamado_cerb: document.getElementById('chamado_cerb').value,
-                tecnico: 'Willian',
+                tecnico: tecnicoAtual,
                 pdf_base64: pdfBase64 
             };
 
