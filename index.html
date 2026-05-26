@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RAT Pro Editor - Willian</title>
+    <!-- Bibliotecas externas necessárias -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -19,11 +20,131 @@
         }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
         
+        /* Centralizador principal */
         .container { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; max-width: 1200px; margin: 0 auto; }
         
-        .card-input { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; }
+        /* Seção de Login */
+        .login-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 80vh;
+            width: 100%;
+        }
+        .login-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        .login-card h1 {
+            color: var(--dark);
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .login-card p {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+        .login-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .login-field label {
+            font-size: 11px;
+            font-weight: bold;
+            color: #475569;
+            text-transform: uppercase;
+        }
+        .login-field input {
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 15px;
+            outline: none;
+            transition: 0.2s;
+        }
+        .login-field input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+        .btn-login {
+            background: var(--primary);
+            color: white;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: 0.2s;
+        }
+        .btn-login:hover {
+            background: #2563eb;
+        }
+        .login-error {
+            background: #fee2e2;
+            color: #b91c1c;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 15px;
+            display: none;
+            text-align: left;
+            border-left: 4px solid var(--danger);
+        }
+
+        /* Barra de controle superior pós-login */
+        .user-bar {
+            width: 100%;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+        }
+        .user-info {
+            font-size: 14px;
+            color: var(--dark);
+            font-weight: bold;
+        }
+        .btn-logout {
+            background: #e2e8f0;
+            color: #475569;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+        .btn-logout:hover {
+            background: #cbd5e1;
+            color: #1e293b;
+        }
+
+        /* Ocultar o aplicativo principal até que esteja autenticado */
+        .app-content {
+            display: none;
+            width: 100%;
+        }
         
-        /* Seção de Pesquisa e Lista */
+        /* Demais estilos já existentes mantidos intactos */
+        .card-input { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; margin-bottom: 15px; }
         .search-box { background: #e0f2fe; border: 1px solid #bae6fd; display: flex; flex-direction: column; gap: 10px; }
         .search-row { display: flex; gap: 10px; align-items: center; width: 100%; }
         .search-input { flex: 1; padding: 12px; border: 1px solid #93c5fd; border-radius: 8px; font-size: 16px; font-weight: bold; text-transform: uppercase; outline: none; }
@@ -33,7 +154,6 @@
         .btn-load-all { background: #64748b; color: white; padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-load-all:hover { background: #475569; }
 
-        /* Estilo da Tabela de Chamados do Banco */
         .table-container { margin-top: 15px; overflow-x: auto; max-height: 300px; border: 1px solid #e2e8f0; border-radius: 8px; background: white; }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
         th { background: #f1f5f9; color: #475569; font-weight: 700; padding: 10px; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; }
@@ -83,119 +203,161 @@
 <body>
 
 <div class="container">
-    <!-- Seção de Pesquisa e Lista de Chamados -->
-    <div class="card-input search-box">
-        <div>
-            <h2 style="border: none; margin: 0 0 10px 0; color: #0284c7;">🔍 Chamados no Banco de Dados</h2>
-            <div class="search-row">
-                <input type="text" id="busca_inc" class="search-input" placeholder="Pesquisar Chamado, Uniorg, Cidade, Responsável..." oninput="filtrarListaLocal()">
-                <button class="btn-search" onclick="buscarChamado()" id="btnBuscar">Buscar Único</button>
-                <button class="btn-load-all" onclick="carregarTodosChamados()" id="btnCarregarTodos">🔄 Atualizar Tabela</button>
+    
+    <!-- TELA DE LOGIN (Mostrada por padrão) -->
+    <div id="loginSection" class="login-wrapper">
+        <div class="login-card">
+            <h1>RAT Pro Editor</h1>
+            <p>Faça login para gerenciar os atendimentos</p>
+            
+            <div id="loginError" class="login-error">
+                E-mail ou senha incorretos.
             </div>
-        </div>
-
-        <!-- Tabela Dinâmica de Registros do Supabase -->
-        <div class="table-container" id="containerTabela" style="display:none;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Ação</th>
-                        <th>Chamado</th>
-                        <th>Data</th>
-                        <th>Uniorg</th>
-                        <th>Endereço / Cidade</th>
-                        <th>Responsável</th>
-                        <th>Instalado (S/N)</th>
-                    </tr>
-                </thead>
-                <tbody id="corpoTabelaChamados">
-                    <!-- Registros inseridos dinamicamente por JS -->
-                </tbody>
-            </table>
-        </div>
-        <div id="statusTabela" style="text-align: center; color: #64748b; font-size: 12px; margin-top: 5px;">
-            Clique em "Atualizar Tabela" para listar os atendimentos salvos.
+            
+            <div class="login-field">
+                <label>E-mail</label>
+                <input type="email" id="login_email" placeholder="seuemail@exemplo.com">
+            </div>
+            
+            <div class="login-field">
+                <label>Senha</label>
+                <input type="password" id="login_senha" placeholder="Digite sua senha">
+            </div>
+            
+            <button class="btn-login" id="btnLogar" onclick="realizarLogin()">Entrar no Sistema</button>
         </div>
     </div>
 
-    <div class="card-input">
-        <h2>1. Cole o Novo Chamado (Para Criar um Novo)</h2>
-        <textarea id="chamado_cerb" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
-    </div>
-
-    <div class="workspace">
-        <div class="editor-box" id="editorBox">
-            <h2 id="tituloEditor">2. Editor em Tempo Real <span id="modo_edicao_label" style="color: var(--warning); font-size: 12px; display: none;">(Modo de Edição)</span></h2>
-            <div class="form-grid">
-                <div class="field full-width"><label>Chamado</label><input type="text" id="f_inc"></div>
-                
-                <div class="time-container">
-                    <div class="field"><label>Hora Partida</label><input type="text" id="f_partida" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
-                    <div class="field"><label>Hora Chegada</label><input type="text" id="f_chegada" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
-                    <div class="field"><label>Hora Início Atendimento</label><input type="text" id="f_inicio_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
-                    <div class="field"><label>Hora Término Atendimento</label><input type="text" id="f_termino_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
-                </div>
-
-                <div class="field full-width"><label>Uniorg</label><input type="text" id="f_uniorg"></div>
-                <div class="field full-width"><label>Endereço</label><input type="text" id="f_rua"></div>
-                
-                <div class="field"><label>Número</label><input type="text" id="f_num"></div>
-                <div class="field"><label>Bairro</label><input type="text" id="f_bai"></div>
-                <div class="field"><label>Cidade</label><input type="text" id="f_cid"></div>
-                <div class="field"><label>UF</label><input type="text" id="f_uf"></div>
-                
-                <div class="field full-width"><label>Descritivo Defeito / Solução</label><input type="text" id="f_descritivo_defeito" value="EQUIPAMENTO INOPERANTE"></div>
-                
-                <div class="equip-container">
-                    <div>
-                        <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-end;">
-                            <span>Sempre Preencher<br>Atual Reconfigurado ou Retirado</span>
-                        </div>
-                        <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_ret"></div>
-                        <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_ret"></div>
-                        <div class="field"><label>Modelo</label><input type="text" id="f_modelo_ret"></div>
-                        <div class="field"><label>Hostname</label><input type="text" id="f_host_ret"></div>
-                        <div class="field"><label>MAC</label><input type="text" id="f_mac_ret" oninput="sincronizarMac()"></div>
-                    </div>
-                    <div>
-                        <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-end;">
-                            <span>Preencher em caso de troca<br>Equipamento Novo</span>
-                        </div>
-                        <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_inst"></div>
-                        <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_inst"></div>
-                        <div class="field"><label>Modelo</label><input type="text" id="f_modelo_inst"></div>
-                        <div class="field"><label>Hostname</label><input type="text" id="f_host_inst"></div>
-                        <div class="field"><label>MAC</label><input type="text" id="f_mac_inst"></div>
-                    </div>
-                </div>
-
-                <div class="field full-width"><label>Solução</label><input type="text" id="f_solucao" oninput="sincronizarMac()"></div>
-                <div class="field"><label>Responsável</label><input type="text" id="f_resp"></div>
-                <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
-                <div class="field"><label>Local</label><input type="text" id="f_local_data_cidade"></div>
-                <div class="field"><label>Data</label><input type="date" id="f_data_picker" onchange="atualizarDataFormatada()"></div>
-                <input type="hidden" id="f_data_completa">
+    <!-- CONTEÚDO PRINCIPAL DO APP (Oculto até o login ser validado) -->
+    <div id="appContent" class="app-content">
+        
+        <!-- Barra superior do usuário logado -->
+        <div class="user-bar">
+            <div class="user-info">
+                <span>👤 Usuário: </span>
+                <span id="labelUserEmail" style="color: var(--primary);">carregando...</span>
             </div>
-            <div class="btn-group">
-                <button class="btn-save" id="btnSalvar" onclick="salvarAtendimento()">💾 Salvar Novo</button>
-                <button class="btn-clear" onclick="limparFormulario()">🧹 Limpar</button>
-                <button class="btn-pdf" onclick="baixarPdf()">📥 Baixar PDF</button>
+            <button class="btn-logout" onclick="realizarLogout()">🚪 Sair do Sistema</button>
+        </div>
+        <br>
+
+        <!-- Seção de Pesquisa e Lista de Chamados -->
+        <div class="card-input search-box">
+            <div>
+                <h2 style="border: none; margin: 0 0 10px 0; color: #0284c7;">🔍 Chamados no Banco de Dados</h2>
+                <div class="search-row">
+                    <input type="text" id="busca_inc" class="search-input" placeholder="Pesquisar Chamado, Uniorg, Cidade, Responsável..." oninput="filtrarListaLocal()">
+                    <button class="btn-search" onclick="buscarChamado()" id="btnBuscar">Buscar Único</button>
+                    <button class="btn-load-all" onclick="carregarTodosChamados()" id="btnCarregarTodos">🔄 Atualizar Tabela</button>
+                </div>
+            </div>
+
+            <!-- Tabela Dinâmica de Registros do Supabase -->
+            <div class="table-container" id="containerTabela" style="display:none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ação</th>
+                            <th>Chamado</th>
+                            <th>Data</th>
+                            <th>Uniorg</th>
+                            <th>Endereço / Cidade</th>
+                            <th>Responsável</th>
+                            <th>Instalado (S/N)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoTabelaChamados">
+                        <!-- Registros inseridos dinamicamente por JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="statusTabela" style="text-align: center; color: #64748b; font-size: 12px; margin-top: 5px;">
+                Clique em "Atualizar Tabela" para listar os atendimentos salvos.
             </div>
         </div>
 
-        <div class="preview-box" id="previewBox">
-            <span style="color:white; font-size: 11px; font-weight: bold; margin-bottom: 10px; display: block;">PRÉ-VISUALIZAÇÃO DA RAT:</span>
-            <canvas id="pdfCanvas"></canvas>
+        <div class="card-input">
+            <h2>1. Cole o Novo Chamado (Para Criar um Novo)</h2>
+            <textarea id="chamado_cerb" placeholder="Cole o chamado aqui..." oninput="extrairDados()"></textarea>
+        </div>
+
+        <div class="workspace">
+            <div class="editor-box" id="editorBox">
+                <h2 id="tituloEditor">2. Editor em Tempo Real <span id="modo_edicao_label" style="color: var(--warning); font-size: 12px; display: none;">(Modo de Edição)</span></h2>
+                <div class="form-grid">
+                    <div class="field full-width"><label>Chamado</label><input type="text" id="f_inc"></div>
+                    
+                    <div class="time-container">
+                        <div class="field"><label>Hora Partida</label><input type="text" id="f_partida" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                        <div class="field"><label>Hora Chegada</label><input type="text" id="f_chegada" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                        <div class="field"><label>Hora Início Atendimento</label><input type="text" id="f_inicio_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                        <div class="field"><label>Hora Término Atendimento</label><input type="text" id="f_termino_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
+                    </div>
+
+                    <div class="field full-width"><label>Uniorg</label><input type="text" id="f_uniorg"></div>
+                    <div class="field full-width"><label>Endereço</label><input type="text" id="f_rua"></div>
+                    
+                    <div class="field"><label>Número</label><input type="text" id="f_num"></div>
+                    <div class="field"><label>Bairro</label><input type="text" id="f_bai"></div>
+                    <div class="field"><label>Cidade</label><input type="text" id="f_cid"></div>
+                    <div class="field"><label>UF</label><input type="text" id="f_uf"></div>
+                    
+                    <div class="field full-width"><label>Descritivo Defeito / Solução</label><input type="text" id="f_descritivo_defeito" value="EQUIPAMENTO INOPERANTE"></div>
+                    
+                    <div class="equip-container">
+                        <div>
+                            <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-end;">
+                                <span>Sempre Preencher<br>Atual Reconfigurado ou Retirado</span>
+                            </div>
+                            <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_ret"></div>
+                            <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_ret"></div>
+                            <div class="field"><label>Modelo</label><input type="text" id="f_modelo_ret"></div>
+                            <div class="field"><label>Hostname</label><input type="text" id="f_host_ret"></div>
+                            <div class="field"><label>MAC</label><input type="text" id="f_mac_ret" oninput="sincronizarMac()"></div>
+                        </div>
+                        <div>
+                            <div class="column-title" style="font-weight: bold; font-size: 15px; color: #1e293b; text-transform: uppercase; margin-bottom: 12px; line-height: 1.4; text-align: center; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-end;">
+                                <span>Preencher em caso de troca<br>Equipamento Novo</span>
+                            </div>
+                            <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_inst"></div>
+                            <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_inst"></div>
+                            <div class="field"><label>Modelo</label><input type="text" id="f_modelo_inst"></div>
+                            <div class="field"><label>Hostname</label><input type="text" id="f_host_inst"></div>
+                            <div class="field"><label>MAC</label><input type="text" id="f_mac_inst"></div>
+                        </div>
+                    </div>
+
+                    <div class="field full-width"><label>Solução</label><input type="text" id="f_solucao" oninput="sincronizarMac()"></div>
+                    <div class="field"><label>Responsável</label><input type="text" id="f_resp"></div>
+                    <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
+                    <div class="field"><label>Local</label><input type="text" id="f_local_data_cidade"></div>
+                    <div class="field"><label>Data</label><input type="date" id="f_data_picker" onchange="atualizarDataFormatada()"></div>
+                    <input type="hidden" id="f_data_completa">
+                </div>
+                <div class="btn-group">
+                    <button class="btn-save" id="btnSalvar" onclick="salvarAtendimento()">💾 Salvar Novo</button>
+                    <button class="btn-clear" onclick="limparFormulario()">🧹 Limpar</button>
+                    <button class="btn-pdf" onclick="baixarPdf()">📥 Baixar PDF</button>
+                </div>
+            </div>
+
+            <div class="preview-box" id="previewBox">
+                <span style="color:white; font-size: 11px; font-weight: bold; margin-bottom: 10px; display: block;">PRÉ-VISUALIZAÇÃO DA RAT:</span>
+                <canvas id="pdfCanvas"></canvas>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    
+    // SUAS CONFIGURAÇÕES ORIGINAIS DO SUPABASE (Continuam idênticas)
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
     const CPF_FIXO = "327.190.648-31";
+    
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const POS = {
@@ -220,15 +382,27 @@
     let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO };
     let modeloPdfBytes = null;
     let timeoutRender = null;
-    let todosChamadosCache = []; // Guarda todos os chamados carregados para pesquisa em tempo real
-    
-    // VARIÁVEL DE ESTADO PARA CONTROLE DE EDIÇÃO
+    let todosChamadosCache = []; 
     let idRegistroAtual = null;
 
+    // Monitora a sessão ativa do usuário assim que a página é carregada
     window.onload = async () => {
         try {
+            // Verifica se o usuário já tem uma sessão ativa salva no navegador
+            const { data: { session }, error } = await supabaseClient.auth.getSession();
+            
+            if (session) {
+                // Se o usuário já estiver logado, inicializa a aplicação direto
+                inicializarAplicacao(session.user);
+            } else {
+                // Se não estiver logado, garante que a tela de login esteja visível
+                mostrarTelaLogin();
+            }
+
+            // Carrega o PDF do modelo em segundo plano
             const response = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
             modeloPdfBytes = await response.arrayBuffer();
+            
             const d = new Date();
             document.getElementById('f_data_picker').value = d.toISOString().split('T')[0];
             atualizarDataFormatada();
@@ -238,13 +412,84 @@
                 timeoutRender = setTimeout(gerarERenderizar, 500);
             });
 
-            // Carrega a listagem inicialmente
-            carregarTodosChamados();
-        } catch (e) { console.error("Erro ao carregar o PDF base:", e); }
+        } catch (e) { 
+            console.error("Erro ao inicializar:", e); 
+        }
     };
 
     // ==========================================
-    // NOVA FUNÇÃO: CARREGAR TODOS OS REGISTROS DO BANCO
+    // FUNÇÕES DE CONTROLE DE INTERFACE DE ACESSO
+    // ==========================================
+    function mostrarTelaLogin() {
+        document.getElementById('loginSection').style.display = 'flex';
+        document.getElementById('appContent').style.display = 'none';
+        document.getElementById('loginError').style.display = 'none';
+    }
+
+    function inicializarAplicacao(user) {
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('appContent').style.display = 'block';
+        document.getElementById('labelUserEmail').textContent = user.email;
+        
+        // Limpa campos de senha por segurança
+        document.getElementById('login_senha').value = '';
+        
+        // Carrega a listagem de chamados do banco de dados automaticamente
+        carregarTodosChamados();
+    }
+
+    // ==========================================
+    // LOGIN E LOGOUT UTILIZANDO SUPABASE AUTH
+    // ==========================================
+    async function realizarLogin() {
+        const email = document.getElementById('login_email').value.trim();
+        const senha = document.getElementById('login_senha').value;
+        const btn = document.getElementById('btnLogar');
+        const errorDiv = document.getElementById('loginError');
+
+        if (!email || !senha) {
+            errorDiv.textContent = "Preencha o e-mail e a senha.";
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Autenticando...";
+        errorDiv.style.display = 'none';
+
+        try {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: senha
+            });
+
+            if (error) {
+                throw error;
+            }
+
+            // Login efetuado com sucesso!
+            inicializarAplicacao(data.user);
+
+        } catch (e) {
+            console.error("Erro no Login:", e.message);
+            errorDiv.textContent = "Acesso negado: Verifique o e-mail e a senha.";
+            errorDiv.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Entrar no Sistema";
+        }
+    }
+
+    async function realizarLogout() {
+        if (confirm("Deseja realmente sair do sistema?")) {
+            await supabaseClient.auth.signOut();
+            mostrarTelaLogin();
+            limparFormulario();
+        }
+    }
+
+    // ==========================================
+    // FUNÇÕES DE INTERAÇÃO COM O BANCO (CHAMADOS)
     // ==========================================
     async function carregarTodosChamados() {
         const btn = document.getElementById('btnCarregarTodos');
@@ -300,9 +545,6 @@
         });
     }
 
-    // ==========================================
-    // NOVA FUNÇÃO: PESQUISAR LOCALMENTE NA TABELA
-    // ==========================================
     function filtrarListaLocal() {
         const query = document.getElementById('busca_inc').value.toUpperCase().trim();
         if (!query) {
@@ -325,14 +567,10 @@
         document.getElementById('statusTabela').innerHTML = `Encontrados ${filtrados.length} correspondentes para "${query}".`;
     }
 
-    // ==========================================
-    // CARREGA UM CHAMADO SELECIONADO NA TABELA NO EDITOR
-    // ==========================================
     function carregarChamadoDireto(id) {
         const chamado = todosChamadosCache.find(x => x.id === id);
         if (!chamado) return;
 
-        // Ativa o modo de edição
         idRegistroAtual = chamado.id;
         document.getElementById('modo_edicao_label').style.display = 'inline';
         
@@ -340,7 +578,6 @@
         btnSalvar.innerHTML = "💾 Atualizar Alterações";
         btnSalvar.className = 'btn-update';
 
-        // Preenche o formulário
         document.getElementById('f_inc').value = chamado.chamado || '';
         document.getElementById('f_uniorg').value = chamado.uniorg || '';
         document.getElementById('f_partida').value = chamado.hora_partida || '';
@@ -386,10 +623,8 @@
             document.getElementById('chamado_cerb').value = "";
         }
 
-        // Rolar suavemente para o formulário de edição
         document.getElementById('editorBox').scrollIntoView({ behavior: 'smooth' });
 
-        // Atualiza a pré-visualização do PDF
         clearTimeout(timeoutRender);
         timeoutRender = setTimeout(gerarERenderizar, 500);
     }
@@ -796,7 +1031,6 @@
                 alert("Novo chamado SALVO com sucesso no banco de dados!");
             }
 
-            // Recarregar a lista do banco para refletir as mudanças
             carregarTodosChamados();
 
         } catch (e) { 
@@ -810,4 +1044,3 @@
 </script>
 </body>
 </html>
-
