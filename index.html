@@ -316,6 +316,25 @@
             </div>
         </div>
 
+        <!-- Banner Informativo se a tabela "tecnicos" não for encontrada no Supabase -->
+        <div id="dbWarning" style="display: none; background: #fee2e2; border-left: 5px solid var(--danger); padding: 18px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; color: #991b1b; font-size: 14px; line-height: 1.6; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+            <strong style="font-size: 16px; display: block; margin-bottom: 5px;">⚠️ Tabela "tecnicos" não encontrada no Supabase!</strong>
+            Este erro ocorre porque a tabela onde os nomes e CPFs dos técnicos ficam guardados ainda não foi criada no seu banco de dados Supabase.<br><br>
+            <strong>Como resolver agora de forma simples:</strong><br>
+            1. Acesse o painel do seu projeto no <a href="https://supabase.com" target="_blank" style="color: #b91c1c; font-weight: bold; text-decoration: underline;">Supabase</a>.<br>
+            2. No menu lateral esquerdo, clique em <strong>SQL Editor</strong> (ícone de terminal SQL <code>&gt;_</code>) e clique em <strong>"New Query"</strong> (Nova Consulta).<br>
+            3. Cole o código SQL abaixo e clique no botão <strong>"Run"</strong> (Executar) no canto inferior direito:<br>
+            <pre style="background: #f1f5f9; padding: 12px; border-radius: 6px; overflow-x: auto; color: #1e293b; font-weight: bold; font-family: monospace; font-size: 12px; margin-top: 10px; border: 1px solid #cbd5e1;">
+CREATE TABLE tecnicos (
+  id BIGSERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  nome_completo VARCHAR(255) NOT NULL,
+  cpf VARCHAR(20) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);</pre>
+            4. Feito isso, volte aqui e atualize a página! A tabela será reconhecida na hora.
+        </div>
+
         <!-- Painel de Administração (Exclusivo para Willian) -->
         <div id="adminPanel" class="admin-panel">
             <h2>⚙️ Painel do Administrador (Área Restrita)</h2>
@@ -594,6 +613,13 @@
         carregarTodosChamados();
     }
 
+    // Identifica e trata de forma amigável erros de tabela não criada no Supabase
+    function verificarErroTabela(erro) {
+        if (erro && erro.message && (erro.message.includes("Could not find the table") || erro.message.includes("relation \"tecnicos\" does not exist") || erro.message.includes("relation \"public.tecnicos\" does not exist"))) {
+            document.getElementById('dbWarning').style.display = 'block';
+        }
+    }
+
     // Busca as informações do técnico atual no banco para estampar na RAT
     async function carregarDadosTecnicoAtual(email) {
         try {
@@ -603,10 +629,13 @@
                 .eq('email', email.toLowerCase())
                 .maybeSingle();
 
+            if (error) throw error;
+
             if (data) {
                 dados.tecnico = data.nome_completo.toUpperCase();
                 dados.cpf = data.cpf;
                 document.getElementById('labelUserInfo').textContent = `(${dados.tecnico} - CPF: ${dados.cpf})`;
+                document.getElementById('dbWarning').style.display = 'none';
             } else {
                 // Caso não encontre, gera uma configuração básica provisória com base no email
                 dados.tecnico = email.split('@')[0].replace('.', ' ').toUpperCase();
@@ -616,6 +645,14 @@
             gerarERenderizar();
         } catch(err) {
             console.error("Erro ao carregar dados do carimbo:", err);
+            
+            // Comportamento de Fallback: impede que o gerador de PDF trave
+            dados.tecnico = email.split('@')[0].replace('.', ' ').toUpperCase();
+            dados.cpf = "TABELA AUSENTE NO BD";
+            document.getElementById('labelUserInfo').textContent = `(Erro: Tabela 'tecnicos' não encontrada no banco)`;
+            gerarERenderizar();
+            
+            verificarErroTabela(err);
         }
     }
 
@@ -708,10 +745,13 @@
 
             if (error) throw error;
 
+            document.getElementById('dbWarning').style.display = 'none';
+
             todosTecnicosCache = data || [];
             atualizarTabelaTecnicos(todosTecnicosCache);
         } catch (e) {
             console.error("Erro ao carregar técnicos:", e.message);
+            verificarErroTabela(e);
         }
     }
 
@@ -847,6 +887,7 @@
             } else {
                 exibirMensagemAdmin("❌ Ocorreu um erro: " + e.message, "error");
             }
+            verificarErroTabela(e);
         } finally {
             btn.disabled = false;
             btn.textContent = "Salvar Técnico";
@@ -868,6 +909,7 @@
             carregarListaTecnicos();
         } catch (e) {
             alert("Erro ao excluir do banco: " + e.message);
+            verificarErroTabela(e);
         }
     }
 
@@ -1477,6 +1519,7 @@
         } catch (e) { 
             console.error(e);
             alert("Erro na operação: " + e.message); 
+            verificarErroTabela(e);
         } finally {
             btnSave.innerHTML = txtOriginal;
             btnSave.disabled = false;
