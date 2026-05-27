@@ -372,6 +372,11 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
             <!-- TAB 2: GERENCIAMENTO -->
             <div id="adminTabGerenciamento" class="admin-content-section">
                 <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Abaixo estão os técnicos autorizados a carimbar as RATs.</p>
+                
+                <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-delete-table" style="padding: 10px 15px; font-size: 12px; background: var(--danger); max-width: 250px;" onclick="limparTodosOsTecnicosComSeguranca()">🗑️ Limpar Todos (Manter Apenas Eu)</button>
+                </div>
+
                 <div class="table-container">
                     <table>
                         <thead>
@@ -910,6 +915,55 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         }
     }
 
+    // Nova funcionalidade para limpar todos os técnicos, exceto o administrador logado
+    async function limparTodosOsTecnicosComSeguranca() {
+        const confirmacao1 = confirm("ATENÇÃO!\n\nVocê tem certeza absoluta de que deseja LIMPAR TODOS os técnicos cadastrados da tabela?");
+        if (!confirmacao1) return;
+
+        const confirmacao2 = confirm("Apenas o seu cadastro de administrador (williandcm@hotmail.com) será mantido e recriado com segurança.\n\nTodos os outros técnicos cadastrados serão excluídos permanentemente da lista. Confirma?");
+        if (!confirmacao2) return;
+
+        const msgDiv = document.getElementById('adminStatusMsg');
+        msgDiv.style.display = 'block';
+        msgDiv.style.backgroundColor = '#fef3c7';
+        msgDiv.style.color = '#d97706';
+        msgDiv.style.borderLeft = '4px solid var(--warning)';
+        msgDiv.textContent = "Processando exclusão em lote...";
+
+        try {
+            // 1. Remove todos os registros da tabela 'tecnicos'
+            // No Supabase, para deletar todas as linhas usamos uma condição genérica como id > 0 ou gte
+            const { error: deleteError } = await supabaseClient
+                .from('tecnicos')
+                .delete()
+                .neq('id', 0); // Seleciona todos os registros com id diferente de 0
+
+            if (deleteError) throw deleteError;
+
+            // 2. Insere novamente o registro do Administrador (Willian) para garantir que ele permaneça ativo com seus dados de carimbo
+            const { error: insertError } = await supabaseClient
+                .from('tecnicos')
+                .insert([{
+                    email: ADMIN_EMAIL,
+                    nome_completo: "WILLIAN DO CARMO MORAIS",
+                    cpf: "327.190.648-31"
+                }]);
+
+            if (insertError) throw insertError;
+
+            exibirMensagemAdmin("✅ Todos os técnicos foram removidos com sucesso! Seu carimbo administrativo foi restabelecido e mantido ativo.", "success");
+            
+            // Recarrega a tabela e reconecta os dados do carimbo do administrador atual
+            carregarListaTecnicos();
+            await carregarDadosTecnicoAtual(usuarioLogadoEmail);
+
+        } catch (e) {
+            console.error("Erro ao limpar técnicos:", e);
+            exibirMensagemAdmin("❌ Falha ao tentar limpar cadastros: " + e.message, "error");
+            verificarErroTabela(e);
+        }
+    }
+
     function exibirMensagemAdmin(texto, tipo) {
         const msgDiv = document.getElementById('adminStatusMsg');
         msgDiv.style.display = 'block';
@@ -1320,7 +1374,7 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         const chegada = reg("CHEGADA"); 
         const termino = reg("ATENDIMENTO");
 
-        document.getElementById('f_partida').value = partida ? `${partida[1]}:${partida[2]}` : '';
+        document.getElementById('f_partida').value = partida ? `${partia[1]}:${partida[2]}` : '';
         document.getElementById('f_chegada').value = chegada ? `${chegada[1]}:${chegada[2]}` : '';
         document.getElementById('f_inicio_ate').value = termino ? `${termino[1]}:${termino[2]}` : '';
 
