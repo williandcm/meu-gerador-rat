@@ -347,7 +347,7 @@
             </div>
             
             <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
-                <button class="btn-logout" style="margin: 0; padding: 10px 20px;" onclick="toggleAdminPanel()">Fechar Painel</button>
+                <button class="btn-logout" style="margin: 0; padding: 10px 20px;" onclick="toggleAdminPanel()">Fechar Panel</button>
             </div>
             <div id="adminStatusMsg" style="margin-top: 15px; font-size: 14px; font-weight: normal; line-height: 1.5; padding: 10px; border-radius: 6px; display: none;"></div>
         </div>
@@ -574,6 +574,31 @@
         carregarTodosChamados();
     }
 
+    // Validação ativa em tempo real no login e banco para impedir acessos suspensos
+    async function checarStatusAtivo() {
+        if (!loggedInUser) return false;
+        const emailKey = loggedInUser.email.toLowerCase();
+        if (emailKey === ADMIN_EMAIL) return true; // Master administrador sempre ativo
+
+        // Força sincronização mais recente de CONFIG_TECNICOS
+        const { data: configData } = await supabaseClient
+            .from('chamados')
+            .select('*')
+            .eq('chamado', 'CONFIG_TECNICOS')
+            .maybeSingle();
+
+        if (configData && configData.solucao) {
+            const perfis = JSON.parse(configData.solucao);
+            const perfil = perfis.find(p => p.email.toLowerCase() === emailKey);
+            if (perfil && perfil.ativo === false) {
+                alert("Acesso suspenso: A sua conta foi desativada pelo administrador.");
+                realizarLogout();
+                return false;
+            }
+        }
+        return true;
+    }
+
     async function realizarLogin() {
         const email = document.getElementById('login_email').value.trim().toLowerCase();
         const senha = document.getElementById('login_senha').value;
@@ -591,8 +616,7 @@
         errorDiv.style.display = 'none';
 
         try {
-            // Verifica na nossa lista sincronizada se este técnico está inativo no banco
-            // Primeiro, recarregamos a lista atual de perfis para pegar o status mais atual
+            // Primeiro, recarregamos a lista atual de perfis para pegar o status mais atual antes de autenticar no Auth
             const { data: configData } = await supabaseClient
                 .from('chamados')
                 .select('*')
@@ -606,7 +630,7 @@
 
             const perfil = localPerfis.find(p => p.email.toLowerCase() === email);
             
-            // Se for um técnico comum (não admin) e estiver explicitamente Inativo (ativo === false)
+            // Bloqueio completo na entrada caso inativado
             if (email !== ADMIN_EMAIL && perfil && perfil.ativo === false) {
                 throw new Error("Acesso negado: O seu usuário foi inativado pelo administrador.");
             }
@@ -630,11 +654,9 @@
     }
 
     async function realizarLogout() {
-        if (confirm("Deseja realmente sair do sistema?")) {
-            await supabaseClient.auth.signOut();
-            mostrarTelaLogin();
-            limparFormulario();
-        }
+        await supabaseClient.auth.signOut();
+        mostrarTelaLogin();
+        limparFormulario();
     }
 
     // Gerenciamento de Nome e CPF do Técnico logado
@@ -779,10 +801,10 @@
         });
     }
 
-    // Função que altera o status (Ativo/Inativo) preservando todo o histórico no Supabase
+    // Altera o status ativo/inativo sem excluir registros do banco de dados (histórico íntegro)
     async function alternarStatusTecnico(email, novoStatus) {
         const acao = novoStatus ? "reativar" : "desativar";
-        const confirmacao = confirm(`Deseja realmente ${acao} este técnico?\nO histórico de chamados e PDFs preenchidos por ele continuarão salvos intactos.`);
+        const confirmacao = confirm(`Deseja realmente ${acao} este técnico?\nO histórico de chamados e PDFs preenchidos por ele continuarão salvos e visíveis.`);
         
         if (!confirmacao) return;
 
@@ -799,7 +821,7 @@
                 statusMsg.style.backgroundColor = novoStatus ? '#d1fae5' : '#fee2e2';
                 statusMsg.style.color = novoStatus ? '#065f46' : '#b91c1c';
                 statusMsg.style.borderLeft = novoStatus ? '4px solid var(--success)' : '4px solid var(--danger)';
-                statusMsg.textContent = `O técnico (${email}) foi colocado como ${novoStatus ? 'ATIVO' : 'INATIVO'} com sucesso!`;
+                statusMsg.textContent = `O técnico (${email}) foi configurado como ${novoStatus ? 'ATIVO' : 'INATIVO'} com sucesso!`;
             }
         } catch (e) {
             alert("Erro ao alterar status: " + e.message);
@@ -1027,6 +1049,10 @@
     // ==========================================
     async function carregarTodosChamados() {
         if (!loggedInUser) return;
+        
+        // Bloqueio instantâneo caso o usuário ativo tenha sido inativado
+        const ativo = await checarStatusAtivo();
+        if (!ativo) return;
 
         const btn = document.getElementById('btnCarregarTodos');
         const status = document.getElementById('statusTabela');
@@ -1041,7 +1067,7 @@
             if (loggedInUser.email.toLowerCase() !== ADMIN_EMAIL) {
                 queryBuilder = queryBuilder.eq('tecnico', loggedInUser.email.toLowerCase());
             } else {
-                // Filtra para o admin não listar a própria configuração de perfis como se fosse um chamado de técnico
+                // Filtra para o admin não listar a configuração de perfis como se fosse um chamado de técnico
                 queryBuilder = queryBuilder.neq('chamado', 'CONFIG_TECNICOS');
             }
 
@@ -1115,7 +1141,7 @@
         const chamado = todosChamadosCache.find(x => x.id === id);
         if (!chamado) return;
 
-        // Segurança Frontend: Se for técnico normal e o chamado não for dele, bloqueia
+        // Segurança Frontend: Se for técnico normal e o chamado não for dele, bloqueia de forma absoluta
         if (loggedInUser.email.toLowerCase() !== ADMIN_EMAIL && chamado.tecnico && chamado.tecnico.toLowerCase() !== loggedInUser.email.toLowerCase()) {
             alert("Acesso Negado: Este chamado pertence a outro técnico.");
             return;
@@ -1200,7 +1226,7 @@
                 return;
             }
 
-            // Segurança Frontend: Se for técnico normal e o chamado não pertencer a ele, nega visualização
+            // Segurança Frontend: Se for técnico normal e o chamado não pertencer a ele, nega visualização estritamente
             if (loggedInUser.email.toLowerCase() !== ADMIN_EMAIL && data.tecnico && data.tecnico.toLowerCase() !== loggedInUser.email.toLowerCase()) {
                 alert("Acesso Negado: Este chamado pertence a outro técnico.");
                 resetarModoEdicao();
@@ -1554,6 +1580,10 @@
     async function salvarAtendimento() {
         const inc = document.getElementById('f_inc').value.toUpperCase();
         if(!inc) { alert("Preencha ao menos o chamado antes de salvar."); return; }
+        
+        // Bloqueia em tempo real caso o status mude para inativo durante o uso
+        const ativo = await checarStatusAtivo();
+        if (!ativo) return;
 
         const btnSave = document.getElementById('btnSalvar');
         const txtOriginal = btnSave.innerHTML;
