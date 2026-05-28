@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAT Pro Editor - Controle e Emissão</title>
+    <title>RAT Pro Editor - Willian</title>
     <!-- Bibliotecas externas necessárias -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
@@ -172,36 +172,6 @@
         .admin-panel h2 {
             color: var(--dark);
             border-bottom: 2px solid var(--dark);
-            padding-bottom: 8px;
-            margin-top: 0;
-            margin-bottom: 15px;
-        }
-        .admin-tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 10px;
-        }
-        .admin-tab-btn {
-            background: #f1f5f9;
-            color: #475569;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-        }
-        .admin-tab-btn.active {
-            background: var(--dark);
-            color: white;
-        }
-        .admin-content-section {
-            display: none;
-        }
-        .admin-content-section.active {
-            display: block;
         }
 
         /* Ocultar o aplicativo principal até que esteja autenticado */
@@ -225,11 +195,16 @@
         th { background: #f1f5f9; color: #475569; font-weight: 700; padding: 10px; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; }
         td { padding: 10px; border-bottom: 1px solid #e2e8f0; color: #334155; }
         tr:hover { background: #f8fafc; }
+        
         .btn-edit-table { background: var(--primary); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; border: none; }
         .btn-edit-table:hover { background: #2563eb; }
-        .btn-delete-table { background: var(--danger); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; border: none; }
-        .btn-delete-table:hover { background: #dc2626; }
         
+        .btn-danger-table { background: var(--danger); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; border: none; }
+        .btn-danger-table:hover { background: #b91c1c; }
+
+        .btn-success-table { background: var(--success); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; border: none; }
+        .btn-success-table:hover { background: #047857; }
+
         textarea { width: 100%; height: 80px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; box-sizing: border-box; resize: none; outline: none; }
 
         .workspace { display: flex; flex-direction: row; gap: 20px; width: 100%; justify-content: center; align-items: flex-start; }
@@ -307,7 +282,6 @@
             <div class="user-info">
                 <span>👤 Usuário: </span>
                 <span id="labelUserEmail" style="color: var(--primary);">carregando...</span>
-                <span id="labelUserInfo" style="font-size: 12px; color: #64748b; margin-left: 10px; font-weight: normal;"></span>
             </div>
             <div class="user-actions">
                 <!-- Botão Admin (Fica oculto por padrão) -->
@@ -316,84 +290,65 @@
             </div>
         </div>
 
-        <!-- Banner Informativo se a tabela "tecnicos" não for encontrada ou estiver com erro de RLS -->
-        <div id="dbWarning" style="display: none; background: #fffbeb; border-left: 5px solid var(--warning); padding: 18px; border-radius: 8px; margin-top: 15px; margin-bottom: 15px; color: #92400e; font-size: 14px; line-height: 1.6; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <strong style="font-size: 16px; display: block; margin-bottom: 5px;">🔒 Ajuste de Segurança de Linha (RLS) Necessário!</strong>
-            Este erro de "violates row-level security policy" ocorre porque o Supabase bloqueia a gravação na tabela <strong>tecnicos</strong> por padrão por questões de segurança.<br><br>
-            <strong>Como resolver agora de forma simples e rápida:</strong><br>
-            1. Acesse o painel do seu projeto no <a href="https://supabase.com" target="_blank" style="color: #b45309; font-weight: bold; text-decoration: underline;">Supabase</a>.<br>
-            2. No menu lateral esquerdo, clique em <strong>SQL Editor</strong> (ícone de terminal SQL <code>&gt;_</code>) e clique em <strong>"New Query"</strong> (Nova Consulta).<br>
-            3. Cole o código SQL abaixo para desativar a restrição RLS nesta tabela específica e clique no botão <strong>"Run"</strong> (Executar) no canto inferior direito:<br>
-            <pre style="background: #fafaf9; padding: 12px; border-radius: 6px; overflow-x: auto; color: #1c1917; font-weight: bold; font-family: monospace; font-size: 12px; margin-top: 10px; border: 1px solid #f5f5f4;">
-ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
-            4. Feito isso, volte aqui e tente salvar o técnico novamente! O erro irá sumir imediatamente.
-        </div>
-
         <!-- Painel de Administração (Exclusivo para Willian) -->
         <div id="adminPanel" class="admin-panel">
-            <h2>⚙️ Painel do Administrador (Área Restrita)</h2>
+            <h2>⚙️ Gestão de Usuários e Técnicos (Área Restrita)</h2>
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Cadastre, edite ou desative os dados dos técnicos autorizados a aceder ao sistema.</p>
             
-            <div class="admin-tabs">
-                <button id="tabBtnCadastro" class="admin-tab-btn active" onclick="switchAdminTab('cadastro')">Cadastrar Técnico</button>
-                <button id="tabBtnGerenciamento" class="admin-tab-btn" onclick="switchAdminTab('gerenciamento')">Gerenciar Técnicos</button>
-            </div>
-
-            <!-- TAB 1: CADASTRO -->
-            <div id="adminTabCadastro" class="admin-content-section active">
-                <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Cadastre novos técnicos para acessarem o sistema. A senha deve ter no mínimo 6 caracteres.</p>
-                
-                <input type="hidden" id="admin_edit_tech_id" value="">
-                <div class="form-grid" style="max-width: 800px;">
-                    <div class="field">
-                        <label>E-mail do Técnico</label>
-                        <input type="email" id="admin_new_email" class="lowercase-input" placeholder="email@tecnico.com">
+            <div class="workspace" style="gap: 15px; margin-bottom: 15px; width: 100%; box-shadow: none; padding: 0;">
+                <!-- Formulário de Cadastro / Edição -->
+                <div style="flex: 1; min-width: 300px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                    <h3 id="adminFormTitle" style="margin-top: 0; font-size: 14px; color: var(--dark); border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;">Adicionar Novo Técnico</h3>
+                    <div class="form-grid">
+                        <div class="field">
+                            <label>E-mail do Técnico</label>
+                            <input type="email" id="admin_new_email" class="lowercase-input" placeholder="email@tecnico.com">
+                        </div>
+                        <div class="field" id="admin_password_field">
+                            <label>Senha de Acesso (Mín. 6 char)</label>
+                            <input type="text" id="admin_new_senha" class="lowercase-input" placeholder="Senha provisória">
+                        </div>
+                        <div class="field">
+                            <label>Nome Completo (RAT)</label>
+                            <input type="text" id="admin_new_nome" placeholder="NOME DO TÉCNICO">
+                        </div>
+                        <div class="field">
+                            <label>CPF do Técnico (RAT)</label>
+                            <input type="text" id="admin_new_cpf" class="lowercase-input" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)">
+                        </div>
                     </div>
-                    <div class="field" id="campo_senha_admin">
-                        <label>Senha Provisória</label>
-                        <input type="text" id="admin_new_senha" class="lowercase-input" placeholder="Senha (Mín. 6 char)">
-                    </div>
-                    <div class="field">
-                        <label>Nome Completo (Para Carimbo RAT)</label>
-                        <input type="text" id="admin_new_nome" placeholder="NOME DO TÉCNICO">
-                    </div>
-                    <div class="field">
-                        <label>CPF (Para Carimbo RAT)</label>
-                        <input type="text" id="admin_new_cpf" placeholder="000.000.000-00" oninput="mascaraCPF(this)" maxlength="14">
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button class="btn-login" id="btnCriarUsuario" style="background: var(--primary); margin: 0; padding: 10px;" onclick="cadastrarNovoUsuario()">Cadastrar Técnico</button>
+                        <button class="btn-logout" id="btnCancelarEdicaoTecnico" style="margin: 0; padding: 10px; display: none;" onclick="cancelarEdicaoTecnico()">Cancelar</button>
                     </div>
                 </div>
-                
-                <div style="display: flex; gap: 10px; max-width: 800px; margin-top: 15px;">
-                    <button class="btn-login" id="btnCriarUsuario" style="background: var(--dark); margin: 0;" onclick="salvarOuCriarTecnico()">Salvar Técnico</button>
-                    <button id="btnCancelarEdicaoTech" class="btn-logout" style="margin: 0; padding: 14px; display: none;" onclick="limparFormularioTecnico()">Cancelar Edição</button>
-                    <button class="btn-logout" style="margin: 0; padding: 14px;" onclick="toggleAdminPanel()">Fechar Painel</button>
-                </div>
-            </div>
 
-            <!-- TAB 2: GERENCIAMENTO -->
-            <div id="adminTabGerenciamento" class="admin-content-section">
-                <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Abaixo estão os técnicos autorizados a carimbar as RATs.</p>
-                
-                <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn-delete-table" style="padding: 10px 15px; font-size: 12px; background: var(--danger); max-width: 250px;" onclick="limparTodosOsTecnicosComSeguranca()">🗑️ Limpar Todos (Manter Apenas Eu)</button>
-                </div>
-
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Ações</th>
-                                <th>E-mail</th>
-                                <th>Nome Completo</th>
-                                <th>CPF</th>
-                            </tr>
-                        </thead>
-                        <tbody id="corpoTabelaTecnicos">
-                            <!-- Carregado via JS -->
-                        </tbody>
-                    </table>
+                <!-- Tabela de Técnicos Cadastrados -->
+                <div style="flex: 1.5; min-width: 320px; background: white; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                    <h3 style="margin-top: 0; font-size: 14px; color: var(--dark); border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;">Técnicos Registrados</h3>
+                    <div class="table-container" style="margin-top: 10px; max-height: 250px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Ações</th>
+                                    <th>E-mail</th>
+                                    <th>Nome do Técnico</th>
+                                    <th>CPF</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaTecnicosAdmin">
+                                <!-- Preenchido dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
             
+            <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                <button class="btn-logout" style="margin: 0; padding: 10px 20px;" onclick="toggleAdminPanel()">Fechar Painel</button>
+            </div>
             <div id="adminStatusMsg" style="margin-top: 15px; font-size: 14px; font-weight: normal; line-height: 1.5; padding: 10px; border-radius: 6px; display: none;"></div>
         </div>
 
@@ -488,6 +443,11 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
                     <div class="field full-width"><label>Solução</label><input type="text" id="f_solucao" oninput="sincronizarMac()"></div>
                     <div class="field"><label>Responsável</label><input type="text" id="f_resp"></div>
                     <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
+                    
+                    <!-- Novos Campos de Assinatura do Técnico -->
+                    <div class="field"><label>Nome do Técnico (RAT)</label><input type="text" id="f_tecnico_nome" placeholder="NOME DO TÉCNICO" oninput="salvarDadosTecnicoLocal()"></div>
+                    <div class="field"><label>CPF do Técnico (RAT)</label><input type="text" id="f_tecnico_cpf" placeholder="000.000.000-00" oninput="salvarDadosTecnicoLocal()" maxlength="14" onkeyup="mascaraCPF(this)"></div>
+                    
                     <div class="field"><label>Local</label><input type="text" id="f_local_data_cidade"></div>
                     <div class="field"><label>Data</label><input type="date" id="f_data_picker" onchange="atualizarDataFormatada()"></div>
                     <input type="hidden" id="f_data_completa">
@@ -514,12 +474,12 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
+    const CPF_FIXO = "327.190.648-31";
     
     // Cliente Principal (Para Auth e Banco de Dados)
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // Cliente Secundário (EXCLUSIVO PARA ADMIN CRIAR USUÁRIO)
-    // Isso evita que ao criar um usuário, o administrador seja deslogado do app
     const authRegistrationClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
         auth: { persistSession: false } 
     });
@@ -545,14 +505,14 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         mac_inst: { x: 356, y: 431, s: 11 }
     };
 
-    // Dados dinâmicos do técnico autenticado (carregados da tabela 'tecnicos')
-    let dados = { tecnico: 'CARREGANDO...', cpf: '000.000.000-00' };
+    let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO };
     let modeloPdfBytes = null;
     let timeoutRender = null;
     let todosChamadosCache = []; 
-    let todosTecnicosCache = [];
     let idRegistroAtual = null;
-    let usuarioLogadoEmail = "";
+    let loggedInUser = null; // Guarda o usuário atual ativo
+    let perfisTecnicosCache = []; // Guarda a lista de perfis do banco
+    let emailTecnicoSendoEditado = null; // Controla se estamos editando um técnico
 
     window.onload = async () => {
         try {
@@ -587,79 +547,35 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         document.getElementById('loginSection').style.display = 'flex';
         document.getElementById('appContent').style.display = 'none';
         document.getElementById('loginError').style.display = 'none';
+        loggedInUser = null;
     }
 
     async function inicializarAplicacao(user) {
+        loggedInUser = user;
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('appContent').style.display = 'block';
-        
-        usuarioLogadoEmail = user.email;
         document.getElementById('labelUserEmail').textContent = user.email;
         
-        // Carrega o cadastro dinâmico do Técnico atual para o carimbo
-        await carregarDadosTecnicoAtual(user.email);
+        // Carrega todos os perfis cadastrados no sistema
+        await carregarPerfisTecnicos();
 
-        // Verifica se o usuário é o Administrador (Willian)
+        // CONTROLE DE ACESSO: Verifica se o usuário é o Administrador (Willian)
         if (user.email.toLowerCase() === ADMIN_EMAIL) {
             document.getElementById('btnToggleAdmin').style.display = 'inline-block';
-            carregarListaTecnicos();
         } else {
             document.getElementById('btnToggleAdmin').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'none';
         }
 
+        // Carregar Nome/CPF do técnico logado
+        carregarDadosTecnicoLocal();
+
         document.getElementById('login_senha').value = '';
         carregarTodosChamados();
     }
 
-    // Identifica e trata de forma amigável erros de tabela não criada ou RLS bloqueado no Supabase
-    function verificarErroTabela(erro) {
-        if (erro && erro.message) {
-            const msg = erro.message.toLowerCase();
-            if (msg.includes("could not find the table") || msg.includes("relation \"tecnicos\" does not exist") || msg.includes("row-level security policy") || msg.includes("violates row-level security policy")) {
-                document.getElementById('dbWarning').style.display = 'block';
-            }
-        }
-    }
-
-    // Busca as informações do técnico atual no banco para estampar na RAT
-    async function carregarDadosTecnicoAtual(email) {
-        try {
-            const { data, error } = await supabaseClient
-                .from('tecnicos')
-                .select('*')
-                .eq('email', email.toLowerCase())
-                .maybeSingle();
-
-            if (error) throw error;
-
-            if (data) {
-                dados.tecnico = data.nome_completo.toUpperCase();
-                dados.cpf = data.cpf;
-                document.getElementById('labelUserInfo').textContent = `(${dados.tecnico} - CPF: ${dados.cpf})`;
-                document.getElementById('dbWarning').style.display = 'none';
-            } else {
-                // Caso não encontre, gera uma configuração básica provisória com base no email
-                dados.tecnico = email.split('@')[0].replace('.', ' ').toUpperCase();
-                dados.cpf = "CPF NÃO CADASTRADO";
-                document.getElementById('labelUserInfo').textContent = `(Carimbo não configurado pelo Administrador)`;
-            }
-            gerarERenderizar();
-        } catch(err) {
-            console.error("Erro ao carregar dados do carimbo:", err);
-            
-            // Comportamento de Fallback: impede que o gerador de PDF trave
-            dados.tecnico = email.split('@')[0].replace('.', ' ').toUpperCase();
-            dados.cpf = "ERRO BANCO";
-            document.getElementById('labelUserInfo').textContent = `(Erro: Tabela 'tecnicos' bloqueada ou inexistente)`;
-            gerarERenderizar();
-            
-            verificarErroTabela(err);
-        }
-    }
-
     async function realizarLogin() {
-        const email = document.getElementById('login_email').value.trim();
+        const email = document.getElementById('login_email').value.trim().toLowerCase();
         const senha = document.getElementById('login_senha').value;
         const btn = document.getElementById('btnLogar');
         const errorDiv = document.getElementById('loginError');
@@ -675,6 +591,26 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         errorDiv.style.display = 'none';
 
         try {
+            // Verifica na nossa lista sincronizada se este técnico está inativo no banco
+            // Primeiro, recarregamos a lista atual de perfis para pegar o status mais atual
+            const { data: configData } = await supabaseClient
+                .from('chamados')
+                .select('*')
+                .eq('chamado', 'CONFIG_TECNICOS')
+                .maybeSingle();
+
+            let localPerfis = [];
+            if (configData && configData.solucao) {
+                localPerfis = JSON.parse(configData.solucao);
+            }
+
+            const perfil = localPerfis.find(p => p.email.toLowerCase() === email);
+            
+            // Se for um técnico comum (não admin) e estiver explicitamente Inativo (ativo === false)
+            if (email !== ADMIN_EMAIL && perfil && perfil.ativo === false) {
+                throw new Error("Acesso negado: O seu usuário foi inativado pelo administrador.");
+            }
+
             const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: senha
@@ -685,7 +621,7 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
 
         } catch (e) {
             console.error("Erro no Login:", e.message);
-            errorDiv.textContent = "Acesso negado: Verifique o e-mail e a senha.";
+            errorDiv.textContent = e.message.includes("negado") ? e.message : "Acesso negado: Verifique o e-mail e a senha.";
             errorDiv.style.display = 'block';
         } finally {
             btn.disabled = false;
@@ -701,310 +637,422 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         }
     }
 
+    // Gerenciamento de Nome e CPF do Técnico logado
+    function carregarDadosTecnicoLocal() {
+        if (!loggedInUser) return;
+        
+        const emailKey = loggedInUser.email.toLowerCase();
+        
+        // Primeiro, tenta obter o perfil sincronizado de CONFIG_TECNICOS
+        const perfilEncontrado = perfisTecnicosCache.find(p => p.email.toLowerCase() === emailKey);
+
+        if (perfilEncontrado) {
+            document.getElementById('f_tecnico_nome').value = perfilEncontrado.nome;
+            document.getElementById('f_tecnico_cpf').value = perfilEncontrado.cpf;
+        } else {
+            // Fallback para metadados ou localStorage
+            const metaNome = loggedInUser.user_metadata?.full_name;
+            const metaCpf = loggedInUser.user_metadata?.cpf;
+
+            if (metaNome) {
+                document.getElementById('f_tecnico_nome').value = metaNome;
+            } else {
+                if (emailKey === ADMIN_EMAIL) {
+                    document.getElementById('f_tecnico_nome').value = localStorage.getItem(`tec_nome_${emailKey}`) || "WILLIAN DO CARMO MORAIS";
+                } else {
+                    document.getElementById('f_tecnico_nome').value = localStorage.getItem(`tec_nome_${emailKey}`) || "";
+                }
+            }
+
+            if (metaCpf) {
+                document.getElementById('f_tecnico_cpf').value = metaCpf;
+            } else {
+                if (emailKey === ADMIN_EMAIL) {
+                    document.getElementById('f_tecnico_cpf').value = localStorage.getItem(`tec_cpf_${emailKey}`) || CPF_FIXO;
+                } else {
+                    document.getElementById('f_tecnico_cpf').value = localStorage.getItem(`tec_cpf_${emailKey}`) || "";
+                }
+            }
+        }
+        
+        // Força atualização da pré-visualização do PDF na hora do login
+        clearTimeout(timeoutRender);
+        timeoutRender = setTimeout(gerarERenderizar, 500);
+    }
+
+    function salvarDadosTecnicoLocal() {
+        if (!loggedInUser) return;
+        const emailKey = loggedInUser.email.toLowerCase();
+        
+        const nomeValue = document.getElementById('f_tecnico_nome').value;
+        const cpfValue = document.getElementById('f_tecnico_cpf').value;
+        
+        localStorage.setItem(`tec_nome_${emailKey}`, nomeValue);
+        localStorage.setItem(`tec_cpf_${emailKey}`, cpfValue);
+        
+        // Força atualização da pré-visualização do PDF na hora
+        clearTimeout(timeoutRender);
+        timeoutRender = setTimeout(gerarERenderizar, 500);
+    }
+
     // ==========================================
-    // FUNÇÕES DO PAINEL DE ADMINISTRAÇÃO
+    // FUNÇÕES DO PAINEL DE ADMINISTRAÇÃO & CONTROLE DE TÉCNICOS
     // ==========================================
+    async function carregarPerfisTecnicos() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('chamados')
+                .select('*')
+                .eq('chamado', 'CONFIG_TECNICOS')
+                .maybeSingle();
+            
+            if (data && data.solucao) {
+                perfisTecnicosCache = JSON.parse(data.solucao);
+            } else {
+                perfisTecnicosCache = [];
+            }
+            atualizarTabelaAdminTecnicos();
+        } catch (e) {
+            console.error("Erro ao carregar perfis de técnicos:", e);
+        }
+    }
+
+    async function salvarPerfisTecnicosNoBanco() {
+        const payload = {
+            chamado: 'CONFIG_TECNICOS',
+            solucao: JSON.stringify(perfisTecnicosCache),
+            tecnico: 'SISTEMA_ADMIN'
+        };
+        
+        try {
+            const { data, error } = await supabaseClient
+                .from('chamados')
+                .select('id')
+                .eq('chamado', 'CONFIG_TECNICOS')
+                .maybeSingle();
+                
+            if (data) {
+                await supabaseClient.from('chamados').update(payload).eq('id', data.id);
+            } else {
+                await supabaseClient.from('chamados').insert([payload]);
+            }
+        } catch (e) {
+            console.error("Erro ao salvar perfis técnicos no banco:", e);
+        }
+    }
+
+    function atualizarTabelaAdminTecnicos() {
+        const tbody = document.getElementById('tabelaTecnicosAdmin');
+        tbody.innerHTML = '';
+        
+        if (perfisTecnicosCache.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Nenhum técnico cadastrado ainda.</td></tr>';
+            return;
+        }
+        
+        perfisTecnicosCache.forEach(tec => {
+            // Define o valor padrão de ativo caso não exista
+            if (tec.ativo === undefined) tec.ativo = true;
+
+            const badgeStatus = tec.ativo 
+                ? '<span style="color: var(--success); font-weight: bold; background-color: #d1fae5; padding: 2px 6px; border-radius: 4px; font-size: 10px;">ATIVO</span>' 
+                : '<span style="color: var(--danger); font-weight: bold; background-color: #fee2e2; padding: 2px 6px; border-radius: 4px; font-size: 10px;">INATIVO</span>';
+
+            const botaoAcaoStatus = tec.ativo 
+                ? `<button class="btn-danger-table" onclick="alternarStatusTecnico('${tec.email}', false)">Desativar</button>` 
+                : `<button class="btn-success-table" onclick="alternarStatusTecnico('${tec.email}', true)">Reativar</button>`;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="btn-edit-table" onclick="carregarTecnicoParaEdicao('${tec.email}')">Editar</button>
+                        ${tec.email.toLowerCase() !== ADMIN_EMAIL ? botaoAcaoStatus : ''}
+                    </div>
+                </td>
+                <td style="font-weight: bold; color: var(--dark);">${tec.email}</td>
+                <td>${tec.nome}</td>
+                <td>${tec.cpf}</td>
+                <td>${badgeStatus}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Função que altera o status (Ativo/Inativo) preservando todo o histórico no Supabase
+    async function alternarStatusTecnico(email, novoStatus) {
+        const acao = novoStatus ? "reativar" : "desativar";
+        const confirmacao = confirm(`Deseja realmente ${acao} este técnico?\nO histórico de chamados e PDFs preenchidos por ele continuarão salvos intactos.`);
+        
+        if (!confirmacao) return;
+
+        try {
+            const index = perfisTecnicosCache.findIndex(t => t.email.toLowerCase() === email.toLowerCase());
+            if (index !== -1) {
+                perfisTecnicosCache[index].ativo = novoStatus;
+                
+                await salvarPerfisTecnicosNoBanco();
+                await carregarPerfisTecnicos();
+                
+                const statusMsg = document.getElementById('adminStatusMsg');
+                statusMsg.style.display = 'block';
+                statusMsg.style.backgroundColor = novoStatus ? '#d1fae5' : '#fee2e2';
+                statusMsg.style.color = novoStatus ? '#065f46' : '#b91c1c';
+                statusMsg.style.borderLeft = novoStatus ? '4px solid var(--success)' : '4px solid var(--danger)';
+                statusMsg.textContent = `O técnico (${email}) foi colocado como ${novoStatus ? 'ATIVO' : 'INATIVO'} com sucesso!`;
+            }
+        } catch (e) {
+            alert("Erro ao alterar status: " + e.message);
+        }
+    }
+
+    function carregarTecnicoParaEdicao(email) {
+        const tec = perfisTecnicosCache.find(t => t.email.toLowerCase() === email.toLowerCase());
+        if (!tec) return;
+        
+        emailTecnicoSendoEditado = tec.email;
+        
+        document.getElementById('adminFormTitle').textContent = "✏️ Editar Cadastro do Técnico";
+        document.getElementById('admin_new_email').value = tec.email;
+        document.getElementById('admin_new_email').disabled = true; // Não permite mudar o email
+        document.getElementById('admin_new_nome').value = tec.nome;
+        document.getElementById('admin_new_cpf').value = tec.cpf;
+        
+        // Esconde o campo de senha durante a edição (para evitar redefinição acidental)
+        document.getElementById('admin_password_field').style.display = 'none';
+        
+        const btn = document.getElementById('btnCriarUsuario');
+        btn.textContent = "💾 Guardar Alterações";
+        btn.style.backgroundColor = "var(--warning)";
+        
+        document.getElementById('btnCancelarEdicaoTecnico').style.display = 'inline-block';
+    }
+
+    function cancelarEdicaoTecnico() {
+        emailTecnicoSendoEditado = null;
+        
+        document.getElementById('adminFormTitle').textContent = "Adicionar Novo Técnico";
+        document.getElementById('admin_new_email').value = '';
+        document.getElementById('admin_new_email').disabled = false;
+        document.getElementById('admin_new_senha').value = '';
+        document.getElementById('admin_new_nome').value = '';
+        document.getElementById('admin_new_cpf').value = '';
+        
+        document.getElementById('admin_password_field').style.display = 'block';
+        
+        const btn = document.getElementById('btnCriarUsuario');
+        btn.textContent = "Cadastrar Técnico";
+        btn.style.backgroundColor = "var(--primary)";
+        
+        document.getElementById('btnCancelarEdicaoTecnico').style.display = 'none';
+    }
+
     function toggleAdminPanel() {
         const panel = document.getElementById('adminPanel');
         if (panel.style.display === 'none' || panel.style.display === '') {
             panel.style.display = 'block';
             document.getElementById('adminStatusMsg').style.display = 'none';
             document.getElementById('adminStatusMsg').textContent = '';
-            carregarListaTecnicos();
+            cancelarEdicaoTecnico();
+            carregarPerfisTecnicos();
         } else {
             panel.style.display = 'none';
         }
     }
 
-    function switchAdminTab(tabName) {
-        document.getElementById('tabBtnCadastro').classList.toggle('active', tabName === 'cadastro');
-        document.getElementById('tabBtnGerenciamento').classList.toggle('active', tabName === 'gerenciamento');
-        
-        document.getElementById('adminTabCadastro').classList.toggle('active', tabName === 'cadastro');
-        document.getElementById('adminTabGerenciamento').classList.toggle('active', tabName === 'gerenciamento');
-        
-        if (tabName === 'gerenciamento') {
-            carregarListaTecnicos();
-        }
-    }
-
-    // Máscara dinâmica de CPF
-    function mascaraCPF(input) {
-        let v = input.value.replace(/\D/g, "");
-        if (v.length > 3) v = v.slice(0, 3) + "." + v.slice(3);
-        if (v.length > 7) v = v.slice(0, 7) + "." + v.slice(7);
-        if (v.length > 11) v = v.slice(0, 11) + "-" + v.slice(11, 13);
-        input.value = v;
-    }
-
-    // Carrega a listagem de técnicos do banco
-    async function carregarListaTecnicos() {
-        try {
-            const { data, error } = await supabaseClient
-                .from('tecnicos')
-                .select('*')
-                .order('nome_completo', { ascending: true });
-
-            if (error) throw error;
-
-            document.getElementById('dbWarning').style.display = 'none';
-
-            todosTecnicosCache = data || [];
-            atualizarTabelaTecnicos(todosTecnicosCache);
-        } catch (e) {
-            console.error("Erro ao carregar técnicos:", e.message);
-            verificarErroTabela(e);
-        }
-    }
-
-    function atualizarTabelaTecnicos(lista) {
-        const corpo = document.getElementById('corpoTabelaTecnicos');
-        corpo.innerHTML = "";
-
-        if (lista.length === 0) {
-            corpo.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">Nenhum técnico cadastrado ainda.</td></tr>`;
-            return;
-        }
-
-        lista.forEach(tech => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>
-                    <button class="btn-edit-table" onclick="prepararEdicaoTecnico(${tech.id})">Editar</button>
-                    <button class="btn-delete-table" onclick="excluirTecnico(${tech.id}, '${tech.email}')">Excluir</button>
-                </td>
-                <td>${tech.email}</td>
-                <td style="font-weight: bold; text-transform: uppercase;">${tech.nome_completo}</td>
-                <td>${tech.cpf}</td>
-            `;
-            corpo.appendChild(tr);
-        });
-    }
-
-    // Preenche o formulário com dados do técnico para editar
-    function prepararEdicaoTecnico(id) {
-        const tech = todosTecnicosCache.find(x => x.id === id);
-        if (!tech) return;
-
-        document.getElementById('admin_edit_tech_id').value = tech.id;
-        document.getElementById('admin_new_email').value = tech.email;
-        document.getElementById('admin_new_nome').value = tech.nome_completo;
-        document.getElementById('admin_new_cpf').value = tech.cpf;
-        
-        // Como o usuário já existe na autenticação do Supabase, ocultamos a senha obrigatória
-        document.getElementById('campo_senha_admin').style.display = 'none';
-        document.getElementById('btnCancelarEdicaoTech').style.display = 'inline-block';
-        
-        switchAdminTab('cadastro');
-    }
-
-    function limparFormularioTecnico() {
-        document.getElementById('admin_edit_tech_id').value = "";
-        document.getElementById('admin_new_email').value = "";
-        document.getElementById('admin_new_senha').value = "";
-        document.getElementById('admin_new_nome').value = "";
-        document.getElementById('admin_new_cpf').value = "";
-        
-        document.getElementById('campo_senha_admin').style.display = 'block';
-        document.getElementById('btnCancelarEdicaoTech').style.display = 'none';
-    }
-
-    // Cria ou atualiza o registro do Técnico na tabela personalizada e no Auth
-    async function salvarOuCriarTecnico() {
-        const idEdit = document.getElementById('admin_edit_tech_id').value;
-        const email = document.getElementById('admin_new_email').value.trim().toLowerCase();
+    async function cadastrarNovoUsuario() {
+        const rawEmail = document.getElementById('admin_new_email').value;
+        const email = rawEmail ? rawEmail.trim().toLowerCase() : '';
         const senha = document.getElementById('admin_new_senha').value;
-        const nome = document.getElementById('admin_new_nome').value.trim().toUpperCase();
+        const nomeCompleto = document.getElementById('admin_new_nome').value.trim();
         const cpf = document.getElementById('admin_new_cpf').value.trim();
         const btn = document.getElementById('btnCriarUsuario');
         const msgDiv = document.getElementById('adminStatusMsg');
 
-        if (!email || !nome || !cpf) {
-            exibirMensagemAdmin("Preencha e-mail, nome e CPF do técnico.", "error");
+        if (emailTecnicoSendoEditado) {
+            // MODO DE EDIÇÃO DE TÉCNICO JÁ EXISTENTE
+            if (!nomeCompleto || !cpf) {
+                msgDiv.style.display = 'block';
+                msgDiv.style.backgroundColor = '#fee2e2';
+                msgDiv.style.color = '#b91c1c';
+                msgDiv.style.borderLeft = '4px solid var(--danger)';
+                msgDiv.textContent = "Preencha o Nome Completo e o CPF do Técnico.";
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = "A atualizar...";
+            
+            try {
+                // Atualiza o cache local
+                const index = perfisTecnicosCache.findIndex(t => t.email.toLowerCase() === emailTecnicoSendoEditado.toLowerCase());
+                if (index !== -1) {
+                    perfisTecnicosCache[index].nome = nomeCompleto;
+                    perfisTecnicosCache[index].cpf = cpf;
+                }
+                
+                // Salva no Banco de Dados Supabase centralizado
+                await salvarPerfisTecnicosNoBanco();
+                
+                msgDiv.style.display = 'block';
+                msgDiv.style.backgroundColor = '#d1fae5';
+                msgDiv.style.color = '#065f46';
+                msgDiv.style.borderLeft = '4px solid var(--success)';
+                msgDiv.textContent = `✅ Perfil do técnico ${nomeCompleto} atualizado com sucesso!`;
+                
+                cancelarEdicaoTecnico();
+                await carregarPerfisTecnicos();
+                
+                // Se o próprio administrador se editou, recarrega os dados locais
+                if (email.toLowerCase() === loggedInUser.email.toLowerCase()) {
+                    carregarDadosTecnicoLocal();
+                }
+
+            } catch (e) {
+                console.error(e);
+                msgDiv.style.display = 'block';
+                msgDiv.style.backgroundColor = '#fee2e2';
+                msgDiv.style.color = '#b91c1c';
+                msgDiv.textContent = "❌ Erro ao atualizar: " + e.message;
+            } finally {
+                btn.disabled = false;
+            }
             return;
         }
 
-        // Se for cadastro novo, exige a senha
-        if (!idEdit && !senha) {
-            exibirMensagemAdmin("Para novos cadastros a senha é obrigatória.", "error");
+        // MODO CADASTRO DE NOVO TÉCNICO (SÓ DEVE ENTRAR SE NÃO ESTIVER EDITANDO)
+        if (!email || !senha || !nomeCompleto || !cpf) {
+            msgDiv.style.display = 'block';
+            msgDiv.style.backgroundColor = '#fee2e2';
+            msgDiv.style.color = '#b91c1c';
+            msgDiv.style.borderLeft = '4px solid var(--danger)';
+            msgDiv.textContent = "Preencha todos os campos: E-mail, Senha, Nome Completo e CPF.";
             return;
         }
-        if (!idEdit && senha.length < 6) {
-            exibirMensagemAdmin("A senha provisória deve conter no mínimo 6 caracteres.", "warning");
+
+        if (senha.length < 6) {
+            msgDiv.style.display = 'block';
+            msgDiv.style.backgroundColor = '#fef3c7';
+            msgDiv.style.color = '#d97706';
+            msgDiv.style.borderLeft = '4px solid var(--warning)';
+            msgDiv.textContent = "A senha deve ter no mínimo 6 caracteres.";
             return;
         }
 
         btn.disabled = true;
-        btn.textContent = "Gravando...";
+        btn.textContent = "A cadastrar...";
         msgDiv.style.display = 'none';
+        msgDiv.textContent = "";
 
         try {
-            if (idEdit) {
-                // MODO EDIÇÃO: Atualiza na tabela 'tecnicos'
-                const { error } = await supabaseClient
-                    .from('tecnicos')
-                    .update({
-                        email: email,
-                        nome_completo: nome,
+            // Criando o usuário de Auth no Supabase
+            const { data, error } = await authRegistrationClient.auth.signUp({
+                email: email,
+                password: senha,
+                options: {
+                    data: {
+                        full_name: nomeCompleto,
                         cpf: cpf
-                    })
-                    .eq('id', idEdit);
-
-                if (error) throw error;
-                exibirMensagemAdmin("✅ Técnico atualizado com sucesso!", "success");
-            } else {
-                // MODO NOVO: Cadastra no Auth do Supabase sem deslogar o Admin
-                const { data: authData, error: authError } = await authRegistrationClient.auth.signUp({
-                    email: email,
-                    password: senha
-                });
-
-                if (authError) throw authError;
-
-                // Registra na tabela de carimbos vinculando o e-mail
-                const { error: dbError } = await supabaseClient
-                    .from('tecnicos')
-                    .insert([{
-                        email: email,
-                        nome_completo: nome,
-                        cpf: cpf
-                    }]);
-
-                if (dbError) throw dbError;
-                exibirMensagemAdmin("✅ Novo técnico registrado e ativado com sucesso!", "success");
-            }
-
-            limparFormularioTecnico();
-            carregarListaTecnicos();
-            
-            // Se o próprio administrador se editou, atualiza a tela dele
-            if (email === usuarioLogadoEmail.toLowerCase()) {
-                await carregarDadosTecnicoAtual(usuarioLogadoEmail);
-            }
-
-        } catch (e) {
-            console.error(e);
-            if (e.message.includes('already registered') || e.message.includes('already exists')) {
-                exibirMensagemAdmin("❌ Este e-mail já está cadastrado no sistema.", "error");
-            } else {
-                exibirMensagemAdmin("❌ Ocorreu um erro: " + e.message, "error");
-            }
-            verificarErroTabela(e);
-        } finally {
-            btn.disabled = false;
-            btn.textContent = "Salvar Técnico";
-        }
-    }
-
-    async function excluirTecnico(id, email) {
-        if (!confirm(`Deseja realmente remover o técnico "${email}" do sistema?\n\nEle perderá acesso e não poderá carimbar novas RATs.`)) return;
-        
-        try {
-            const { error } = await supabaseClient
-                .from('tecnicos')
-                .delete()
-                .eq('id', id);
+                    }
+                }
+            });
 
             if (error) throw error;
-            
-            alert("Técnico removido com sucesso!");
-            carregarListaTecnicos();
-        } catch (e) {
-            alert("Erro ao excluir do banco: " + e.message);
-            verificarErroTabela(e);
-        }
-    }
 
-    // Nova funcionalidade para limpar todos os técnicos, exceto o administrador logado
-    async function limparTodosOsTecnicosComSeguranca() {
-        const confirmacao1 = confirm("ATENÇÃO!\n\nVocê tem certeza absoluta de que deseja LIMPAR TODOS os técnicos cadastrados da tabela?");
-        if (!confirmacao1) return;
+            // Insere também na nossa lista centralizada CONFIG_TECNICOS com ativo: true por padrão
+            perfisTecnicosCache.push({
+                email: email,
+                nome: nomeCompleto,
+                cpf: cpf,
+                ativo: true
+            });
 
-        const confirmacao2 = confirm("Apenas o seu cadastro de administrador (williandcm@hotmail.com) será mantido e recriado com segurança.\n\nTodos os outros técnicos cadastrados serão excluídos permanentemente da lista. Confirma?");
-        if (!confirmacao2) return;
+            await salvarPerfisTecnicosNoBanco();
 
-        const msgDiv = document.getElementById('adminStatusMsg');
-        msgDiv.style.display = 'block';
-        msgDiv.style.backgroundColor = '#fef3c7';
-        msgDiv.style.color = '#d97706';
-        msgDiv.style.borderLeft = '4px solid var(--warning)';
-        msgDiv.textContent = "Processando exclusão em lote...";
-
-        try {
-            // 1. Remove todos os registros da tabela 'tecnicos'
-            // No Supabase, para deletar todas as linhas usamos uma condição genérica como id > 0 ou gte
-            const { error: deleteError } = await supabaseClient
-                .from('tecnicos')
-                .delete()
-                .neq('id', 0); // Seleciona todos os registros com id diferente de 0
-
-            if (deleteError) throw deleteError;
-
-            // 2. Insere novamente o registro do Administrador (Willian) para garantir que ele permaneça ativo com seus dados de carimbo
-            const { error: insertError } = await supabaseClient
-                .from('tecnicos')
-                .insert([{
-                    email: ADMIN_EMAIL,
-                    nome_completo: "WILLIAN DO CARMO MORAIS",
-                    cpf: "327.190.648-31"
-                }]);
-
-            if (insertError) throw insertError;
-
-            exibirMensagemAdmin("✅ Todos os técnicos foram removidos com sucesso! Seu carimbo administrativo foi restabelecido e mantido ativo.", "success");
-            
-            // Recarrega a tabela e reconecta os dados do carimbo do administrador atual
-            carregarListaTecnicos();
-            await carregarDadosTecnicoAtual(usuarioLogadoEmail);
-
-        } catch (e) {
-            console.error("Erro ao limpar técnicos:", e);
-            exibirMensagemAdmin("❌ Falha ao tentar limpar cadastros: " + e.message, "error");
-            verificarErroTabela(e);
-        }
-    }
-
-    function exibirMensagemAdmin(texto, tipo) {
-        const msgDiv = document.getElementById('adminStatusMsg');
-        msgDiv.style.display = 'block';
-        msgDiv.innerHTML = texto;
-        
-        if (tipo === 'success') {
+            msgDiv.style.display = 'block';
             msgDiv.style.backgroundColor = '#d1fae5';
             msgDiv.style.color = '#065f46';
             msgDiv.style.borderLeft = '4px solid var(--success)';
-        } else if (tipo === 'warning') {
-            msgDiv.style.backgroundColor = '#fef3c7';
-            msgDiv.style.color = '#d97706';
-            msgDiv.style.borderLeft = '4px solid var(--warning)';
-        } else {
+            msgDiv.textContent = `✅ Usuário ${nomeCompleto} criado com sucesso! Ele já pode aceder ao sistema.`;
+            
+            // Limpa os campos após sucesso
+            document.getElementById('admin_new_email').value = '';
+            document.getElementById('admin_new_senha').value = '';
+            document.getElementById('admin_new_nome').value = '';
+            document.getElementById('admin_new_cpf').value = '';
+
+            await carregarPerfisTecnicos();
+
+        } catch (e) {
+            console.error("Erro ao criar usuário:", e.message);
+            msgDiv.style.display = 'block';
             msgDiv.style.backgroundColor = '#fee2e2';
             msgDiv.style.color = '#b91c1c';
             msgDiv.style.borderLeft = '4px solid var(--danger)';
+
+            if (e.message.includes('already registered') || e.message.includes('already exists')) {
+                msgDiv.textContent = "❌ Erro ao criar: Este e-mail já está cadastrado.";
+            } else if (e.message.includes('invalid') || e.message.includes('address')) {
+                msgDiv.innerHTML = `
+                    <strong>❌ Erro: Endereço de e-mail inválido pelo Supabase!</strong><br><br>
+                    O Supabase recusou o formato ou o provedor do e-mail digitado.<br><br>
+                    <strong>Como resolver isso no seu Supabase:</strong><br>
+                    1. Acesse o painel do seu projeto no <a href="https://supabase.com" target="_blank" style="color: #b91c1c; font-weight: bold; text-decoration: underline;">Supabase</a>.<br>
+                    2. Vá em <strong>Authentication</strong> > <strong>Settings</strong> ou <strong>Providers</strong>.<br>
+                    3. Verifique se a opção <strong>"Email Domains Allow List"</strong> está preenchida. Se estiver, ela limita os registros apenas aos provedores listados.<br>
+                    4. Para permitir qualquer e-mail, certifique-se de deixar a lista de domínios permitidos completamente <strong>vazia</strong> e salve.
+                `;
+            } else if (e.message.includes('rate limit exceeded') || e.message.includes('rate limit')) {
+                msgDiv.innerHTML = `
+                    <strong>❌ Limite de envios do Supabase excedido!</strong><br>
+                    O Supabase bloqueou temporariamente novos cadastros a partir deste IP para prevenir spam.<br><br>
+                    <strong>Como resolver isso permanentemente no seu Supabase:</strong><br>
+                    1. Acesse o painel do seu projeto no <a href="https://supabase.com" target="_blank" style="color: #b91c1c; font-weight: bold; text-decoration: underline;">Supabase</a>.<br>
+                    2. Vá em <strong>Authentication</strong> > <strong>Settings</strong>.<br>
+                    3. Role a página até a seção <strong>Security</strong>.<br>
+                    4. Encontre a opção <strong>"Email Rate Limit"</strong> e mude de 3 para um valor maior (ex: 20 ou 30).<br>
+                    5. Clique em <strong>Save</strong>.
+                `;
+            } else {
+                msgDiv.textContent = "❌ Erro ao criar: " + e.message;
+            }
+        } finally {
+            btn.disabled = false;
         }
     }
+
 
     // ==========================================
     // FUNÇÕES DE INTERAÇÃO COM O BANCO (CHAMADOS)
     // ==========================================
     async function carregarTodosChamados() {
+        if (!loggedInUser) return;
+
         const btn = document.getElementById('btnCarregarTodos');
         const status = document.getElementById('statusTabela');
         btn.innerHTML = "⏳ Carregando...";
         btn.disabled = true;
 
         try {
-            const { data, error } = await supabaseClient
-                .from('chamados')
-                .select('*')
-                .order('id', { ascending: false });
+            // Definições de Acesso:
+            // Admin (Willian) vê TODOS os chamados. Técnicos normais veem APENAS os seus.
+            let queryBuilder = supabaseClient.from('chamados').select('*');
+            
+            if (loggedInUser.email.toLowerCase() !== ADMIN_EMAIL) {
+                queryBuilder = queryBuilder.eq('tecnico', loggedInUser.email.toLowerCase());
+            } else {
+                // Filtra para o admin não listar a própria configuração de perfis como se fosse um chamado de técnico
+                queryBuilder = queryBuilder.neq('chamado', 'CONFIG_TECNICOS');
+            }
+
+            const { data, error } = await queryBuilder.order('id', { ascending: false });
 
             if (error) throw error;
 
             todosChamadosCache = data || [];
             atualizarInterfaceTabela(todosChamadosCache);
             
-            status.innerHTML = `Mostrando ${todosChamadosCache.length} chamados registrados no banco.`;
+            status.innerHTML = `Mostrando ${todosChamadosCache.length} chamados registrados no banco para o seu usuário.`;
             document.getElementById('containerTabela').style.display = todosChamadosCache.length > 0 ? "block" : "none";
         } catch (e) {
             console.error("Erro ao carregar chamados:", e);
@@ -1045,7 +1093,7 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         const query = document.getElementById('busca_inc').value.toUpperCase().trim();
         if (!query) {
             atualizarInterfaceTabela(todosChamadosCache);
-            document.getElementById('statusTabela').innerHTML = `Mostrando ${todosChamadosCache.length} chamados registrados no banco.`;
+            document.getElementById('statusTabela').innerHTML = `Mostrando ${todosChamadosCache.length} chamados registrados no banco para o seu usuário.`;
             return;
         }
 
@@ -1066,6 +1114,12 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
     function carregarChamadoDireto(id) {
         const chamado = todosChamadosCache.find(x => x.id === id);
         if (!chamado) return;
+
+        // Segurança Frontend: Se for técnico normal e o chamado não for dele, bloqueia
+        if (loggedInUser.email.toLowerCase() !== ADMIN_EMAIL && chamado.tecnico && chamado.tecnico.toLowerCase() !== loggedInUser.email.toLowerCase()) {
+            alert("Acesso Negado: Este chamado pertence a outro técnico.");
+            return;
+        }
 
         idRegistroAtual = chamado.id;
         document.getElementById('modo_edicao_label').style.display = 'inline';
@@ -1142,6 +1196,13 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
 
             if (error || !data) {
                 alert("Chamado não encontrado no banco de dados.");
+                resetarModoEdicao();
+                return;
+            }
+
+            // Segurança Frontend: Se for técnico normal e o chamado não pertencer a ele, nega visualização
+            if (loggedInUser.email.toLowerCase() !== ADMIN_EMAIL && data.tecnico && data.tecnico.toLowerCase() !== loggedInUser.email.toLowerCase()) {
+                alert("Acesso Negado: Este chamado pertence a outro técnico.");
                 resetarModoEdicao();
                 return;
             }
@@ -1249,6 +1310,9 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         document.getElementById('f_resp').value = '';
         document.getElementById('f_matricula').value = '';
         
+        // Mantém Nome e CPF do técnico salvos localmente
+        carregarDadosTecnicoLocal();
+        
         const d = new Date();
         document.getElementById('f_data_picker').value = d.toISOString().split('T')[0];
         atualizarDataFormatada();
@@ -1273,6 +1337,14 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
     function mascaraHora(input) {
         let v = input.value.replace(/\D/g, "");
         if (v.length > 2) v = v.slice(0, 2) + ":" + v.slice(2, 4);
+        input.value = v;
+    }
+
+    function mascaraCPF(input) {
+        let v = input.value.replace(/\D/g, "");
+        if (v.length > 3) v = v.slice(0, 3) + "." + v.slice(3);
+        if (v.length > 7) v = v.slice(0, 7) + "." + v.slice(7);
+        if (v.length > 11) v = v.slice(0, 11) + "-" + v.slice(11, 13);
         input.value = v;
     }
 
@@ -1311,35 +1383,31 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
 
         const texto = textoInput.toUpperCase();
 
-        const ext_inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
-        const ext_patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
-        const ext_host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
-        const ext_mac = (/MAC\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
-        const ext_matricula = (/MATRÍCULA\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+        dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
+        dados.patri = (/SGPI\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+        dados.host = (/HOSTNAME\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
+        dados.mac = (/MAC\s*:\s*(\S+)/i.exec(texto) || ["",""])[1];
+        dados.matricula = (/MATRÍCULA\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
         const isPinPad = texto.includes("PIN PAD");
         const isBaixaImagem = texto.includes("BAIXA DE IMAGEM");
 
-        let solucaoDefinida = "";
-        let modeloDefinido = "";
-        let snDefinido = "";
-
         if (isPinPad) {
-            snDefinido = ''; 
-            solucaoDefinida = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD"; 
-            modeloDefinido = ""; 
-            document.getElementById('f_patri_inst').value = ext_patri;
-            document.getElementById('f_host_inst').value = ext_host;
-            document.getElementById('f_mac_inst').value = ext_mac;
+            dados.sn = ''; 
+            dados.solucao = "REALIZADO A SUBSTITUIÇÃO DO PIN PAD"; 
+            dados.modelo = ""; 
+            document.getElementById('f_patri_inst').value = dados.patri;
+            document.getElementById('f_host_inst').value = dados.host;
+            document.getElementById('f_mac_inst').value = dados.mac;
         } else {
-            snDefinido = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
-            solucaoDefinida = isBaixaImagem ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
-            modeloDefinido = snDefinido.startsWith('P') ? "LENOVO T14" : (snDefinido.startsWith('B') ? "HP ELITEBOOK 640 G9" : "");
+            dados.sn = (/(?:SN|SERIAL)\s*:\s*(\S+)/i.exec(texto) || ["","---"])[1];
+            dados.solucao = isBaixaImagem ? "REALIZADO A BAIXA DE IMAGEM" : "REALIZADO MANUTENÇÃO PREVENTIVA/CORRETIVA";
+            dados.modelo = dados.sn.startsWith('P') ? "LENOVO T14" : (dados.sn.startsWith('B') ? "HP ELITEBOOK 640 G9" : "");
             
             if (isBaixaImagem) {
                 document.getElementById('f_patri_inst').value = "";
                 document.getElementById('f_host_inst').value = "";
-                document.getElementById('f_mac_inst').value = ext_mac; 
+                document.getElementById('f_mac_inst').value = dados.mac; 
             } else {
                 document.getElementById('f_patri_inst').value = "";
                 document.getElementById('f_host_inst').value = "";
@@ -1348,25 +1416,18 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         }
 
         let nomeCapturado = (/solicitante\s*:\s*(.+)/i.exec(texto) || ["","---"])[1].trim();
-        const respDefinido = limitarNomeresponsavel(nomeCapturado);
-        const uniorgDefinida = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
+        dados.resp = limitarNomeresponsavel(nomeCapturado);
+        dados.uniorg = (/UNIORG\s*:\s*(\d+)/i.exec(texto) || ["","---"])[1];
 
         const mFullEnd = /ENDEREÇO\s*:\s*(.+)/i.exec(texto);
         if (mFullEnd) {
             const inlineEnd = mFullEnd[1];
-            const ruaDefinida = (/^([^0-9,]+)/.exec(inlineEnd) || ["","---"])[1].trim();
-            const numDefinido = (/(\d+)/.exec(inlineEnd.replace(ruaDefinida, "")) || ["","---"])[1];
-            const cidDefinida = (/-\s*([^,]+)/.exec(inlineEnd) || ["","---"])[1].trim().toUpperCase();
-            const ufDefinida = (/,\s*([A-Z]{2})/.exec(inlineEnd) || ["",""])[1];
-            
-            document.getElementById('f_rua').value = ruaDefinida || '';
-            document.getElementById('f_num').value = numDefinido || '';
-            document.getElementById('f_cid').value = cidDefinida || '';
-            document.getElementById('f_uf').value = ufDefinida || '';
-            document.getElementById('f_local_data_cidade').value = cidDefinida || '';
-
+            dados.rua = (/^([^0-9,]+)/.exec(inlineEnd) || ["","---"])[1].trim();
+            dados.num = (/(\d+)/.exec(inlineEnd.replace(dados.rua, "")) || ["","---"])[1];
+            dados.cid = (/-\s*([^,]+)/.exec(inlineEnd) || ["","---"])[1].trim().toUpperCase();
+            dados.uf = (/,\s*([A-Z]{2})/.exec(inlineEnd) || ["",""])[1];
             const mCep = /(\d{8})/.exec(inlineEnd.replace(/\s/g, ""));
-            if (mCep) { buscarBairro(mCep[1]); }
+            if (mCep) { dados.cep = mCep[1]; buscarBairro(dados.cep); }
         }
 
         const reg = (l) => new RegExp(l + "\\s*:\\s*\\d{2}\\/\\d{2}\\/\\d{4}\\s+(\\d{2}):(\\d{2})", "i").exec(texto);
@@ -1374,29 +1435,35 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         const chegada = reg("CHEGADA"); 
         const termino = reg("ATENDIMENTO");
 
-        document.getElementById('f_partida').value = partida ? `${partia[1]}:${partida[2]}` : '';
+        document.getElementById('f_partida').value = partida ? `${partida[1]}:${partida[2]}` : '';
         document.getElementById('f_chegada').value = chegada ? `${chegada[1]}:${chegada[2]}` : '';
         document.getElementById('f_inicio_ate').value = termino ? `${termino[1]}:${termino[2]}` : '';
 
         const terminoTotal = reg("TÉRMINO") || reg("FIM") || reg("CONCLUÍDO");
         document.getElementById('f_termino_ate').value = terminoTotal ? `${terminoTotal[1]}:${terminoTotal[2]}` : '';
 
-        document.getElementById('f_inc').value = ext_inc;
-        document.getElementById('f_uniorg').value = uniorgDefinida;
-        document.getElementById('f_patri_ret').value = ext_patri;
-        document.getElementById('f_host_ret').value = ext_host;
-        document.getElementById('f_sn_ret').value = snDefinido === '---' ? '' : snDefinido;
+        document.getElementById('f_inc').value = dados.inc;
+        document.getElementById('f_uniorg').value = dados.uniorg;
+        document.getElementById('f_rua').value = dados.rua || '';
+        document.getElementById('f_num').value = dados.num || '';
+        document.getElementById('f_cid').value = dados.cid || '';
+        document.getElementById('f_uf').value = dados.uf || '';
+        document.getElementById('f_patri_ret').value = dados.patri;
+        document.getElementById('f_host_ret').value = dados.host;
+        document.getElementById('f_sn_ret').value = dados.sn === '---' ? '' : dados.sn;
         
         if (isBaixaImagem || isPinPad) {
             document.getElementById('f_mac_ret').value = "";
         } else {
-            document.getElementById('f_mac_ret').value = ext_mac;
+            document.getElementById('f_mac_ret').value = dados.mac;
         }
 
-        document.getElementById('f_modelo_ret').value = modeloDefinido;
-        document.getElementById('f_resp').value = respDefinido;
-        document.getElementById('f_matricula').value = ext_matricula;
-        document.getElementById('f_solucao').value = solucaoDefinida;
+        document.getElementById('f_modelo_ret').value = dados.modelo;
+        document.getElementById('f_resp').value = dados.resp;
+        document.getElementById('f_matricula').value = dados.matricula;
+        document.getElementById('f_solucao').value = dados.solucao;
+        document.getElementById('f_local_data_cidade').value = dados.cid || '';
+        
         document.getElementById('f_descritivo_defeito').value = "EQUIPAMENTO INOPERANTE";
         
         clearTimeout(timeoutRender);
@@ -1409,6 +1476,7 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         const page = pdfDoc.getPages()[0];
         const fontColor = PDFLib.rgb(0, 0, 0);
 
+        // CORREÇÃO: Função centralizada 'escrever' para evitar erros de referência
         const escrever = (id, config) => {
             const elemento = document.getElementById(id);
             if(!elemento) return;
@@ -1434,23 +1502,15 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         escrever('f_modelo_inst', POS.modelo_inst);
         escrever('f_host_inst', POS.host_inst);
         escrever('f_mac_inst', POS.mac_inst);
+        escrever('f_sn_ret', POS.sn); escrever('f_mac_ret', POS.mac); escrever('f_solucao', POS.solucao);
+        escrever('f_resp', POS.resp); escrever('f_matricula', POS.matri);
         
-        // Escreve campos adicionais
-        const fSnRet = document.getElementById('f_sn_ret').value;
-        if(fSnRet) page.drawText(fSnRet.toUpperCase(), { x: POS.sn.x, y: POS.sn.y, size: 11, color: fontColor });
+        // Puxa dinamicamente a assinatura do Técnico atual do formulário
+        const tecNome = document.getElementById('f_tecnico_nome').value || dados.tecnico;
+        const tecCpf = document.getElementById('f_tecnico_cpf').value || dados.cpf;
         
-        const fMacRet = document.getElementById('f_mac_ret').value;
-        if(fMacRet) page.drawText(fMacRet.toUpperCase(), { x: POS.mac.x, y: POS.mac.y, size: 11, color: fontColor });
-        
-        const fSolucao = document.getElementById('f_solucao').value;
-        if(fSolucao) page.drawText(fSolucao.toUpperCase(), { x: POS.solucao.x, y: POS.solucao.y, size: 11, color: fontColor });
-
-        escrever('f_resp', POS.resp); 
-        escrever('f_matricula', POS.matri);
-        
-        // Estampa DINÂMICAMENTE os dados do técnico logado carregados do banco
-        page.drawText(dados.tecnico, { x: POS.tecnico.x, y: POS.tecnico.y, size: 11, color: fontColor });
-        page.drawText(dados.cpf, { x: POS.cpf.x, y: POS.cpf.y, size: 11, color: fontColor }); 
+        page.drawText(tecNome.toUpperCase(), { x: POS.tecnico.x, y: 176, size: 11, color: fontColor });
+        page.drawText(tecCpf, { x: POS.cpf.x, y: 149, size: 11, color: fontColor }); 
         
         const dataStr = document.getElementById('f_data_completa').value.split('/');
         if(dataStr.length === 3) {
@@ -1514,7 +1574,7 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
                 pdfBase64 = window.btoa(binary);
             }
 
-            const tecnicoAtual = dados.tecnico;
+            const tecnicoAtual = loggedInUser ? loggedInUser.email.toLowerCase() : 'Willian';
 
             const dadosParaSalvar = {
                 chamado: inc,
@@ -1570,7 +1630,6 @@ ALTER TABLE tecnicos DISABLE ROW LEVEL SECURITY;</pre>
         } catch (e) { 
             console.error(e);
             alert("Erro na operação: " + e.message); 
-            verificarErroTabela(e);
         } finally {
             btnSave.innerHTML = txtOriginal;
             btnSave.disabled = false;
