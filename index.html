@@ -226,7 +226,8 @@
         .field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
         .field label { font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; }
         
-        .field input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; width: 100%; box-sizing: border-box; }
+        /* Aplicado também para selects */
+        .field input, .field select { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; width: 100%; box-sizing: border-box; outline: none; }
         
         .field input.time-input { text-align: center; font-size: 16px; letter-spacing: normal; }
         
@@ -290,7 +291,7 @@
             </div>
         </div>
 
-        <!-- Painel de Administração (Exclusivo para Willian) -->
+        <!-- Painel de Administração (Exclusivo para Administradores) -->
         <div id="adminPanel" class="admin-panel">
             <h2>⚙️ Gestão de Usuários e Técnicos (Área Restrita)</h2>
             <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Cadastre, edite ou desative os dados dos técnicos autorizados a aceder ao sistema.</p>
@@ -316,6 +317,14 @@
                             <label>CPF do Técnico (RAT)</label>
                             <input type="text" id="admin_new_cpf" class="lowercase-input" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)">
                         </div>
+                        <!-- CAMPO: NÍVEL DO USUÁRIO -->
+                        <div class="field">
+                            <label>Nível de Acesso</label>
+                            <select id="admin_new_nivel">
+                                <option value="tecnico">TÉCNICO</option>
+                                <option value="admin">ADMINISTRADOR</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div style="display: flex; gap: 10px; margin-top: 15px;">
@@ -335,6 +344,7 @@
                                     <th>E-mail</th>
                                     <th>Nome do Técnico</th>
                                     <th>CPF</th>
+                                    <th>Nível</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -347,7 +357,7 @@
             </div>
             
             <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
-                <button class="btn-logout" style="margin: 0; padding: 10px 20px;" onclick="toggleAdminPanel()">Fechar Panel</button>
+                <button class="btn-logout" style="margin: 0; padding: 10px 20px;" onclick="toggleAdminPanel()">Fechar Painel</button>
             </div>
             <div id="adminStatusMsg" style="margin-top: 15px; font-size: 14px; font-weight: normal; line-height: 1.5; padding: 10px; border-radius: 6px; display: none;"></div>
         </div>
@@ -444,7 +454,7 @@
                     <div class="field"><label>Responsável</label><input type="text" id="f_resp"></div>
                     <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
                     
-                    <!-- Novos Campos de Assinatura do Técnico -->
+                    <!-- Campos de Assinatura do Técnico -->
                     <div class="field"><label>Nome do Técnico (RAT)</label><input type="text" id="f_tecnico_nome" placeholder="NOME DO TÉCNICO" oninput="salvarDadosTecnicoLocal()"></div>
                     <div class="field"><label>CPF do Técnico (RAT)</label><input type="text" id="f_tecnico_cpf" placeholder="000.000.000-00" oninput="salvarDadosTecnicoLocal()" maxlength="14" onkeyup="mascaraCPF(this)"></div>
                     
@@ -470,7 +480,7 @@
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
     
-    // SUAS CONFIGURAÇÕES ORIGINAIS DO SUPABASE
+    // CONFIGURAÇÕES DO SUPABASE
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
     const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
@@ -550,6 +560,15 @@
         loggedInUser = null;
     }
 
+    // Helper: Verifica se o usuário logado possui privilégios de Admin
+    function usuarioLogadoEhAdmin() {
+        if (!loggedInUser) return false;
+        const emailKey = loggedInUser.email.toLowerCase();
+        if (emailKey === ADMIN_EMAIL) return true; // Master sempre Admin
+        const perfil = perfisTecnicosCache.find(p => p.email.toLowerCase() === emailKey);
+        return perfil && perfil.nivel === 'admin';
+    }
+
     async function inicializarAplicacao(user) {
         loggedInUser = user;
         document.getElementById('loginSection').style.display = 'none';
@@ -559,8 +578,8 @@
         // Carrega todos os perfis cadastrados no sistema
         await carregarPerfisTecnicos();
 
-        // CONTROLE DE ACESSO: Verifica se o usuário é o Administrador (Willian)
-        if (user.email.toLowerCase() === ADMIN_EMAIL) {
+        // CONTROLE DE ACESSO: Verifica se o usuário é Administrador
+        if (usuarioLogadoEhAdmin()) {
             document.getElementById('btnToggleAdmin').style.display = 'inline-block';
         } else {
             document.getElementById('btnToggleAdmin').style.display = 'none';
@@ -581,20 +600,20 @@
         if (emailKey === ADMIN_EMAIL) return true; // Master administrador sempre ativo
 
         // Força sincronização mais recente de CONFIG_TECNICOS
-        const { data: configData } = await supabaseClient
-            .from('chamados')
-            .select('*')
-            .eq('chamado', 'CONFIG_TECNICOS')
-            .maybeSingle();
+        try {
+            const { data: perfil, error } = await supabaseClient
+                .from('tecnicos')
+                .select('ativo')
+                .eq('email', emailKey)
+                .maybeSingle();
 
-        if (configData && configData.solucao) {
-            const perfis = JSON.parse(configData.solucao);
-            const perfil = perfis.find(p => p.email.toLowerCase() === emailKey);
             if (perfil && perfil.ativo === false) {
                 alert("Acesso suspenso: A sua conta foi desativada pelo administrador.");
                 realizarLogout();
                 return false;
             }
+        } catch (e) {
+            console.error("Erro ao verificar status ativo:", e);
         }
         return true;
     }
@@ -616,23 +635,21 @@
         errorDiv.style.display = 'none';
 
         try {
-            // Primeiro, recarregamos a lista atual de perfis para pegar o status mais atual antes de autenticar no Auth
-            const { data: configData } = await supabaseClient
-                .from('chamados')
-                .select('*')
-                .eq('chamado', 'CONFIG_TECNICOS')
+            // Buscando o registro real na tabela "tecnicos"
+            const { data: perfil, error: perfilError } = await supabaseClient
+                .from('tecnicos')
+                .select('ativo')
+                .eq('email', email)
                 .maybeSingle();
 
-            let localPerfis = [];
-            if (configData && configData.solucao) {
-                localPerfis = JSON.parse(configData.solucao);
-            }
-
-            const perfil = localPerfis.find(p => p.email.toLowerCase() === email);
-            
-            // Bloqueio completo na entrada caso inativado
-            if (email !== ADMIN_EMAIL && perfil && perfil.ativo === false) {
-                throw new Error("Acesso negado: O seu usuário foi inativado pelo administrador.");
+            // Bloqueio completo na entrada caso inativado (Ignora se for o Administrador Master cadastrado no Supabase)
+            if (email !== ADMIN_EMAIL) {
+                if (!perfil) {
+                    throw new Error("Acesso negado: Usuário não cadastrado como técnico autorizado.");
+                }
+                if (perfil.ativo === false) {
+                    throw new Error("Acesso negado: O seu usuário foi inativado pelo administrador.");
+                }
             }
 
             const { data, error } = await supabaseClient.auth.signInWithPassword({
@@ -722,44 +739,16 @@
     // ==========================================
     async function carregarPerfisTecnicos() {
         try {
+            // CARREGANDO DIRETAMENTE DA TABELA DE TÉCNICOS REAL
             const { data, error } = await supabaseClient
-                .from('chamados')
-                .select('*')
-                .eq('chamado', 'CONFIG_TECNICOS')
-                .maybeSingle();
+                .from('tecnicos')
+                .select('*');
             
-            if (data && data.solucao) {
-                perfisTecnicosCache = JSON.parse(data.solucao);
-            } else {
-                perfisTecnicosCache = [];
-            }
+            if (error) throw error;
+            perfisTecnicosCache = data || [];
             atualizarTabelaAdminTecnicos();
         } catch (e) {
             console.error("Erro ao carregar perfis de técnicos:", e);
-        }
-    }
-
-    async function salvarPerfisTecnicosNoBanco() {
-        const payload = {
-            chamado: 'CONFIG_TECNICOS',
-            solucao: JSON.stringify(perfisTecnicosCache),
-            tecnico: 'SISTEMA_ADMIN'
-        };
-        
-        try {
-            const { data, error } = await supabaseClient
-                .from('chamados')
-                .select('id')
-                .eq('chamado', 'CONFIG_TECNICOS')
-                .maybeSingle();
-                
-            if (data) {
-                await supabaseClient.from('chamados').update(payload).eq('id', data.id);
-            } else {
-                await supabaseClient.from('chamados').insert([payload]);
-            }
-        } catch (e) {
-            console.error("Erro ao salvar perfis técnicos no banco:", e);
         }
     }
 
@@ -768,17 +757,26 @@
         tbody.innerHTML = '';
         
         if (perfisTecnicosCache.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Nenhum técnico cadastrado ainda.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8;">Nenhum técnico cadastrado ainda.</td></tr>';
             return;
         }
         
         perfisTecnicosCache.forEach(tec => {
             // Define o valor padrão de ativo caso não exista
             if (tec.ativo === undefined) tec.ativo = true;
+            
+            // Força admin para o master admin para evitar inconsistências
+            if (tec.email.toLowerCase() === ADMIN_EMAIL) {
+                tec.nivel = 'admin';
+            }
 
             const badgeStatus = tec.ativo 
                 ? '<span style="color: var(--success); font-weight: bold; background-color: #d1fae5; padding: 2px 6px; border-radius: 4px; font-size: 10px;">ATIVO</span>' 
                 : '<span style="color: var(--danger); font-weight: bold; background-color: #fee2e2; padding: 2px 6px; border-radius: 4px; font-size: 10px;">INATIVO</span>';
+
+            const badgeNivel = (tec.nivel === 'admin')
+                ? '<span style="color: #4f46e5; font-weight: bold; background-color: #e0e7ff; padding: 2px 6px; border-radius: 4px; font-size: 10px;">ADMIN</span>'
+                : '<span style="color: #475569; font-weight: bold; background-color: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 10px;">TÉCNICO</span>';
 
             const botaoAcaoStatus = tec.ativo 
                 ? `<button class="btn-danger-table" onclick="alternarStatusTecnico('${tec.email}', false)">Desativar</button>` 
@@ -795,13 +793,14 @@
                 <td style="font-weight: bold; color: var(--dark);">${tec.email}</td>
                 <td>${tec.nome}</td>
                 <td>${tec.cpf}</td>
+                <td>${badgeNivel}</td>
                 <td>${badgeStatus}</td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    // Altera o status ativo/inativo sem excluir registros do banco de dados (histórico íntegro)
+    // Altera o status ativo/inativo na tabela 'tecnicos' preservando o histórico intacto em 'chamados'
     async function alternarStatusTecnico(email, novoStatus) {
         const acao = novoStatus ? "reativar" : "desativar";
         const confirmacao = confirm(`Deseja realmente ${acao} este técnico?\nO histórico de chamados e PDFs preenchidos por ele continuarão salvos e visíveis.`);
@@ -809,20 +808,23 @@
         if (!confirmacao) return;
 
         try {
-            const index = perfisTecnicosCache.findIndex(t => t.email.toLowerCase() === email.toLowerCase());
-            if (index !== -1) {
-                perfisTecnicosCache[index].ativo = novoStatus;
-                
-                await salvarPerfisTecnicosNoBanco();
-                await carregarPerfisTecnicos();
-                
-                const statusMsg = document.getElementById('adminStatusMsg');
-                statusMsg.style.display = 'block';
-                statusMsg.style.backgroundColor = novoStatus ? '#d1fae5' : '#fee2e2';
-                statusMsg.style.color = novoStatus ? '#065f46' : '#b91c1c';
-                statusMsg.style.borderLeft = novoStatus ? '4px solid var(--success)' : '4px solid var(--danger)';
-                statusMsg.textContent = `O técnico (${email}) foi configurado como ${novoStatus ? 'ATIVO' : 'INATIVO'} com sucesso!`;
-            }
+            // ATUALIZANDO DIRETAMENTE NA TABELA REAL DE TÉCNICOS
+            const { error } = await supabaseClient
+                .from('tecnicos')
+                .update({ ativo: novoStatus })
+                .eq('email', email);
+
+            if (error) throw error;
+            
+            await carregarPerfisTecnicos();
+            
+            const statusMsg = document.getElementById('adminStatusMsg');
+            statusMsg.style.display = 'block';
+            statusMsg.style.backgroundColor = novoStatus ? '#d1fae5' : '#fee2e2';
+            statusMsg.style.color = novoStatus ? '#065f46' : '#b91c1c';
+            statusMsg.style.borderLeft = novoStatus ? '4px solid var(--success)' : '4px solid var(--danger)';
+            statusMsg.textContent = `O técnico (${email}) foi configurado como ${novoStatus ? 'ATIVO' : 'INATIVO'} com sucesso!`;
+            
         } catch (e) {
             alert("Erro ao alterar status: " + e.message);
         }
@@ -839,6 +841,7 @@
         document.getElementById('admin_new_email').disabled = true; // Não permite mudar o email
         document.getElementById('admin_new_nome').value = tec.nome;
         document.getElementById('admin_new_cpf').value = tec.cpf;
+        document.getElementById('admin_new_nivel').value = tec.nivel || 'tecnico'; // Carrega nível atual
         
         // Esconde o campo de senha durante a edição (para evitar redefinição acidental)
         document.getElementById('admin_password_field').style.display = 'none';
@@ -859,6 +862,7 @@
         document.getElementById('admin_new_senha').value = '';
         document.getElementById('admin_new_nome').value = '';
         document.getElementById('admin_new_cpf').value = '';
+        document.getElementById('admin_new_nivel').value = 'tecnico'; // Reseta para o padrão
         
         document.getElementById('admin_password_field').style.display = 'block';
         
@@ -888,6 +892,7 @@
         const senha = document.getElementById('admin_new_senha').value;
         const nomeCompleto = document.getElementById('admin_new_nome').value.trim();
         const cpf = document.getElementById('admin_new_cpf').value.trim();
+        const nivel = document.getElementById('admin_new_nivel').value;
         const btn = document.getElementById('btnCriarUsuario');
         const msgDiv = document.getElementById('adminStatusMsg');
 
@@ -906,15 +911,17 @@
             btn.textContent = "A atualizar...";
             
             try {
-                // Atualiza o cache local
-                const index = perfisTecnicosCache.findIndex(t => t.email.toLowerCase() === emailTecnicoSendoEditado.toLowerCase());
-                if (index !== -1) {
-                    perfisTecnicosCache[index].nome = nomeCompleto;
-                    perfisTecnicosCache[index].cpf = cpf;
-                }
-                
-                // Salva no Banco de Dados Supabase centralizado
-                await salvarPerfisTecnicosNoBanco();
+                // ATUALIZANDO OS DADOS DIRETAMENTE NA TABELA REAL "TECNICOS"
+                const { error } = await supabaseClient
+                    .from('tecnicos')
+                    .update({
+                        nome: nomeCompleto,
+                        cpf: cpf,
+                        nivel: nivel
+                    })
+                    .eq('email', emailTecnicoSendoEditado);
+
+                if (error) throw error;
                 
                 msgDiv.style.display = 'block';
                 msgDiv.style.backgroundColor = '#d1fae5';
@@ -930,6 +937,14 @@
                     carregarDadosTecnicoLocal();
                 }
 
+                // Recarrega permissões da tela
+                if (usuarioLogadoEhAdmin()) {
+                    document.getElementById('btnToggleAdmin').style.display = 'inline-block';
+                } else {
+                    document.getElementById('btnToggleAdmin').style.display = 'none';
+                    document.getElementById('adminPanel').style.display = 'none';
+                }
+
             } catch (e) {
                 console.error(e);
                 msgDiv.style.display = 'block';
@@ -942,7 +957,7 @@
             return;
         }
 
-        // MODO CADASTRO DE NOVO TÉCNICO (SÓ DEVE ENTRAR SE NÃO ESTIVER EDITANDO)
+        // MODO CADASTRO DE NOVO TÉCNICO
         if (!email || !senha || !nomeCompleto || !cpf) {
             msgDiv.style.display = 'block';
             msgDiv.style.backgroundColor = '#fee2e2';
@@ -967,7 +982,7 @@
         msgDiv.textContent = "";
 
         try {
-            // Criando o usuário de Auth no Supabase
+            // Criando o usuário no Auth Auth do Supabase
             const { data, error } = await authRegistrationClient.auth.signUp({
                 email: email,
                 password: senha,
@@ -981,27 +996,31 @@
 
             if (error) throw error;
 
-            // Insere também na nossa lista centralizada CONFIG_TECNICOS com ativo: true por padrão
-            perfisTecnicosCache.push({
-                email: email,
-                nome: nomeCompleto,
-                cpf: cpf,
-                ativo: true
-            });
+            // SALVANDO DIRETAMENTE NA TABELA REAL "TECNICOS"
+            const { error: dbError } = await supabaseClient
+                .from('tecnicos')
+                .insert([{
+                    email: email,
+                    nome: nomeCompleto,
+                    cpf: cpf,
+                    nivel: nivel,
+                    ativo: true
+                }]);
 
-            await salvarPerfisTecnicosNoBanco();
+            if (dbError) throw dbError;
 
             msgDiv.style.display = 'block';
             msgDiv.style.backgroundColor = '#d1fae5';
             msgDiv.style.color = '#065f46';
             msgDiv.style.borderLeft = '4px solid var(--success)';
-            msgDiv.textContent = `✅ Usuário ${nomeCompleto} criado com sucesso! Ele já pode aceder ao sistema.`;
+            msgDiv.textContent = `✅ Usuário ${nomeCompleto} criado com sucesso com perfil [${nivel.toUpperCase()}]! Ele já pode aceder ao sistema.`;
             
             // Limpa os campos após sucesso
             document.getElementById('admin_new_email').value = '';
             document.getElementById('admin_new_senha').value = '';
             document.getElementById('admin_new_nome').value = '';
             document.getElementById('admin_new_cpf').value = '';
+            document.getElementById('admin_new_nivel').value = 'tecnico';
 
             await carregarPerfisTecnicos();
 
@@ -1050,7 +1069,7 @@
     async function carregarTodosChamados() {
         if (!loggedInUser) return;
         
-        // Bloqueio instantâneo caso o usuário ativo tenha sido inativado
+        // Bloqueia em tempo real caso o usuário ativo tenha sido inativado
         const ativo = await checarStatusAtivo();
         if (!ativo) return;
 
@@ -1061,10 +1080,10 @@
 
         try {
             // Definições de Acesso:
-            // Admin (Willian) vê TODOS os chamados. Técnicos normais veem APENAS os seus.
+            // Admin (Willian / outros Admins) vê TODOS os chamados. Técnicos normais veem APENAS os seus.
             let queryBuilder = supabaseClient.from('chamados').select('*');
             
-            if (loggedInUser.email.toLowerCase() !== ADMIN_EMAIL) {
+            if (!usuarioLogadoEhAdmin()) {
                 queryBuilder = queryBuilder.eq('tecnico', loggedInUser.email.toLowerCase());
             } else {
                 // Filtra para o admin não listar a configuração de perfis como se fosse um chamado de técnico
@@ -1142,7 +1161,7 @@
         if (!chamado) return;
 
         // Segurança Frontend: Se for técnico normal e o chamado não for dele, bloqueia de forma absoluta
-        if (loggedInUser.email.toLowerCase() !== ADMIN_EMAIL && chamado.tecnico && chamado.tecnico.toLowerCase() !== loggedInUser.email.toLowerCase()) {
+        if (!usuarioLogadoEhAdmin() && chamado.tecnico && chamado.tecnico.toLowerCase() !== loggedInUser.email.toLowerCase()) {
             alert("Acesso Negado: Este chamado pertence a outro técnico.");
             return;
         }
@@ -1227,7 +1246,7 @@
             }
 
             // Segurança Frontend: Se for técnico normal e o chamado não pertencer a ele, nega visualização estritamente
-            if (loggedInUser.email.toLowerCase() !== ADMIN_EMAIL && data.tecnico && data.tecnico.toLowerCase() !== loggedInUser.email.toLowerCase()) {
+            if (!usuarioLogadoEhAdmin() && data.tecnico && data.tecnico.toLowerCase() !== loggedInUser.email.toLowerCase()) {
                 alert("Acesso Negado: Este chamado pertence a outro técnico.");
                 resetarModoEdicao();
                 return;
