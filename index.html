@@ -15,6 +15,9 @@
         .container { max-width: 1200px; margin: 0 auto; display: flex; gap: 20px; }
         .editor-box { flex: 1; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .preview-box { flex: 1; background: #525659; display: flex; justify-content: center; align-items: center; min-height: 500px; border-radius: 12px; }
+        .field { margin-bottom: 10px; }
+        .field label { display: block; font-size: 11px; font-weight: bold; color: #475569; }
+        .field input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
         canvas { max-width: 95%; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
     </style>
 </head>
@@ -23,9 +26,12 @@
 <div class="container">
     <div class="editor-box">
         <h3>Editor de RAT</h3>
+        <div class="field"><label>Chamado CERB</label><input type="text" id="chamado_cerb" oninput="atualizarPreview()"></div>
         <div class="field"><label>Número do Chamado</label><input type="text" id="f_inc" oninput="atualizarPreview()"></div>
         <div class="field"><label>Responsável</label><input type="text" id="f_resp" oninput="atualizarPreview()"></div>
-        <button class="btn-save" onclick="salvarAtendimento()">Guardar Atendimento</button>
+        <div class="field"><label>Matrícula</label><input type="text" id="f_matricula" oninput="atualizarPreview()"></div>
+        <div class="field"><label>Solução</label><input type="text" id="f_solucao" oninput="atualizarPreview()"></div>
+        <button class="btn-save" onclick="salvarAtendimento()" style="background: var(--primary); color: white; padding: 10px; border: none; border-radius: 6px; width: 100%; cursor: pointer;">Guardar Atendimento</button>
     </div>
     
     <div class="preview-box">
@@ -34,14 +40,11 @@
 </div>
 
 <script>
-    // Configuração do worker do PDF.js
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
     async function atualizarPreview() {
-        // Proteção: verifica se PDFLib carregou antes de tentar usar
         if (typeof PDFLib === 'undefined') {
-            console.warn("Aguardando carregamento da biblioteca PDFLib...");
             setTimeout(atualizarPreview, 500);
             return;
         }
@@ -54,9 +57,14 @@
             
             const inc = document.getElementById('f_inc').value;
             const resp = document.getElementById('f_resp').value;
+            const cerb = document.getElementById('chamado_cerb').value;
+            const mat = document.getElementById('f_matricula').value;
+            const sol = document.getElementById('f_solucao').value;
             
             page.drawText(`RAT - Chamado: ${inc}`, { x: 50, y: 800, size: 20, font });
-            page.drawText(`Responsável: ${resp}`, { x: 50, y: 770, size: 12, font });
+            page.drawText(`CERB: ${cerb}`, { x: 50, y: 770, size: 12, font });
+            page.drawText(`Responsável: ${resp} (Matrícula: ${mat})`, { x: 50, y: 750, size: 12, font });
+            page.drawText(`Solução: ${sol}`, { x: 50, y: 720, size: 12, font });
             
             const pdfBytes = await pdfDoc.save();
             renderizarPDF(pdfBytes);
@@ -83,7 +91,6 @@
         }
     }
 
-    // Inicialização segura
     window.onload = atualizarPreview;
 </script>
 </body>
