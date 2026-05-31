@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RAT Pro Editor - Controle e Emissão</title>
-    <!-- Bibliotecas com carregamento garantido -->
+    <!-- Bibliotecas carregadas via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -34,14 +34,15 @@
 </div>
 
 <script>
-    // Garantir que o PDF.js utiliza o worker correto
+    // Configuração do worker do PDF.js
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
     async function atualizarPreview() {
-        // Verifica se a biblioteca PDFLib foi carregada
+        // Proteção: verifica se PDFLib carregou antes de tentar usar
         if (typeof PDFLib === 'undefined') {
-            console.error("PDFLib ainda não carregou.");
+            console.warn("Aguardando carregamento da biblioteca PDFLib...");
+            setTimeout(atualizarPreview, 500);
             return;
         }
 
@@ -65,20 +66,24 @@
     }
 
     async function renderizarPDF(data) {
-        const loadingTask = pdfjsLib.getDocument({ data: data });
-        const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(1);
-        const canvas = document.getElementById('pdfCanvas');
-        const context = canvas.getContext('2d');
-        const viewport = page.getViewport({ scale: 1.0 });
-        
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        
-        await page.render({ canvasContext: context, viewport: viewport }).promise;
+        try {
+            const loadingTask = pdfjsLib.getDocument({ data: data });
+            const pdf = await loadingTask.promise;
+            const page = await pdf.getPage(1);
+            const canvas = document.getElementById('pdfCanvas');
+            const context = canvas.getContext('2d');
+            const viewport = page.getViewport({ scale: 1.0 });
+            
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            await page.render({ canvasContext: context, viewport: viewport }).promise;
+        } catch (e) {
+            console.error("Erro ao renderizar PDF no canvas:", e);
+        }
     }
 
-    // Aguarda o carregamento completo da página antes de iniciar o primeiro preview
+    // Inicialização segura
     window.onload = atualizarPreview;
 </script>
 </body>
