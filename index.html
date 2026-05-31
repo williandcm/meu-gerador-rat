@@ -34,12 +34,12 @@
 </div>
 
 <script>
-    // Garantir que o PDF.js usa o worker correto
+    // Garantir que o PDF.js utiliza o worker correto
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
     async function atualizarPreview() {
-        // Verifica se o PDFLib carregou
+        // Verifica se a biblioteca PDFLib foi carregada
         if (typeof PDFLib === 'undefined') {
             console.error("PDFLib ainda não carregou.");
             return;
@@ -78,7 +78,7 @@
         await page.render({ canvasContext: context, viewport: viewport }).promise;
     }
 
-    // Aguarda o carregamento completo da página antes de iniciar
+    // Aguarda o carregamento completo da página antes de iniciar o primeiro preview
     window.onload = atualizarPreview;
 </script>
 </body>
