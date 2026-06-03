@@ -190,6 +190,42 @@
         .badge-ok { color: var(--success); background: #d1fae5; }
         .badge-off { color: var(--danger); background: #fee2e2; }
 
+        /* ── MODAL DETALHES ── */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 500; overflow-y: auto; padding: 20px; }
+        .modal-overlay.open { display: flex; align-items: flex-start; justify-content: center; }
+        .modal-box {
+            background: white; border-radius: 14px; width: 100%; max-width: 820px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.3); overflow: hidden; margin: auto;
+        }
+        .modal-header {
+            background: var(--dark); color: white; padding: 18px 24px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal-header h2 { color: white; border: none; margin: 0; font-size: 17px; }
+        .modal-header .modal-sub { font-size: 12px; color: #94a3b8; margin-top: 3px; }
+        .modal-close { background: rgba(255,255,255,.15); border: none; color: white; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; flex: unset; padding: 0; }
+        .modal-close:hover { background: rgba(255,255,255,.25); }
+        .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+        .modal-section { border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+        .modal-section-title { background: #f8fafc; padding: 9px 14px; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #e2e8f0; }
+        .modal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0; }
+        .modal-field { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; }
+        .modal-field:last-child { border-right: none; }
+        .modal-field-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 3px; }
+        .modal-field-value { font-size: 13px; font-weight: 600; color: var(--dark); word-break: break-all; }
+        .modal-field-value.empty { color: #cbd5e1; font-weight: normal; font-style: italic; }
+        .modal-field.span2 { grid-column: span 2; }
+        .modal-field.span3 { grid-column: span 3; }
+        .modal-footer { padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; justify-content: flex-end; }
+        .btn-modal-edit { background: var(--primary); color: white; padding: 10px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; flex: unset; font-size: 13px; }
+        .btn-modal-edit:hover { background: #2563eb; }
+        .btn-modal-close { background: #e2e8f0; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; flex: unset; font-size: 13px; }
+        .btn-modal-close:hover { background: #cbd5e1; }
+        .equip-cols { display: grid; grid-template-columns: 1fr 1fr; }
+        .equip-col-header { padding: 8px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: white; }
+        .equip-col-header.ret { background: #475569; }
+        .equip-col-header.inst { background: var(--primary); }
+
         /* ── MOBILE ── */
         .mobile-btn {
             display: none; position: fixed; top: 12px; left: 12px;
@@ -313,7 +349,7 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Ação</th><th>Chamado</th><th>Data</th><th>Uniorg</th>
+                                    <th>Ação</th><th>Chamado</th><th>Data</th><th>Técnico</th><th>Uniorg</th>
                                     <th>Endereço / Cidade</th><th>Responsável</th><th>Troca (S/N)</th>
                                 </tr>
                             </thead>
@@ -448,6 +484,98 @@
 
     </main>
 </div>
+
+<!-- MODAL DETALHES DO CHAMADO -->
+<div class="modal-overlay" id="modalDetalhes" onclick="fecharModalFora(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div>
+                <h2 id="modalTitulo">Chamado —</h2>
+                <div class="modal-sub" id="modalSub"></div>
+            </div>
+            <button class="modal-close" onclick="fecharModal()">✕</button>
+        </div>
+        <div class="modal-body">
+
+            <div class="modal-section">
+                <div class="modal-section-title">📋 Identificação</div>
+                <div class="modal-grid">
+                    <div class="modal-field"><div class="modal-field-label">Chamado</div><div class="modal-field-value" id="md_inc"></div></div>
+                    <div class="modal-field"><div class="modal-field-label">Data Atendimento</div><div class="modal-field-value" id="md_data"></div></div>
+                    <div class="modal-field"><div class="modal-field-label">Técnico Responsável</div><div class="modal-field-value" id="md_tecnico_nome"></div></div>
+                    <div class="modal-field"><div class="modal-field-label">CPF do Técnico</div><div class="modal-field-value" id="md_tecnico_cpf"></div></div>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <div class="modal-section-title">📍 Localização</div>
+                <div class="modal-grid">
+                    <div class="modal-field"><div class="modal-field-label">Uniorg</div><div class="modal-field-value" id="md_uniorg"></div></div>
+                    <div class="modal-field span2"><div class="modal-field-label">Endereço</div><div class="modal-field-value" id="md_rua"></div></div>
+                    <div class="modal-field"><div class="modal-field-label">Número</div><div class="modal-field-value" id="md_num"></div></div>
+                    <div class="modal-field"><div class="modal-field-label">Bairro</div><div class="modal-field-value" id="md_bai"></div></div>
+                    <div class="modal-field"><div class="modal-field-label">Cidade</div><div class="modal-field-value" id="md_cid"></div></div>
+                    <div class="modal-field"><div class="modal-field-label">UF</div><div class="modal-field-value" id="md_uf"></div></div>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <div class="modal-section-title">🕐 Horários</div>
+                <div class="modal-grid">
+                    <div class="modal-field"><div class="modal-field-label">Partida</div><div class="modal-field-value" id="md_partida"></div></div>
+                    <div class="modal-field"><div class="modal-field-label">Chegada</div><div class="modal-field-value" id="md_chegada"></div></div>
+                    <div class="modal-field"><div class="modal-field-label">Início Atendimento</div><div class="modal-field-value" id="md_inicio"></div></div>
+                    <div class="modal-field"><div class="modal-field-label">Término Atendimento</div><div class="modal-field-value" id="md_termino"></div></div>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <div class="modal-section-title">🖥️ Equipamentos</div>
+                <div class="equip-cols">
+                    <div>
+                        <div class="equip-col-header ret">Retirado / Reconfigurado</div>
+                        <div class="modal-field"><div class="modal-field-label">Patrimônio (SGPI)</div><div class="modal-field-value" id="md_patri_ret"></div></div>
+                        <div class="modal-field"><div class="modal-field-label">Série (SN)</div><div class="modal-field-value" id="md_sn_ret"></div></div>
+                        <div class="modal-field"><div class="modal-field-label">Modelo</div><div class="modal-field-value" id="md_modelo_ret"></div></div>
+                        <div class="modal-field"><div class="modal-field-label">Hostname</div><div class="modal-field-value" id="md_host_ret"></div></div>
+                        <div class="modal-field"><div class="modal-field-label">MAC</div><div class="modal-field-value" id="md_mac_ret"></div></div>
+                    </div>
+                    <div>
+                        <div class="equip-col-header inst">Instalado / Novo</div>
+                        <div class="modal-field"><div class="modal-field-label">Patrimônio (SGPI)</div><div class="modal-field-value" id="md_patri_inst"></div></div>
+                        <div class="modal-field"><div class="modal-field-label">Série (SN)</div><div class="modal-field-value" id="md_sn_inst"></div></div>
+                        <div class="modal-field"><div class="modal-field-label">Modelo</div><div class="modal-field-value" id="md_modelo_inst"></div></div>
+                        <div class="modal-field"><div class="modal-field-label">Hostname</div><div class="modal-field-value" id="md_host_inst"></div></div>
+                        <div class="modal-field"><div class="modal-field-label">MAC</div><div class="modal-field-value" id="md_mac_inst"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <div class="modal-section-title">🔧 Solução</div>
+                <div class="modal-grid">
+                    <div class="modal-field span2"><div class="modal-field-label">Descritivo Defeito</div><div class="modal-field-value" id="md_defeito"></div></div>
+                    <div class="modal-field span2"><div class="modal-field-label">Solução Aplicada</div><div class="modal-field-value" id="md_solucao"></div></div>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <div class="modal-section-title">🪪 Responsável pela Abertura</div>
+                <div class="modal-grid">
+                    <div class="modal-field"><div class="modal-field-label">Nome Responsável</div><div class="modal-field-value" id="md_resp"></div></div>
+                    <div class="modal-field"><div class="modal-field-label">Matrícula</div><div class="modal-field-value" id="md_matricula"></div></div>
+                    <div class="modal-field"><div class="modal-field-label">Local</div><div class="modal-field-value" id="md_local"></div></div>
+                </div>
+            </div>
+
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-close" onclick="fecharModal()">Fechar</button>
+            <button class="btn-modal-edit" id="btnModalEditar" onclick="editarDoModal()">✏️ Editar Chamado</button>
+        </div>
+    </div>
+</div>
+
 </div>
 
 <script>
@@ -788,22 +916,108 @@
         document.getElementById('statSemTroca').textContent = lista.length - troca;
     }
 
+    function nomeTecnico(email) {
+        if (!email) return '---';
+        const p = perfisTecnicosCache.find(t => t.email.toLowerCase() === email.toLowerCase());
+        return p ? p.nome : email;
+    }
+
     function atualizarInterfaceTabela(lista) {
         const tbody = document.getElementById('corpoTabelaChamados');
         tbody.innerHTML = '';
-        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;">Nenhum chamado encontrado.</td></tr>'; return; }
+        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;">Nenhum chamado encontrado.</td></tr>'; return; }
         lista.forEach(item => {
             const tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
             tr.innerHTML = `
-                <td><button class="btn-edit-table" onclick="carregarChamadoDireto(${item.id})">Editar</button></td>
+                <td onclick="event.stopPropagation()">
+                    <div style="display:flex;gap:5px;">
+                        <button class="btn-edit-table" style="background:#64748b;" onclick="verChamado(${item.id})">Ver</button>
+                        <button class="btn-edit-table" onclick="carregarChamadoDireto(${item.id})">Editar</button>
+                    </div>
+                </td>
                 <td style="font-weight:bold;color:var(--primary);">${item.chamado || '---'}</td>
                 <td>${item.data_atendimento || '---'}</td>
+                <td style="font-weight:bold;">${nomeTecnico(item.tecnico)}</td>
                 <td>${item.uniorg || '---'}</td>
                 <td>${item.endereco || '---'} / ${item.cidade || '---'}</td>
-                <td style="font-weight:bold;">${item.responsavel || '---'}</td>
+                <td>${item.responsavel || '---'}</td>
                 <td>${item.sn_inst ? 'SN: ' + item.sn_inst : '<span style="color:#94a3b8;">Sem Troca</span>'}</td>`;
+            tr.addEventListener('click', () => verChamado(item.id));
             tbody.appendChild(tr);
         });
+    }
+
+    let idModalAtual = null;
+
+    function verChamado(id) {
+        const c = todosChamadosCache.find(x => x.id === id);
+        if (!c) return;
+
+        idModalAtual = id;
+
+        const val = (v) => v && v.trim() ? v.trim() : null;
+        const set = (elId, v) => {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            if (val(v)) { el.textContent = v.trim(); el.className = 'modal-field-value'; }
+            else { el.textContent = '—'; el.className = 'modal-field-value empty'; }
+        };
+
+        const nomeT = nomeTecnico(c.tecnico);
+        const cpfT = (() => { const p = perfisTecnicosCache.find(t => t.email && c.tecnico && t.email.toLowerCase() === c.tecnico.toLowerCase()); return p ? p.cpf : c.tecnico || ''; })();
+
+        document.getElementById('modalTitulo').textContent = `Chamado ${c.chamado || '—'}`;
+        document.getElementById('modalSub').textContent = `${c.data_atendimento || ''} · ${nomeT}`;
+
+        set('md_inc', c.chamado);
+        set('md_data', c.data_atendimento);
+        set('md_tecnico_nome', nomeT);
+        set('md_tecnico_cpf', cpfT);
+        set('md_uniorg', c.uniorg);
+        set('md_rua', c.endereco);
+        set('md_num', c.numero);
+        set('md_bai', c.bairro);
+        set('md_cid', c.cidade);
+        set('md_uf', c.uf);
+        set('md_partida', c.hora_partida);
+        set('md_chegada', c.hora_chegada);
+        set('md_inicio', c.hora_inicio_ate);
+        set('md_termino', c.hora_termino_ate);
+        set('md_patri_ret', c.patri_ret);
+        set('md_sn_ret', c.sn_ret);
+        set('md_modelo_ret', c.modelo_ret);
+        set('md_host_ret', c.host_ret);
+        set('md_mac_ret', c.mac_ret);
+        set('md_patri_inst', c.patri_inst);
+        set('md_sn_inst', c.sn_inst);
+        set('md_modelo_inst', c.modelo_inst);
+        set('md_host_inst', c.host_inst);
+        set('md_mac_inst', c.mac_inst);
+        set('md_defeito', c.descritivo_defeito_causa);
+        set('md_solucao', c.solucao);
+        set('md_resp', c.responsavel);
+        set('md_matricula', c.matricula);
+        set('md_local', c.cidade);
+
+        document.getElementById('modalDetalhes').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function fecharModal() {
+        document.getElementById('modalDetalhes').classList.remove('open');
+        document.body.style.overflow = '';
+        idModalAtual = null;
+    }
+
+    function fecharModalFora(event) {
+        if (event.target === document.getElementById('modalDetalhes')) fecharModal();
+    }
+
+    function editarDoModal() {
+        const id = idModalAtual;
+        fecharModal();
+        if (id !== null) carregarChamadoDireto(id);
     }
 
     function filtrarListaLocal() {
