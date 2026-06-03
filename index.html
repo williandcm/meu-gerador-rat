@@ -264,17 +264,35 @@
         .btn-col-mv:disabled { opacity: .25; cursor: not-allowed; }
         .col-preview-tag { font-size: 10px; color: #94a3b8; font-weight: normal; margin-left: 4px; }
 
-        /* ── ASSINATURA ── */
-        .sig-wrapper { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 6px; }
-        .sig-box { display: flex; flex-direction: column; gap: 6px; }
-        .sig-box label { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; }
-        .sig-canvas {
-            width: 100%; height: 110px; border: 2px dashed #cbd5e1; border-radius: 8px;
-            background: #f8fafc; cursor: crosshair; touch-action: none; display: block;
+        /* ── ASSINAR NO DOCUMENTO ── */
+        .btn-assinar-rat {
+            grid-column: span 2; margin-top: 8px;
+            background: var(--dark); color: white;
+            padding: 14px; border-radius: 8px; border: none;
+            font-size: 14px; font-weight: bold; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: .2s;
         }
-        .sig-canvas.signed { border-color: var(--primary); border-style: solid; background: white; }
-        .btn-sig-clear { background: #e2e8f0; color: #475569; border: none; border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: bold; cursor: pointer; flex: unset; align-self: flex-start; }
-        .btn-sig-clear:hover { background: #cbd5e1; }
+        .btn-assinar-rat:hover { background: #0f172a; }
+        .btn-assinar-rat.signed { background: #065f46; border: 2px solid var(--success); }
+
+        .sign-doc-area { position: relative; background: #525659; padding: 12px; overflow: auto; max-height: 70vh; }
+        .sign-doc-inner { position: relative; display: inline-block; }
+        #signBaseCanvas  { display: block; max-width: 100%; }
+        #signOverlayCanvas {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            cursor: crosshair; touch-action: none;
+        }
+        .sign-toolbar {
+            display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+            background: #f8fafc; border-top: 1px solid #e2e8f0; flex-wrap: wrap;
+        }
+        .sign-tool-label { font-size: 12px; font-weight: 700; color: #475569; }
+        .color-btn { width: 24px; height: 24px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; flex: unset; padding: 0; }
+        .color-btn.active { border-color: var(--primary); }
+        .size-btn { background: #e2e8f0; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: bold; cursor: pointer; flex: unset; }
+        .size-btn.active { background: var(--dark); color: white; }
 
         /* ── PDF VIEWER ── */
         .pdf-viewer-body { padding: 12px; background: #525659; overflow-y: auto; max-height: 75vh; text-align: center; }
@@ -478,19 +496,10 @@
                             <div class="field"><label>Data</label><input type="date" id="f_data_picker" onchange="atualizarDataFormatada()"></div>
                             <input type="hidden" id="f_data_completa">
 
-                            <!-- ASSINATURAS -->
-                            <div class="sig-wrapper">
-                                <div class="sig-box">
-                                    <label>✍ Assinatura do Responsável</label>
-                                    <canvas id="canvasResponsavel" class="sig-canvas"></canvas>
-                                    <button type="button" class="btn-sig-clear" onclick="limparAssinatura('responsavel')">Limpar</button>
-                                </div>
-                                <div class="sig-box">
-                                    <label>✍ Assinatura do Técnico</label>
-                                    <canvas id="canvasTecnico" class="sig-canvas"></canvas>
-                                    <button type="button" class="btn-sig-clear" onclick="limparAssinatura('tecnico')">Limpar</button>
-                                </div>
-                            </div>
+                            <!-- BOTÃO ASSINAR NO DOCUMENTO -->
+                            <button type="button" id="btnAssinarRat" class="btn-assinar-rat" onclick="abrirModalAssinar()">
+                                <span id="labelBtnAssinar">✍ Assinar na RAT</span>
+                            </button>
                         </div>
                         <div class="btn-group">
                             <button class="btn-save" id="btnSalvar" onclick="salvarAtendimento()">💾 Salvar Novo</button>
@@ -547,6 +556,40 @@
         </div>
 
     </main>
+</div>
+
+<!-- MODAL ASSINAR NO DOCUMENTO -->
+<div class="modal-overlay" id="modalAssinar" onclick="fecharModalAssinarFora(event)">
+    <div class="modal-box" style="max-width:700px;">
+        <div class="modal-header">
+            <div>
+                <h2>✍ Assinar na RAT</h2>
+                <div class="modal-sub">Desenhe a assinatura diretamente sobre o documento</div>
+            </div>
+            <button class="modal-close" onclick="fecharModalAssinar()">✕</button>
+        </div>
+        <div class="sign-toolbar">
+            <span class="sign-tool-label">Cor:</span>
+            <button class="color-btn active" id="colorBtn0" style="background:#000080;" onclick="setSignColor('#000080',0)" title="Azul escuro"></button>
+            <button class="color-btn" id="colorBtn1" style="background:#000000;" onclick="setSignColor('#000000',1)" title="Preto"></button>
+            <button class="color-btn" id="colorBtn2" style="background:#b91c1c;" onclick="setSignColor('#b91c1c',2)" title="Vermelho"></button>
+            <span class="sign-tool-label" style="margin-left:8px;">Espessura:</span>
+            <button class="size-btn active" id="sizeBtn0" onclick="setSignSize(2,0)">Fina</button>
+            <button class="size-btn" id="sizeBtn1" onclick="setSignSize(3.5,1)">Média</button>
+            <button class="size-btn" id="sizeBtn2" onclick="setSignSize(5,2)">Grossa</button>
+            <button class="btn-load-all" style="margin-left:auto;flex:unset;padding:6px 14px;font-size:12px;" onclick="limparOverlay()">🗑 Limpar</button>
+        </div>
+        <div class="sign-doc-area" id="signDocArea">
+            <div class="sign-doc-inner" id="signDocInner">
+                <canvas id="signBaseCanvas"></canvas>
+                <canvas id="signOverlayCanvas"></canvas>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-close" onclick="fecharModalAssinar()">Cancelar</button>
+            <button class="btn-modal-edit" onclick="confirmarAssinatura()">✅ Confirmar Assinatura</button>
+        </div>
+    </div>
 </div>
 
 <!-- MODAL VISUALIZADOR PDF ASSINADO -->
@@ -722,75 +765,113 @@
     let emailTecnicoSendoEditado = null;
     let sidebarCollapsed = false;
 
-    // ── ASSINATURA DIGITAL ──
-    const sigHasSigned = { canvasTecnico: false, canvasResponsavel: false };
+    // ── ASSINAR DIRETO NO DOCUMENTO ──
+    let overlaySignData = null;   // PNG bytes com os traços (fundo transparente)
+    let _signColor = '#000080';
+    let _signSize  = 2;
+    let _overlayDrawing = false, _olx = 0, _oly = 0;
+    let _signRenderScale = 1.5;   // escala usada ao renderizar o PDF para assinatura
 
-    function iniciarAssinaturaPad(canvasId) {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        canvas.width = canvas.offsetWidth * window.devicePixelRatio || 600;
-        canvas.height = 180;
-        let drawing = false, lastX = 0, lastY = 0;
+    function setSignColor(c, idx) {
+        _signColor = c;
+        document.querySelectorAll('.color-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+    }
+    function setSignSize(s, idx) {
+        _signSize = s;
+        document.querySelectorAll('.size-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+    }
 
-        function placeholder() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#cbd5e1';
-            ctx.font = `${14 * (window.devicePixelRatio || 1)}px Segoe UI`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('✍  Assine aqui', canvas.width / 2, canvas.height / 2);
-        }
-        placeholder();
-        canvas._placeholder = placeholder;
+    async function abrirModalAssinar() {
+        // Gera o PDF com os dados atuais para servir de base
+        const pdfDoc = await aplicarDadosNoPdf();
+        if (!pdfDoc) { alert('Preencha ao menos o número do chamado antes de assinar.'); return; }
+        const pdfBytes = await pdfDoc.save();
 
-        function getPos(e) {
-            const r = canvas.getBoundingClientRect();
-            const sx = canvas.width / r.width, sy = canvas.height / r.height;
-            if (e.touches) return { x: (e.touches[0].clientX - r.left) * sx, y: (e.touches[0].clientY - r.top) * sy };
-            return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
+        const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+        const pg  = await pdf.getPage(1);
+        const vp  = pg.getViewport({ scale: _signRenderScale });
+
+        const base = document.getElementById('signBaseCanvas');
+        base.width = vp.width; base.height = vp.height;
+        await pg.render({ canvasContext: base.getContext('2d'), viewport: vp }).promise;
+
+        const ov = document.getElementById('signOverlayCanvas');
+        ov.width  = vp.width;
+        ov.height = vp.height;
+        const ctx = ov.getContext('2d');
+        ctx.clearRect(0, 0, ov.width, ov.height);
+
+        // Restaura assinatura anterior (se existir) para o usuário ver o que já assinou
+        if (overlaySignData) {
+            const img = new Image();
+            img.onload = () => ctx.drawImage(img, 0, 0);
+            img.src = 'data:image/png;base64,' + btoa(String.fromCharCode(...overlaySignData));
         }
-        function start(e) {
-            if (!sigHasSigned[canvasId]) { ctx.clearRect(0, 0, canvas.width, canvas.height); sigHasSigned[canvasId] = true; canvas.classList.add('signed'); }
-            drawing = true;
-            const p = getPos(e); lastX = p.x; lastY = p.y;
-            e.preventDefault();
+
+        iniciarOverlayDraw(ov);
+        document.getElementById('modalAssinar').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function iniciarOverlayDraw(ov) {
+        const ctx = ov.getContext('2d');
+
+        function pos(e) {
+            const r = ov.getBoundingClientRect();
+            const sx = ov.width / r.width, sy = ov.height / r.height;
+            const src = e.touches ? e.touches[0] : e;
+            return { x: (src.clientX - r.left) * sx, y: (src.clientY - r.top) * sy };
         }
+        function start(e) { _overlayDrawing = true; const p = pos(e); _olx = p.x; _oly = p.y; e.preventDefault(); }
         function draw(e) {
-            if (!drawing) return;
-            const p = getPos(e);
-            ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y);
-            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2.5 * (window.devicePixelRatio || 1);
+            if (!_overlayDrawing) return;
+            const p = pos(e);
+            ctx.beginPath(); ctx.moveTo(_olx, _oly); ctx.lineTo(p.x, p.y);
+            ctx.strokeStyle = _signColor; ctx.lineWidth = _signSize * (ov.width / ov.getBoundingClientRect().width);
             ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
-            lastX = p.x; lastY = p.y;
-            e.preventDefault();
+            _olx = p.x; _oly = p.y; e.preventDefault();
         }
-        function end() { drawing = false; }
+        function end() { _overlayDrawing = false; }
 
-        canvas.addEventListener('mousedown', start);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', end);
-        canvas.addEventListener('mouseleave', end);
-        canvas.addEventListener('touchstart', start, { passive: false });
-        canvas.addEventListener('touchmove', draw, { passive: false });
-        canvas.addEventListener('touchend', end);
+        ov.onmousedown  = start; ov.onmousemove  = draw; ov.onmouseup = end; ov.onmouseleave = end;
+        ov.ontouchstart = start; ov.ontouchmove  = draw; ov.ontouchend = end;
     }
 
-    function limparAssinatura(tipo) {
-        const id = tipo === 'tecnico' ? 'canvasTecnico' : 'canvasResponsavel';
-        const canvas = document.getElementById(id);
-        if (!canvas) return;
-        sigHasSigned[id] = false;
-        canvas.classList.remove('signed');
-        if (canvas._placeholder) canvas._placeholder();
+    function limparOverlay() {
+        const ov = document.getElementById('signOverlayCanvas');
+        ov.getContext('2d').clearRect(0, 0, ov.width, ov.height);
     }
 
-    function getAssinaturaBytes(canvasId) {
-        if (!sigHasSigned[canvasId]) return null;
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return null;
-        const b64 = canvas.toDataURL('image/png').split(',')[1];
-        return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    function fecharModalAssinar() {
+        document.getElementById('modalAssinar').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+    function fecharModalAssinarFora(e) { if (e.target === document.getElementById('modalAssinar')) fecharModalAssinar(); }
+
+    function confirmarAssinatura() {
+        const ov = document.getElementById('signOverlayCanvas');
+        // Verifica se tem algum traço
+        const px = ov.getContext('2d').getImageData(0, 0, ov.width, ov.height).data;
+        const temTraco = Array.from(px).some((v, i) => i % 4 === 3 && v > 0);
+        if (!temTraco) { alert('Nenhuma assinatura detectada. Desenhe antes de confirmar.'); return; }
+
+        const b64 = ov.toDataURL('image/png').split(',')[1];
+        overlaySignData = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+
+        const btn = document.getElementById('btnAssinarRat');
+        btn.classList.add('signed');
+        document.getElementById('labelBtnAssinar').textContent = '✅ RAT Assinada — clique para revisar';
+
+        fecharModalAssinar();
+        // Atualiza a pré-visualização com a assinatura
+        clearTimeout(timeoutRender);
+        timeoutRender = setTimeout(gerarERenderizar, 200);
+    }
+
+    function limparAssinaturaOverlay() {
+        overlaySignData = null;
+        const btn = document.getElementById('btnAssinarRat');
+        if (btn) { btn.classList.remove('signed'); document.getElementById('labelBtnAssinar').textContent = '✍ Assinar na RAT'; }
     }
 
     // ── PDF VIEWER (chamado assinado) ──
@@ -998,8 +1079,7 @@
                 timeoutRender = setTimeout(gerarERenderizar, 500);
             });
 
-            iniciarAssinaturaPad('canvasTecnico');
-            iniciarAssinaturaPad('canvasResponsavel');
+            // pads de assinatura substituídos pelo modal de assinatura no documento
         } catch (e) { console.error("Erro ao inicializar:", e); }
     };
 
@@ -1637,8 +1717,7 @@
          'f_patri_inst','f_sn_inst','f_modelo_inst','f_host_inst','f_mac_inst',
          'f_solucao','f_resp','f_matricula'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         document.getElementById('f_descritivo_defeito').value = 'EQUIPAMENTO INOPERANTE';
-        limparAssinatura('tecnico');
-        limparAssinatura('responsavel');
+        limparAssinaturaOverlay();
         carregarDadosTecnicoLocal();
         const d = new Date();
         document.getElementById('f_data_picker').value = d.toISOString().split('T')[0];
@@ -1817,19 +1896,14 @@
         escreverHora('f_inicio_ate', POS.h_inicio_ate, POS.m_inicio_ate);
         escreverHora('f_termino_ate', POS.h_termino_ate, POS.m_termino_ate);
 
-        // Incorpora assinaturas no PDF
-        try {
-            const sigResp = getAssinaturaBytes('canvasResponsavel');
-            if (sigResp) {
-                const img = await pdfDoc.embedPng(sigResp);
-                page.drawImage(img, { x: 22, y: 192, width: 168, height: 52 });
-            }
-            const sigTec = getAssinaturaBytes('canvasTecnico');
-            if (sigTec) {
-                const img = await pdfDoc.embedPng(sigTec);
-                page.drawImage(img, { x: 322, y: 192, width: 168, height: 52 });
-            }
-        } catch(e) { console.warn('Assinatura não incorporada:', e); }
+        // Incorpora assinatura desenhada diretamente no documento
+        if (overlaySignData) {
+            try {
+                const pngImg = await pdfDoc.embedPng(overlaySignData);
+                const { width: pw, height: ph } = page.getSize();
+                page.drawImage(pngImg, { x: 0, y: 0, width: pw, height: ph });
+            } catch(e) { console.warn('Overlay de assinatura não incorporado:', e); }
+        }
 
         return pdfDoc;
     }
