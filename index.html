@@ -264,6 +264,22 @@
         .btn-col-mv:disabled { opacity: .25; cursor: not-allowed; }
         .col-preview-tag { font-size: 10px; color: #94a3b8; font-weight: normal; margin-left: 4px; }
 
+        /* ── ASSINATURA ── */
+        .sig-wrapper { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 6px; }
+        .sig-box { display: flex; flex-direction: column; gap: 6px; }
+        .sig-box label { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; }
+        .sig-canvas {
+            width: 100%; height: 110px; border: 2px dashed #cbd5e1; border-radius: 8px;
+            background: #f8fafc; cursor: crosshair; touch-action: none; display: block;
+        }
+        .sig-canvas.signed { border-color: var(--primary); border-style: solid; background: white; }
+        .btn-sig-clear { background: #e2e8f0; color: #475569; border: none; border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: bold; cursor: pointer; flex: unset; align-self: flex-start; }
+        .btn-sig-clear:hover { background: #cbd5e1; }
+
+        /* ── PDF VIEWER ── */
+        .pdf-viewer-body { padding: 12px; background: #525659; overflow-y: auto; max-height: 75vh; text-align: center; }
+        .pdf-viewer-body canvas { border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.4); max-width: 100%; }
+
         /* ── MOBILE ── */
         .mobile-btn {
             display: none; position: fixed; top: 12px; left: 12px;
@@ -461,6 +477,20 @@
                             <div class="field"><label>Local</label><input type="text" id="f_local_data_cidade"></div>
                             <div class="field"><label>Data</label><input type="date" id="f_data_picker" onchange="atualizarDataFormatada()"></div>
                             <input type="hidden" id="f_data_completa">
+
+                            <!-- ASSINATURAS -->
+                            <div class="sig-wrapper">
+                                <div class="sig-box">
+                                    <label>✍ Assinatura do Responsável</label>
+                                    <canvas id="canvasResponsavel" class="sig-canvas"></canvas>
+                                    <button type="button" class="btn-sig-clear" onclick="limparAssinatura('responsavel')">Limpar</button>
+                                </div>
+                                <div class="sig-box">
+                                    <label>✍ Assinatura do Técnico</label>
+                                    <canvas id="canvasTecnico" class="sig-canvas"></canvas>
+                                    <button type="button" class="btn-sig-clear" onclick="limparAssinatura('tecnico')">Limpar</button>
+                                </div>
+                            </div>
                         </div>
                         <div class="btn-group">
                             <button class="btn-save" id="btnSalvar" onclick="salvarAtendimento()">💾 Salvar Novo</button>
@@ -517,6 +547,27 @@
         </div>
 
     </main>
+</div>
+
+<!-- MODAL VISUALIZADOR PDF ASSINADO -->
+<div class="modal-overlay" id="modalPdfViewer" onclick="fecharPdfViewerFora(event)">
+    <div class="modal-box" style="max-width:680px;">
+        <div class="modal-header">
+            <div>
+                <h2 id="pdfViewerTitle">RAT —</h2>
+                <div class="modal-sub" id="pdfViewerSub"></div>
+            </div>
+            <button class="modal-close" onclick="fecharPdfViewer()">✕</button>
+        </div>
+        <div class="pdf-viewer-body">
+            <canvas id="canvasPdfViewer"></canvas>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-close" onclick="fecharPdfViewer()">Fechar</button>
+            <button class="btn-pdf" style="flex:unset;padding:10px 20px;font-size:13px;" onclick="baixarPdfSalvo()">📥 Baixar</button>
+            <button class="btn-modal-edit" onclick="editarDoPdfViewer()">✏️ Editar</button>
+        </div>
+    </div>
 </div>
 
 <!-- MODAL CONFIG COLUNAS -->
@@ -671,6 +722,124 @@
     let emailTecnicoSendoEditado = null;
     let sidebarCollapsed = false;
 
+    // ── ASSINATURA DIGITAL ──
+    const sigHasSigned = { canvasTecnico: false, canvasResponsavel: false };
+
+    function iniciarAssinaturaPad(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth * window.devicePixelRatio || 600;
+        canvas.height = 180;
+        let drawing = false, lastX = 0, lastY = 0;
+
+        function placeholder() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = `${14 * (window.devicePixelRatio || 1)}px Segoe UI`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('✍  Assine aqui', canvas.width / 2, canvas.height / 2);
+        }
+        placeholder();
+        canvas._placeholder = placeholder;
+
+        function getPos(e) {
+            const r = canvas.getBoundingClientRect();
+            const sx = canvas.width / r.width, sy = canvas.height / r.height;
+            if (e.touches) return { x: (e.touches[0].clientX - r.left) * sx, y: (e.touches[0].clientY - r.top) * sy };
+            return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
+        }
+        function start(e) {
+            if (!sigHasSigned[canvasId]) { ctx.clearRect(0, 0, canvas.width, canvas.height); sigHasSigned[canvasId] = true; canvas.classList.add('signed'); }
+            drawing = true;
+            const p = getPos(e); lastX = p.x; lastY = p.y;
+            e.preventDefault();
+        }
+        function draw(e) {
+            if (!drawing) return;
+            const p = getPos(e);
+            ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y);
+            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2.5 * (window.devicePixelRatio || 1);
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+            lastX = p.x; lastY = p.y;
+            e.preventDefault();
+        }
+        function end() { drawing = false; }
+
+        canvas.addEventListener('mousedown', start);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', end);
+        canvas.addEventListener('mouseleave', end);
+        canvas.addEventListener('touchstart', start, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', end);
+    }
+
+    function limparAssinatura(tipo) {
+        const id = tipo === 'tecnico' ? 'canvasTecnico' : 'canvasResponsavel';
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        sigHasSigned[id] = false;
+        canvas.classList.remove('signed');
+        if (canvas._placeholder) canvas._placeholder();
+    }
+
+    function getAssinaturaBytes(canvasId) {
+        if (!sigHasSigned[canvasId]) return null;
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return null;
+        const b64 = canvas.toDataURL('image/png').split(',')[1];
+        return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    }
+
+    // ── PDF VIEWER (chamado assinado) ──
+    let pdfViewerCurrentId = null;
+
+    async function abrirPdfViewer(id) {
+        const chamado = todosChamadosCache.find(x => x.id === id);
+        if (!chamado?.pdf_base64) { carregarChamadoDireto(id); return; }
+
+        pdfViewerCurrentId = id;
+        document.getElementById('pdfViewerTitle').textContent = `RAT — ${chamado.chamado}`;
+        document.getElementById('pdfViewerSub').textContent = `${chamado.data_atendimento || ''} · ${nomeTecnico(chamado.tecnico)}`;
+
+        try {
+            const bytes = Uint8Array.from(atob(chamado.pdf_base64), c => c.charCodeAt(0));
+            const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+            const pg = await pdf.getPage(1);
+            const vp = pg.getViewport({ scale: 1.8 });
+            const canvas = document.getElementById('canvasPdfViewer');
+            canvas.height = vp.height; canvas.width = vp.width;
+            await pg.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        } catch (e) { alert('Erro ao renderizar PDF: ' + e.message); return; }
+
+        document.getElementById('modalPdfViewer').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function fecharPdfViewer() {
+        document.getElementById('modalPdfViewer').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+    function fecharPdfViewerFora(e) { if (e.target === document.getElementById('modalPdfViewer')) fecharPdfViewer(); }
+
+    function editarDoPdfViewer() {
+        const id = pdfViewerCurrentId;
+        fecharPdfViewer();
+        if (id) carregarChamadoDireto(id);
+    }
+
+    function baixarPdfSalvo() {
+        const chamado = todosChamadosCache.find(x => x.id === pdfViewerCurrentId);
+        if (!chamado?.pdf_base64) return;
+        const bytes = Uint8Array.from(atob(chamado.pdf_base64), c => c.charCodeAt(0));
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+        link.download = `RAT_${chamado.chamado}.pdf`;
+        link.click();
+    }
+
     // ── DEFINIÇÃO DE TODAS AS COLUNAS DISPONÍVEIS ──
     const COLS_DEF = [
         { id: 'chamado',     label: 'Chamado' },
@@ -724,7 +893,13 @@
     function renderCelula(item, colId) {
         const v = (x) => x || '—';
         switch(colId) {
-            case 'chamado':     return `<td><span onclick="event.stopPropagation();carregarChamadoDireto(${item.id})" style="font-weight:bold;color:var(--primary);cursor:pointer;text-decoration:underline;text-underline-offset:3px;" title="Abrir no editor">${v(item.chamado)}</span></td>`;
+            case 'chamado': {
+                const signed = !!item.pdf_base64;
+                const fn = signed ? `abrirPdfViewer(${item.id})` : `carregarChamadoDireto(${item.id})`;
+                const tip = signed ? 'Ver RAT assinada' : 'Abrir no editor';
+                const badge = signed ? `<span style="font-size:9px;color:var(--success);font-weight:700;margin-left:4px;">✔ assinada</span>` : '';
+                return `<td><span onclick="event.stopPropagation();${fn}" style="font-weight:bold;color:var(--primary);cursor:pointer;text-decoration:underline;text-underline-offset:3px;" title="${tip}">${v(item.chamado)}</span>${badge}</td>`;
+            }
             case 'data':        return `<td>${v(item.data_atendimento)}</td>`;
             case 'tecnico':     return `<td style="font-weight:bold;">${nomeTecnico(item.tecnico)}</td>`;
             case 'uniorg':      return `<td>${v(item.uniorg)}</td>`;
@@ -822,6 +997,9 @@
                 clearTimeout(timeoutRender);
                 timeoutRender = setTimeout(gerarERenderizar, 500);
             });
+
+            iniciarAssinaturaPad('canvasTecnico');
+            iniciarAssinaturaPad('canvasResponsavel');
         } catch (e) { console.error("Erro ao inicializar:", e); }
     };
 
@@ -1459,6 +1637,8 @@
          'f_patri_inst','f_sn_inst','f_modelo_inst','f_host_inst','f_mac_inst',
          'f_solucao','f_resp','f_matricula'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         document.getElementById('f_descritivo_defeito').value = 'EQUIPAMENTO INOPERANTE';
+        limparAssinatura('tecnico');
+        limparAssinatura('responsavel');
         carregarDadosTecnicoLocal();
         const d = new Date();
         document.getElementById('f_data_picker').value = d.toISOString().split('T')[0];
@@ -1636,6 +1816,20 @@
         escreverHora('f_chegada', POS.h_chegada, POS.m_chegada);
         escreverHora('f_inicio_ate', POS.h_inicio_ate, POS.m_inicio_ate);
         escreverHora('f_termino_ate', POS.h_termino_ate, POS.m_termino_ate);
+
+        // Incorpora assinaturas no PDF
+        try {
+            const sigResp = getAssinaturaBytes('canvasResponsavel');
+            if (sigResp) {
+                const img = await pdfDoc.embedPng(sigResp);
+                page.drawImage(img, { x: 22, y: 192, width: 168, height: 52 });
+            }
+            const sigTec = getAssinaturaBytes('canvasTecnico');
+            if (sigTec) {
+                const img = await pdfDoc.embedPng(sigTec);
+                page.drawImage(img, { x: 322, y: 192, width: 168, height: 52 });
+            }
+        } catch(e) { console.warn('Assinatura não incorporada:', e); }
 
         return pdfDoc;
     }
