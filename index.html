@@ -276,23 +276,47 @@
         .btn-assinar-rat:hover { background: #0f172a; }
         .btn-assinar-rat.signed { background: #065f46; border: 2px solid var(--success); }
 
-        .sign-doc-area { position: relative; background: #525659; padding: 12px; overflow: auto; max-height: 70vh; }
-        .sign-doc-inner { position: relative; display: inline-block; }
-        #signBaseCanvas  { display: block; max-width: 100%; }
+        /* Modal tela cheia */
+        #modalAssinar { padding: 0; }
+        #modalAssinar.open { display: flex; align-items: stretch; }
+        .sign-fullscreen { display: flex; flex-direction: column; width: 100%; height: 100vh; background: #1e293b; overflow: hidden; }
+
+        /* Barra superior com todos os controles */
+        .sign-top-bar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 16px; background: #0f172a; color: white;
+            flex-wrap: wrap; flex-shrink: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,.5);
+        }
+        .sign-title { font-weight: 800; font-size: 15px; white-space: nowrap; margin-right: 4px; }
+        .sign-sep { width: 1px; height: 24px; background: rgba(255,255,255,.2); flex-shrink: 0; margin: 0 4px; }
+        .sign-tool-label { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.6); white-space: nowrap; }
+        .color-btn { width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(255,255,255,.2); cursor: pointer; flex: unset; padding: 0; transition: .15s; }
+        .color-btn.active { border-color: white; box-shadow: 0 0 0 2px var(--primary); }
+        .size-btn { background: rgba(255,255,255,.12); color: rgba(255,255,255,.8); border: none; border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: bold; cursor: pointer; flex: unset; transition: .15s; }
+        .size-btn:hover { background: rgba(255,255,255,.2); }
+        .size-btn.active { background: white; color: var(--dark); }
+        .btn-sign-limpar { background: rgba(239,68,68,.25); color: #fca5a5; border: 1px solid rgba(239,68,68,.4); border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: bold; cursor: pointer; flex: unset; }
+        .btn-sign-limpar:hover { background: rgba(239,68,68,.4); }
+        .btn-sign-cancel { background: rgba(255,255,255,.1); color: white; border: 1px solid rgba(255,255,255,.25); border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: bold; cursor: pointer; flex: unset; }
+        .btn-sign-cancel:hover { background: rgba(255,255,255,.2); }
+        .btn-sign-confirm { background: var(--success); color: white; border: none; border-radius: 8px; padding: 7px 18px; font-size: 13px; font-weight: bold; cursor: pointer; flex: unset; }
+        .btn-sign-confirm:hover { background: #047857; }
+
+        /* Área do PDF */
+        .sign-doc-area { flex: 1; overflow: auto; background: #525659; display: flex; justify-content: center; padding: 16px; }
+        .sign-doc-inner { position: relative; display: inline-block; align-self: flex-start; }
+        #signBaseCanvas  { display: block; max-width: 100%; height: auto; border-radius: 4px; }
         #signOverlayCanvas {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%;
-            cursor: crosshair; touch-action: none;
+            cursor: crosshair; touch-action: none; border-radius: 4px;
         }
-        .sign-toolbar {
-            display: flex; align-items: center; gap: 10px; padding: 10px 16px;
-            background: #f8fafc; border-top: 1px solid #e2e8f0; flex-wrap: wrap;
+        @media (max-width: 600px) {
+            .sign-top-bar { gap: 6px; padding: 8px 10px; }
+            .sign-sep { display: none; }
+            .sign-title { font-size: 13px; }
         }
-        .sign-tool-label { font-size: 12px; font-weight: 700; color: #475569; }
-        .color-btn { width: 24px; height: 24px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; flex: unset; padding: 0; }
-        .color-btn.active { border-color: var(--primary); }
-        .size-btn { background: #e2e8f0; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: bold; cursor: pointer; flex: unset; }
-        .size-btn.active { background: var(--dark); color: white; }
 
         /* ── PDF VIEWER ── */
         .pdf-viewer-body { padding: 12px; background: #525659; overflow-y: auto; max-height: 75vh; text-align: center; }
@@ -558,37 +582,45 @@
     </main>
 </div>
 
-<!-- MODAL ASSINAR NO DOCUMENTO -->
-<div class="modal-overlay" id="modalAssinar" onclick="fecharModalAssinarFora(event)">
-    <div class="modal-box" style="max-width:700px;">
-        <div class="modal-header">
-            <div>
-                <h2>✍ Assinar na RAT</h2>
-                <div class="modal-sub">Desenhe a assinatura diretamente sobre o documento</div>
-            </div>
-            <button class="modal-close" onclick="fecharModalAssinar()">✕</button>
-        </div>
-        <div class="sign-toolbar">
+<!-- MODAL ASSINAR NO DOCUMENTO — TELA CHEIA -->
+<div class="modal-overlay" id="modalAssinar">
+    <div class="sign-fullscreen">
+
+        <!-- BARRA SUPERIOR FIXA -->
+        <div class="sign-top-bar">
+            <span class="sign-title">✍ Assinar na RAT</span>
+            <div class="sign-sep"></div>
+
             <span class="sign-tool-label">Cor:</span>
             <button class="color-btn active" id="colorBtn0" style="background:#000080;" onclick="setSignColor('#000080',0)" title="Azul escuro"></button>
             <button class="color-btn" id="colorBtn1" style="background:#000000;" onclick="setSignColor('#000000',1)" title="Preto"></button>
             <button class="color-btn" id="colorBtn2" style="background:#b91c1c;" onclick="setSignColor('#b91c1c',2)" title="Vermelho"></button>
-            <span class="sign-tool-label" style="margin-left:8px;">Espessura:</span>
+
+            <div class="sign-sep"></div>
+
+            <span class="sign-tool-label">Espessura:</span>
             <button class="size-btn active" id="sizeBtn0" onclick="setSignSize(2,0)">Fina</button>
             <button class="size-btn" id="sizeBtn1" onclick="setSignSize(3.5,1)">Média</button>
             <button class="size-btn" id="sizeBtn2" onclick="setSignSize(5,2)">Grossa</button>
-            <button class="btn-load-all" style="margin-left:auto;flex:unset;padding:6px 14px;font-size:12px;" onclick="limparOverlay()">🗑 Limpar</button>
+
+            <div class="sign-sep"></div>
+            <button class="btn-sign-limpar" onclick="limparOverlay()">🗑 Limpar</button>
+
+            <!-- Ações empurradas para a direita -->
+            <div style="margin-left:auto; display:flex; gap:8px; flex-shrink:0;">
+                <button class="btn-sign-cancel" onclick="fecharModalAssinar()">✕ Cancelar</button>
+                <button class="btn-sign-confirm" onclick="confirmarAssinatura()">✅ Confirmar</button>
+            </div>
         </div>
+
+        <!-- ÁREA DO DOCUMENTO -->
         <div class="sign-doc-area" id="signDocArea">
             <div class="sign-doc-inner" id="signDocInner">
                 <canvas id="signBaseCanvas"></canvas>
                 <canvas id="signOverlayCanvas"></canvas>
             </div>
         </div>
-        <div class="modal-footer">
-            <button class="btn-modal-close" onclick="fecharModalAssinar()">Cancelar</button>
-            <button class="btn-modal-edit" onclick="confirmarAssinatura()">✅ Confirmar Assinatura</button>
-        </div>
+
     </div>
 </div>
 
