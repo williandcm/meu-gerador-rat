@@ -1136,6 +1136,7 @@
                     <div style="display:flex;gap:5px;">
                         <button class="btn-edit-table" style="background:#64748b;" onclick="toggleDetalhe(${item.id})">Ver ▾</button>
                         <button class="btn-edit-table" onclick="carregarChamadoDireto(${item.id})">Editar</button>
+                        <button class="btn-danger-table" onclick="excluirChamado(${item.id})">🗑</button>
                     </div>
                 </td>
                 ${visCols.map(c => renderCelula(item, c.id)).join('')}`;
@@ -1258,9 +1259,41 @@
             </div>
             <div style="display:flex;justify-content:flex-end;gap:8px;padding:4px 0 2px;">
                 <button class="btn-load-all" style="flex:unset;padding:8px 16px;font-size:12px;" onclick="toggleDetalhe(${item.id})">Fechar ▲</button>
-                <button class="btn-edit-table" style="padding:8px 16px;font-size:12px;" onclick="carregarChamadoDireto(${item.id})">✏️ Editar Chamado</button>
+                <button class="btn-danger-table" style="padding:8px 16px;font-size:12px;" onclick="excluirChamado(${item.id})">🗑️ Excluir</button>
+                <button class="btn-edit-table" style="padding:8px 16px;font-size:12px;" onclick="carregarChamadoDireto(${item.id})">✏️ Editar</button>
             </div>
         </div>`;
+    }
+
+    async function excluirChamado(id) {
+        const chamado = todosChamadosCache.find(x => x.id === id);
+        if (!chamado) return;
+
+        if (loggedInUser.email.toLowerCase() !== ADMIN_EMAIL &&
+            chamado.tecnico && chamado.tecnico.toLowerCase() !== loggedInUser.email.toLowerCase()) {
+            alert("Acesso Negado: você não pode excluir chamados de outro técnico.");
+            return;
+        }
+
+        const confirma = confirm(`Excluir definitivamente o chamado ${chamado.chamado}?\n\nEsta ação não pode ser desfeita.`);
+        if (!confirma) return;
+
+        try {
+            const { error } = await supabaseClient.from('chamados').delete().eq('id', id);
+            if (error) throw error;
+
+            // remove do cache local e atualiza a tabela sem nova chamada ao banco
+            todosChamadosCache = todosChamadosCache.filter(x => x.id !== id);
+            atualizarInterfaceTabela(todosChamadosCache);
+            atualizarStats(todosChamadosCache);
+            document.getElementById('statusTabela').textContent = `${todosChamadosCache.length} chamados encontrados.`;
+            document.getElementById('containerTabela').style.display = todosChamadosCache.length ? 'block' : 'none';
+
+            // se o chamado excluído estava aberto no editor, limpa o formulário
+            if (idRegistroAtual === id) limparFormulario();
+        } catch (e) {
+            alert("Erro ao excluir: " + e.message);
+        }
     }
 
     let idModalAtual = null;
