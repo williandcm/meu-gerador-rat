@@ -245,6 +245,25 @@
         .equip-col-header.ret { background: #475569; }
         .equip-col-header.inst { background: var(--primary); }
 
+        /* ── CONFIG COLUNAS ── */
+        .col-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 12px; border-radius: 8px; border: 1px solid #e2e8f0;
+            margin-bottom: 6px; background: #f8fafc; transition: .15s;
+            user-select: none;
+        }
+        .col-item:hover { background: #eff6ff; border-color: #bfdbfe; }
+        .col-item label { display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--dark); }
+        .col-item label input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
+        .btn-col-mv {
+            background: #e2e8f0; border: none; border-radius: 5px;
+            width: 26px; height: 26px; cursor: pointer; font-size: 11px;
+            display: flex; align-items: center; justify-content: center; flex: unset; padding: 0;
+        }
+        .btn-col-mv:hover:not(:disabled) { background: #94a3b8; color: white; }
+        .btn-col-mv:disabled { opacity: .25; cursor: not-allowed; }
+        .col-preview-tag { font-size: 10px; color: #94a3b8; font-weight: normal; margin-left: 4px; }
+
         /* ── MOBILE ── */
         .mobile-btn {
             display: none; position: fixed; top: 12px; left: 12px;
@@ -363,15 +382,11 @@
                         <input type="text" id="busca_inc" class="search-input" placeholder="Chamado, Uniorg, Cidade, Responsável..." oninput="filtrarListaLocal()">
                         <button class="btn-search" onclick="buscarChamado()" id="btnBuscar">Buscar</button>
                         <button class="btn-load-all" onclick="carregarTodosChamados()" id="btnCarregarTodos">🔄 Atualizar</button>
+                        <button class="btn-load-all" onclick="abrirConfigColunas()" style="background:#7c3aed;" title="Configurar colunas visíveis">⚙️ Colunas</button>
                     </div>
                     <div class="table-container" id="containerTabela" style="display:none;">
                         <table>
-                            <thead>
-                                <tr>
-                                    <th>Ação</th><th>Chamado</th><th>Data</th><th>Técnico</th><th>Uniorg</th>
-                                    <th>Endereço / Cidade</th><th>Responsável</th><th>Troca (S/N)</th>
-                                </tr>
-                            </thead>
+                            <thead><tr id="tHeaderRow"></tr></thead>
                             <tbody id="corpoTabelaChamados"></tbody>
                         </table>
                     </div>
@@ -502,6 +517,26 @@
         </div>
 
     </main>
+</div>
+
+<!-- MODAL CONFIG COLUNAS -->
+<div class="modal-overlay" id="modalColunas" onclick="fecharConfigColsFora(event)">
+    <div class="modal-box" style="max-width:480px;">
+        <div class="modal-header">
+            <div>
+                <h2>⚙️ Configurar Colunas</h2>
+                <div class="modal-sub">Marque para exibir · Use ▲▼ para reordenar</div>
+            </div>
+            <button class="modal-close" onclick="fecharConfigColunas()">✕</button>
+        </div>
+        <div style="padding:16px 20px; max-height:65vh; overflow-y:auto;">
+            <div id="listaColunas"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-close" onclick="restaurarPadraoColunas()">↩ Restaurar Padrão</button>
+            <button class="btn-modal-edit" onclick="salvarConfiguracaoColunas()">💾 Salvar</button>
+        </div>
+    </div>
 </div>
 
 <!-- MODAL DETALHES DO CHAMADO -->
@@ -635,6 +670,140 @@
     let perfisTecnicosCache = [];
     let emailTecnicoSendoEditado = null;
     let sidebarCollapsed = false;
+
+    // ── DEFINIÇÃO DE TODAS AS COLUNAS DISPONÍVEIS ──
+    const COLS_DEF = [
+        { id: 'chamado',     label: 'Chamado' },
+        { id: 'data',        label: 'Data' },
+        { id: 'tecnico',     label: 'Técnico' },
+        { id: 'uniorg',      label: 'Uniorg' },
+        { id: 'endereco',    label: 'Endereço / Cidade' },
+        { id: 'cidade',      label: 'Cidade' },
+        { id: 'bairro',      label: 'Bairro' },
+        { id: 'uf',          label: 'UF' },
+        { id: 'responsavel', label: 'Responsável' },
+        { id: 'matricula',   label: 'Matrícula' },
+        { id: 'partida',     label: 'Hora Partida' },
+        { id: 'chegada',     label: 'Hora Chegada' },
+        { id: 'inicio_ate',  label: 'Início Atend.' },
+        { id: 'termino_ate', label: 'Término Atend.' },
+        { id: 'patri_ret',   label: 'SGPI Retirado' },
+        { id: 'sn_ret',      label: 'SN Retirado' },
+        { id: 'modelo_ret',  label: 'Modelo Retirado' },
+        { id: 'host_ret',    label: 'Hostname Ret.' },
+        { id: 'mac_ret',     label: 'MAC Retirado' },
+        { id: 'troca',       label: 'Troca (S/N)' },
+        { id: 'patri_inst',  label: 'SGPI Instalado' },
+        { id: 'sn_inst',     label: 'SN Instalado' },
+        { id: 'modelo_inst', label: 'Modelo Instalado' },
+        { id: 'host_inst',   label: 'Hostname Inst.' },
+        { id: 'mac_inst',    label: 'MAC Instalado' },
+        { id: 'solucao',     label: 'Solução' },
+        { id: 'defeito',     label: 'Defeito / Descritivo' },
+    ];
+    const COLS_PADRAO = ['chamado', 'data', 'tecnico', 'uniorg', 'endereco', 'responsavel', 'troca'];
+
+    function carregarColunasConfig() {
+        try {
+            const saved = localStorage.getItem('rat_colunas_v1');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // garante que novas colunas adicionadas no futuro apareçam
+                const ids = parsed.map(c => c.id);
+                COLS_DEF.forEach(c => { if (!ids.includes(c.id)) parsed.push({ id: c.id, visible: false }); });
+                return parsed;
+            }
+        } catch(e) {}
+        return COLS_DEF.map(c => ({ id: c.id, visible: COLS_PADRAO.includes(c.id) }));
+    }
+
+    let colunasConfig = carregarColunasConfig();
+
+    function getColLabel(id) { return COLS_DEF.find(c => c.id === id)?.label || id; }
+
+    function renderCelula(item, colId) {
+        const v = (x) => x || '—';
+        switch(colId) {
+            case 'chamado':     return `<td style="font-weight:bold;color:var(--primary);">${v(item.chamado)}</td>`;
+            case 'data':        return `<td>${v(item.data_atendimento)}</td>`;
+            case 'tecnico':     return `<td style="font-weight:bold;">${nomeTecnico(item.tecnico)}</td>`;
+            case 'uniorg':      return `<td>${v(item.uniorg)}</td>`;
+            case 'endereco':    return `<td>${v(item.endereco)} / ${v(item.cidade)}</td>`;
+            case 'cidade':      return `<td>${v(item.cidade)}</td>`;
+            case 'bairro':      return `<td>${v(item.bairro)}</td>`;
+            case 'uf':          return `<td>${v(item.uf)}</td>`;
+            case 'responsavel': return `<td>${v(item.responsavel)}</td>`;
+            case 'matricula':   return `<td>${v(item.matricula)}</td>`;
+            case 'partida':     return `<td>${v(item.hora_partida)}</td>`;
+            case 'chegada':     return `<td>${v(item.hora_chegada)}</td>`;
+            case 'inicio_ate':  return `<td>${v(item.hora_inicio_ate)}</td>`;
+            case 'termino_ate': return `<td>${v(item.hora_termino_ate)}</td>`;
+            case 'patri_ret':   return `<td>${v(item.patri_ret)}</td>`;
+            case 'sn_ret':      return `<td>${v(item.sn_ret)}</td>`;
+            case 'modelo_ret':  return `<td>${v(item.modelo_ret)}</td>`;
+            case 'host_ret':    return `<td>${v(item.host_ret)}</td>`;
+            case 'mac_ret':     return `<td>${v(item.mac_ret)}</td>`;
+            case 'troca':       return `<td>${item.sn_inst ? 'SN: ' + item.sn_inst : '<span style="color:#94a3b8;">Sem Troca</span>'}</td>`;
+            case 'patri_inst':  return `<td>${v(item.patri_inst)}</td>`;
+            case 'sn_inst':     return `<td>${v(item.sn_inst)}</td>`;
+            case 'modelo_inst': return `<td>${v(item.modelo_inst)}</td>`;
+            case 'host_inst':   return `<td>${v(item.host_inst)}</td>`;
+            case 'mac_inst':    return `<td>${v(item.mac_inst)}</td>`;
+            case 'solucao':     return `<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v(item.solucao)}</td>`;
+            case 'defeito':     return `<td>${v(item.descritivo_defeito_causa)}</td>`;
+            default:            return `<td>—</td>`;
+        }
+    }
+
+    // ── MODAL CONFIG COLUNAS ──
+    function abrirConfigColunas() {
+        renderListaColunas();
+        document.getElementById('modalColunas').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+    function fecharConfigColunas() {
+        document.getElementById('modalColunas').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+    function fecharConfigColsFora(e) {
+        if (e.target === document.getElementById('modalColunas')) fecharConfigColunas();
+    }
+
+    function renderListaColunas() {
+        const lista = document.getElementById('listaColunas');
+        const n = colunasConfig.length;
+        lista.innerHTML = colunasConfig.map((col, i) => `
+            <div class="col-item">
+                <label>
+                    <input type="checkbox" ${col.visible ? 'checked' : ''} onchange="toggleColVis(${i})">
+                    ${getColLabel(col.id)}
+                </label>
+                <div style="display:flex;gap:4px;">
+                    <button class="btn-col-mv" onclick="moverColuna(${i},-1)" ${i === 0 ? 'disabled' : ''}>▲</button>
+                    <button class="btn-col-mv" onclick="moverColuna(${i}, 1)" ${i === n-1 ? 'disabled' : ''}>▼</button>
+                </div>
+            </div>`).join('');
+    }
+
+    function toggleColVis(i) { colunasConfig[i].visible = !colunasConfig[i].visible; }
+
+    function moverColuna(i, dir) {
+        const j = i + dir;
+        if (j < 0 || j >= colunasConfig.length) return;
+        [colunasConfig[i], colunasConfig[j]] = [colunasConfig[j], colunasConfig[i]];
+        renderListaColunas();
+    }
+
+    function salvarConfiguracaoColunas() {
+        localStorage.setItem('rat_colunas_v1', JSON.stringify(colunasConfig));
+        atualizarInterfaceTabela(todosChamadosCache);
+        fecharConfigColunas();
+    }
+
+    function restaurarPadraoColunas() {
+        colunasConfig = COLS_DEF.map(c => ({ id: c.id, visible: COLS_PADRAO.includes(c.id) }));
+        renderListaColunas();
+    }
 
     window.onload = async () => {
         try {
@@ -942,11 +1111,23 @@
     }
 
     function atualizarInterfaceTabela(lista) {
+        const visCols = colunasConfig.filter(c => c.visible);
+        const totalCols = visCols.length + 1; // +1 coluna de ações
+
+        // cabeçalho dinâmico
+        const header = document.getElementById('tHeaderRow');
+        if (header) {
+            header.innerHTML = '<th>Ação</th>' + visCols.map(c => `<th>${getColLabel(c.id)}</th>`).join('');
+        }
+
         const tbody = document.getElementById('corpoTabelaChamados');
         tbody.innerHTML = '';
-        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;">Nenhum chamado encontrado.</td></tr>'; return; }
+        if (!lista.length) {
+            tbody.innerHTML = `<tr><td colspan="${totalCols}" style="text-align:center;color:#94a3b8;">Nenhum chamado encontrado.</td></tr>`;
+            return;
+        }
+
         lista.forEach(item => {
-            // linha principal
             const trMain = document.createElement('tr');
             trMain.className = 'row-main';
             trMain.dataset.id = item.id;
@@ -957,22 +1138,15 @@
                         <button class="btn-edit-table" onclick="carregarChamadoDireto(${item.id})">Editar</button>
                     </div>
                 </td>
-                <td style="font-weight:bold;color:var(--primary);">${item.chamado || '---'}</td>
-                <td>${item.data_atendimento || '---'}</td>
-                <td style="font-weight:bold;">${nomeTecnico(item.tecnico)}</td>
-                <td>${item.uniorg || '---'}</td>
-                <td>${item.endereco || '---'} / ${item.cidade || '---'}</td>
-                <td>${item.responsavel || '---'}</td>
-                <td>${item.sn_inst ? 'SN: ' + item.sn_inst : '<span style="color:#94a3b8;">Sem Troca</span>'}</td>`;
+                ${visCols.map(c => renderCelula(item, c.id)).join('')}`;
             trMain.addEventListener('click', (e) => { if (!e.target.closest('button')) toggleDetalhe(item.id); });
             tbody.appendChild(trMain);
 
-            // linha de detalhes (oculta por padrão)
             const trDetail = document.createElement('tr');
             trDetail.className = 'row-detail';
             trDetail.id = `detail-${item.id}`;
             const td = document.createElement('td');
-            td.colSpan = 8;
+            td.colSpan = totalCols;
             td.innerHTML = buildDetailHTML(item);
             trDetail.appendChild(td);
             tbody.appendChild(trDetail);
