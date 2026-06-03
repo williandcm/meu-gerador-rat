@@ -245,6 +245,15 @@
         .equip-col-header.ret { background: #475569; }
         .equip-col-header.inst { background: var(--primary); }
 
+        /* ── PERMISSÕES ── */
+        .perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; background: #f1f5f9; padding: 10px 12px; border-radius: 8px; margin-top: 5px; border: 1px solid #e2e8f0; }
+        .perm-item { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--dark); cursor: pointer; padding: 5px 7px; border-radius: 6px; user-select: none; }
+        .perm-item:hover { background: #e2e8f0; }
+        .perm-item input[type=checkbox] { accent-color: var(--primary); width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
+        .perm-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+        .perm-on  { background: #dcfce7; color: #166534; }
+        .perm-off { background: #f1f5f9; color: #94a3b8; }
+
         /* ── CONFIG COLUNAS ── */
         .col-item {
             display: flex; align-items: center; gap: 10px;
@@ -556,6 +565,16 @@
                                 <div class="field" id="admin_password_field"><label>Senha (Mín. 6 char)</label><input type="text" id="admin_new_senha" class="lc" placeholder="Senha provisória"></div>
                                 <div class="field"><label>Nome Completo (RAT)</label><input type="text" id="admin_new_nome" placeholder="NOME DO TÉCNICO"></div>
                                 <div class="field"><label>CPF do Técnico</label><input type="text" id="admin_new_cpf" class="lc" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)"></div>
+                                <div class="field full-width">
+                                    <label>🔐 Permissões de Acesso</label>
+                                    <div class="perm-grid">
+                                        <label class="perm-item"><input type="checkbox" id="perm_criar" checked><span>🔧 Criar Chamados</span></label>
+                                        <label class="perm-item"><input type="checkbox" id="perm_editar" checked><span>✏️ Editar Chamados</span></label>
+                                        <label class="perm-item"><input type="checkbox" id="perm_excluir"><span>🗑️ Excluir Chamados</span></label>
+                                        <label class="perm-item"><input type="checkbox" id="perm_assinar" checked><span>✍ Assinar RAT</span></label>
+                                        <label class="perm-item"><input type="checkbox" id="perm_pdf" checked><span>📥 Baixar PDF</span></label>
+                                    </div>
+                                </div>
                             </div>
                             <div style="display:flex; gap:10px; margin-top:12px;">
                                 <button id="btnCriarUsuario" style="background:var(--primary); color:white; padding:10px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; flex:1;" onclick="cadastrarNovoUsuario()">Cadastrar Técnico</button>
@@ -567,7 +586,7 @@
                             <div class="table-container" style="margin-top:8px; max-height:280px;">
                                 <table>
                                     <thead>
-                                        <tr><th>Ações</th><th>E-mail</th><th>Nome</th><th>CPF</th><th>Status</th></tr>
+                                        <tr><th>Ações</th><th>E-mail</th><th>Nome</th><th>CPF</th><th>Status</th><th>Permissões</th></tr>
                                     </thead>
                                     <tbody id="tabelaTecnicosAdmin"></tbody>
                                 </table>
@@ -816,7 +835,7 @@
     }
 
     async function abrirModalAssinar() {
-        // Gera o PDF com os dados atuais para servir de base
+        if (!temPermissao('assinar_rat')) { alert('Sem permissão para assinar a RAT.'); return; }
         const pdfDoc = await aplicarDadosNoPdf();
         if (!pdfDoc) { alert('Preencha ao menos o número do chamado antes de assinar.'); return; }
         const pdfBytes = await pdfDoc.save();
@@ -1203,6 +1222,7 @@
 
         carregarDadosTecnicoLocal();
         document.getElementById('login_senha').value = '';
+        aplicarPermissoesUI();
         ir('chamados');
         carregarTodosChamados();
     }
@@ -1280,6 +1300,73 @@
         timeoutRender = setTimeout(gerarERenderizar, 500);
     }
 
+    // ── SISTEMA DE PERMISSÕES ──
+    const PERMS_PADRAO = { criar_chamado: true, editar_chamado: true, excluir_chamado: false, assinar_rat: true, baixar_pdf: true };
+
+    function temPermissao(perm) {
+        if (!loggedInUser) return false;
+        if (loggedInUser.email.toLowerCase() === ADMIN_EMAIL) return true;
+        const p = perfisTecnicosCache.find(t => t.email.toLowerCase() === loggedInUser.email.toLowerCase());
+        if (!p) return false;
+        const perms = p.permissoes || PERMS_PADRAO;
+        return perms[perm] !== false; // padrão true se não definido
+    }
+
+    function lerPermissoesForm() {
+        return {
+            criar_chamado:  document.getElementById('perm_criar')?.checked ?? true,
+            editar_chamado: document.getElementById('perm_editar')?.checked ?? true,
+            excluir_chamado:document.getElementById('perm_excluir')?.checked ?? false,
+            assinar_rat:    document.getElementById('perm_assinar')?.checked ?? true,
+            baixar_pdf:     document.getElementById('perm_pdf')?.checked ?? true,
+        };
+    }
+
+    function setPermissoesForm(perms) {
+        const p = perms || PERMS_PADRAO;
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val !== false; };
+        set('perm_criar',   p.criar_chamado);
+        set('perm_editar',  p.editar_chamado);
+        set('perm_excluir', p.excluir_chamado);
+        set('perm_assinar', p.assinar_rat);
+        set('perm_pdf',     p.baixar_pdf);
+    }
+
+    function resetPermissoesForm() { setPermissoesForm(PERMS_PADRAO); }
+
+    function aplicarPermissoesUI() {
+        if (!loggedInUser || loggedInUser.email.toLowerCase() === ADMIN_EMAIL) return;
+
+        const pode = (p) => temPermissao(p);
+
+        // Botão Salvar Novo
+        const btnSalvar = document.getElementById('btnSalvar');
+        if (btnSalvar && !pode('criar_chamado') && !pode('editar_chamado')) btnSalvar.style.display = 'none';
+
+        // Botão Baixar PDF
+        document.querySelectorAll('.btn-pdf').forEach(b => { if (!pode('baixar_pdf')) b.style.display = 'none'; });
+
+        // Botão Assinar
+        const btnAssinar = document.getElementById('btnAssinarRat');
+        if (btnAssinar) btnAssinar.style.display = pode('assinar_rat') ? '' : 'none';
+
+        // Botão Novo Atendimento
+        const btnNovo = document.querySelector('.btn-novo');
+        if (btnNovo) btnNovo.style.display = pode('criar_chamado') ? '' : 'none';
+    }
+
+    function permBadges(perms) {
+        const p = perms || PERMS_PADRAO;
+        const b = (label, ok) => `<span class="perm-badge ${ok ? 'perm-on' : 'perm-off'}">${ok ? '✔' : '✗'} ${label}</span>`;
+        return `<div style="display:flex;flex-wrap:wrap;gap:3px;">
+            ${b('Criar', p.criar_chamado !== false)}
+            ${b('Editar', p.editar_chamado !== false)}
+            ${b('Excluir', p.excluir_chamado === true)}
+            ${b('Assinar', p.assinar_rat !== false)}
+            ${b('PDF', p.baixar_pdf !== false)}
+        </div>`;
+    }
+
     // ── ADMIN ──
     async function carregarPerfisTecnicos() {
         try {
@@ -1316,7 +1403,8 @@
                     ${tec.email.toLowerCase() !== ADMIN_EMAIL ? btnStatus : ''}
                 </div></td>
                 <td style="font-weight:bold;color:var(--dark);">${tec.email}</td>
-                <td>${tec.nome}</td><td>${tec.cpf}</td><td>${badge}</td>`;
+                <td>${tec.nome}</td><td>${tec.cpf}</td><td>${badge}</td>
+                <td>${tec.email.toLowerCase() === ADMIN_EMAIL ? '<span style="font-size:11px;color:#94a3b8;">Acesso total</span>' : permBadges(tec.permissoes)}</td>`;
             tbody.appendChild(tr);
         });
     }
@@ -1341,6 +1429,7 @@
         document.getElementById('admin_new_email').disabled = true;
         document.getElementById('admin_new_nome').value = tec.nome;
         document.getElementById('admin_new_cpf').value = tec.cpf;
+        setPermissoesForm(tec.permissoes);
         document.getElementById('admin_password_field').style.display = 'none';
         const btn = document.getElementById('btnCriarUsuario');
         btn.textContent = "💾 Guardar Alterações"; btn.style.background = "var(--warning)";
@@ -1353,6 +1442,7 @@
         ['admin_new_email','admin_new_senha','admin_new_nome','admin_new_cpf'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('admin_new_email').disabled = false;
         document.getElementById('admin_password_field').style.display = 'block';
+        resetPermissoesForm();
         const btn = document.getElementById('btnCriarUsuario');
         btn.textContent = "Cadastrar Técnico"; btn.style.background = "var(--primary)";
         document.getElementById('btnCancelarEdicao').style.display = 'none';
@@ -1379,7 +1469,7 @@
             btn.disabled = true; btn.textContent = "Atualizando...";
             try {
                 const i = perfisTecnicosCache.findIndex(t => t.email.toLowerCase() === emailTecnicoSendoEditado.toLowerCase());
-                if (i !== -1) { perfisTecnicosCache[i].nome = nome; perfisTecnicosCache[i].cpf = cpf; }
+                if (i !== -1) { perfisTecnicosCache[i].nome = nome; perfisTecnicosCache[i].cpf = cpf; perfisTecnicosCache[i].permissoes = lerPermissoesForm(); }
                 await salvarPerfisTecnicosNoBanco();
                 mostrarMsgAdmin(`✅ Técnico ${nome} atualizado com sucesso!`, 'ok');
                 cancelarEdicaoTecnico();
@@ -1398,7 +1488,7 @@
         try {
             const { error } = await authRegistrationClient.auth.signUp({ email, password: senha, options: { data: { full_name: nome, cpf } } });
             if (error) throw error;
-            perfisTecnicosCache.push({ email, nome, cpf, ativo: true });
+            perfisTecnicosCache.push({ email, nome, cpf, ativo: true, permissoes: lerPermissoesForm() });
             await salvarPerfisTecnicosNoBanco();
             mostrarMsgAdmin(`✅ Técnico ${nome} criado com sucesso!`, 'ok');
             ['admin_new_email','admin_new_senha','admin_new_nome','admin_new_cpf'].forEach(id => document.getElementById(id).value = '');
@@ -1470,8 +1560,8 @@
                 <td onclick="event.stopPropagation()">
                     <div style="display:flex;gap:5px;">
                         <button class="btn-edit-table" style="background:#64748b;" onclick="toggleDetalhe(${item.id})">Ver ▾</button>
-                        <button class="btn-edit-table" onclick="carregarChamadoDireto(${item.id})">Editar</button>
-                        <button class="btn-danger-table" onclick="excluirChamado(${item.id})">🗑</button>
+                        ${temPermissao('editar_chamado') ? `<button class="btn-edit-table" onclick="carregarChamadoDireto(${item.id})">Editar</button>` : ''}
+                        ${temPermissao('excluir_chamado') ? `<button class="btn-danger-table" onclick="excluirChamado(${item.id})">🗑</button>` : ''}
                     </div>
                 </td>
                 ${visCols.map(c => renderCelula(item, c.id)).join('')}`;
@@ -1601,6 +1691,7 @@
     }
 
     async function excluirChamado(id) {
+        if (!temPermissao('excluir_chamado')) { alert('Sem permissão para excluir chamados.'); return; }
         const chamado = todosChamadosCache.find(x => x.id === id);
         if (!chamado) return;
 
@@ -1998,6 +2089,7 @@
     }
 
     async function baixarPdf() {
+        if (!temPermissao('baixar_pdf')) { alert('Sem permissão para baixar o PDF.'); return; }
         const pdfDoc = await aplicarDadosNoPdf();
         if (!pdfDoc) return;
         const bytes = await pdfDoc.save();
@@ -2010,6 +2102,9 @@
     async function salvarAtendimento() {
         const inc = document.getElementById('f_inc').value.toUpperCase();
         if (!inc) { alert("Preencha o número do chamado antes de salvar."); return; }
+        const isNovo = idRegistroAtual === null;
+        if (isNovo && !temPermissao('criar_chamado')) { alert('Sem permissão para criar chamados.'); return; }
+        if (!isNovo && !temPermissao('editar_chamado')) { alert('Sem permissão para editar chamados.'); return; }
         if (!await checarStatusAtivo()) return;
 
         const btn = document.getElementById('btnSalvar');
