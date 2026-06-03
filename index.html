@@ -724,7 +724,7 @@
     function renderCelula(item, colId) {
         const v = (x) => x || '—';
         switch(colId) {
-            case 'chamado':     return `<td style="font-weight:bold;color:var(--primary);">${v(item.chamado)}</td>`;
+            case 'chamado':     return `<td><span onclick="event.stopPropagation();carregarChamadoDireto(${item.id})" style="font-weight:bold;color:var(--primary);cursor:pointer;text-decoration:underline;text-underline-offset:3px;" title="Abrir no editor">${v(item.chamado)}</span></td>`;
             case 'data':        return `<td>${v(item.data_atendimento)}</td>`;
             case 'tecnico':     return `<td style="font-weight:bold;">${nomeTecnico(item.tecnico)}</td>`;
             case 'uniorg':      return `<td>${v(item.uniorg)}</td>`;
