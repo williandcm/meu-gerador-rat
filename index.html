@@ -604,6 +604,8 @@
             <button class="size-btn" id="sizeBtn2" onclick="setSignSize(5,2)">Grossa</button>
 
             <div class="sign-sep"></div>
+            <button id="btnModoInput" class="size-btn active" onclick="toggleSignMode()" title="Modo S Pen ativo — toque da mão ignorado. Clique para mudar para Dedo." style="min-width:80px;">✏️ S Pen</button>
+            <div class="sign-sep"></div>
             <button class="btn-sign-limpar" onclick="limparOverlay()">🗑 Limpar</button>
 
             <!-- Ações empurradas para a direita -->
@@ -845,28 +847,71 @@
         document.body.style.overflow = 'hidden';
     }
 
+    // 'pen' = só S Pen/stylus (rejeita palma e dedo) | 'any' = aceita tudo
+    let _signInputMode = 'pen';
+
+    function toggleSignMode() {
+        _signInputMode = _signInputMode === 'pen' ? 'any' : 'pen';
+        const btn = document.getElementById('btnModoInput');
+        if (_signInputMode === 'pen') {
+            btn.textContent = '✏️ S Pen';
+            btn.classList.add('active');
+            btn.title = 'Modo S Pen ativo — toque da mão ignorado. Clique para mudar para Dedo.';
+        } else {
+            btn.textContent = '✋ Dedo';
+            btn.classList.remove('active');
+            btn.title = 'Modo Dedo ativo — aceita qualquer toque. Clique para mudar para S Pen.';
+        }
+    }
+
     function iniciarOverlayDraw(ov) {
         const ctx = ov.getContext('2d');
 
+        function aceita(e) {
+            if (_signInputMode === 'pen') return e.pointerType === 'pen' || e.pointerType === 'mouse';
+            return true; // modo dedo: aceita tudo
+        }
+
         function pos(e) {
             const r = ov.getBoundingClientRect();
-            const sx = ov.width / r.width, sy = ov.height / r.height;
-            const src = e.touches ? e.touches[0] : e;
-            return { x: (src.clientX - r.left) * sx, y: (src.clientY - r.top) * sy };
+            return {
+                x: (e.clientX - r.left) * (ov.width  / r.width),
+                y: (e.clientY - r.top)  * (ov.height / r.height)
+            };
         }
-        function start(e) { _overlayDrawing = true; const p = pos(e); _olx = p.x; _oly = p.y; e.preventDefault(); }
-        function draw(e) {
-            if (!_overlayDrawing) return;
-            const p = pos(e);
-            ctx.beginPath(); ctx.moveTo(_olx, _oly); ctx.lineTo(p.x, p.y);
-            ctx.strokeStyle = _signColor; ctx.lineWidth = _signSize * (ov.width / ov.getBoundingClientRect().width);
-            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
-            _olx = p.x; _oly = p.y; e.preventDefault();
-        }
-        function end() { _overlayDrawing = false; }
 
-        ov.onmousedown  = start; ov.onmousemove  = draw; ov.onmouseup = end; ov.onmouseleave = end;
-        ov.ontouchstart = start; ov.ontouchmove  = draw; ov.ontouchend = end;
+        function start(e) {
+            if (!aceita(e)) return;
+            _overlayDrawing = true;
+            ov.setPointerCapture(e.pointerId); // mantém o traço mesmo se sair da borda
+            const p = pos(e); _olx = p.x; _oly = p.y;
+            e.preventDefault();
+        }
+
+        function draw(e) {
+            if (!_overlayDrawing || !aceita(e)) return;
+            const p = pos(e);
+            // espessura proporcional à pressão da caneta (S Pen suporta pressão)
+            const pressao = (e.pressure > 0) ? e.pressure : 0.5;
+            ctx.beginPath(); ctx.moveTo(_olx, _oly); ctx.lineTo(p.x, p.y);
+            ctx.strokeStyle = _signColor;
+            ctx.lineWidth = _signSize * pressao * 2 * (ov.width / ov.getBoundingClientRect().width);
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+            _olx = p.x; _oly = p.y;
+            e.preventDefault();
+        }
+
+        function end(e) { if (aceita(e)) _overlayDrawing = false; }
+
+        // Usa Pointer Events (unifica mouse, caneta e toque com pointerType)
+        ov.onpointerdown   = start;
+        ov.onpointermove   = draw;
+        ov.onpointerup     = end;
+        ov.onpointercancel = end;
+        ov.onpointerleave  = end;
+
+        // Bloqueia scroll/zoom por toque na área de assinatura
+        ov.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
     }
 
     function limparOverlay() {
