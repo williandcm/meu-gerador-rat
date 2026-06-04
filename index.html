@@ -574,32 +574,27 @@
 
                 <!-- Stats -->
                 <div class="stats-row" id="statsEstoque">
-                    <div class="stat-card"><div class="stat-value" id="stTotal">—</div><div class="stat-label">Total</div></div>
-                    <div class="stat-card green"><div class="stat-value" id="stDisp">—</div><div class="stat-label">Disponíveis</div></div>
-                    <div class="stat-card" style="border-left-color:var(--primary)"><div class="stat-value" id="stUso">—</div><div class="stat-label">Em Uso</div></div>
-                    <div class="stat-card orange"><div class="stat-value" id="stMan">—</div><div class="stat-label">Manutenção</div></div>
-                    <div class="stat-card" style="border-left-color:var(--danger)"><div class="stat-value" id="stDef">—</div><div class="stat-label">Defeituosos</div></div>
+                    <div class="stat-card"><div class="stat-value" id="stTotal">—</div><div class="stat-label">Total de Equipamentos</div></div>
+                    <div class="stat-card green"><div class="stat-value" id="stUFs">—</div><div class="stat-label">UFs Diferentes</div></div>
+                    <div class="stat-card" style="border-left-color:var(--primary)"><div class="stat-value" id="stOps">—</div><div class="stat-label">Operações</div></div>
+                    <div class="stat-card orange"><div class="stat-value" id="stTecs">—</div><div class="stat-label">Técnicos</div></div>
                 </div>
 
                 <!-- Filtros -->
                 <div class="card search-box">
                     <h2 style="border:none;margin-bottom:10px;color:#0284c7;">🔍 Filtrar Equipamentos</h2>
                     <div class="estoque-filter-row">
-                        <input type="text" id="filtroEstoqueTexto" placeholder="Patrimônio, Serial, Modelo, Hostname..." oninput="filtrarEstoqueLocal()">
-                        <select id="filtroEstoqueTipo" onchange="filtrarEstoqueLocal()" style="text-transform:none;">
-                            <option value="">Todos os tipos</option>
-                        </select>
-                        <select id="filtroEstoqueStatus" onchange="filtrarEstoqueLocal()" style="text-transform:none;">
-                            <option value="">Todos os status</option>
-                        </select>
+                        <input type="text" id="filtroEstoqueTexto" placeholder="Patrimônio, Série Fab, Descrição, OSE, Técnico..." oninput="filtrarEstoqueLocal()">
+                        <select id="filtroEstoqueUF" onchange="filtrarEstoqueLocal()" style="text-transform:none;"><option value="">Todas as UFs</option></select>
+                        <select id="filtroEstoqueEstado" onchange="filtrarEstoqueLocal()" style="text-transform:none;"><option value="">Todos os estados</option></select>
                         <button class="btn-load-all" onclick="carregarEstoque()" id="btnAtualizarEstoque">🔄 Atualizar</button>
                     </div>
                     <div class="table-container" id="containerEstoque" style="display:none; margin-top:12px;">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Ações</th><th>Tipo</th><th>Patrimônio</th><th>Serial (SN)</th>
-                                    <th>Modelo / Marca</th><th>Hostname</th><th>Status</th><th>Localização</th>
+                                    <th>Ações</th><th>Patrimônio</th><th>Série Fab</th><th>Descrição</th>
+                                    <th>OSE</th><th>Estado</th><th>UF</th><th>Operação</th><th>Nome Técnico</th>
                                 </tr>
                             </thead>
                             <tbody id="corpoTabelaEstoque"></tbody>
@@ -616,18 +611,16 @@
                     <p style="font-size:13px;color:#475569;margin-bottom:8px;">Execute o SQL abaixo no <strong>SQL Editor</strong> do seu painel Supabase para criar a tabela:</p>
                     <div class="sql-box">create table estoque (
   id bigserial primary key,
-  tipo text,
-  patrimonio text,
-  serial_number text,
-  modelo text,
-  marca text,
-  hostname text,
-  mac_address text,
-  status text default 'Disponível',
-  localizacao text,
-  observacoes text,
-  data_entrada date default current_date,
-  created_at timestamptz default now()
+  serie_fab       text,
+  descricao       text,
+  descricao_field text,
+  estado          text,
+  nome_tecnico    text,
+  operacao        text,
+  ose             text,
+  patrimonio      text,
+  uf              text,
+  created_at      timestamptz default now()
 );</div>
                     <p style="font-size:12px;color:#94a3b8;margin-top:8px;">Após criar a tabela, clique em 🔄 Atualizar.</p>
                 </div>
@@ -741,29 +734,15 @@
         </div>
         <div class="modal-body">
             <div class="form-grid">
-                <div class="field">
-                    <label>Tipo de Equipamento</label>
-                    <select id="eq_tipo" class="field-select lc"></select>
-                </div>
-                <div class="field">
-                    <label>Status</label>
-                    <select id="eq_status" class="field-select lc"></select>
-                </div>
-                <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="eq_patrimonio"></div>
-                <div class="field"><label>Número de Série (SN)</label><input type="text" id="eq_serial"></div>
-                <div class="field"><label>Modelo</label><input type="text" id="eq_modelo"></div>
-                <div class="field"><label>Marca / Fabricante</label><input type="text" id="eq_marca"></div>
-                <div class="field"><label>Hostname</label><input type="text" id="eq_hostname"></div>
-                <div class="field"><label>MAC Address</label><input type="text" id="eq_mac"></div>
-                <div class="field full-width">
-                    <label>Localização</label>
-                    <input type="text" id="eq_localizacao" placeholder="Ex: Depósito SP, Com Técnico Willian, Uniorg 0011897...">
-                </div>
-                <div class="field"><label>Data de Entrada</label><input type="date" id="eq_data_entrada"></div>
-                <div class="field full-width">
-                    <label>Observações</label>
-                    <textarea id="eq_observacoes" class="field" style="height:65px;padding:10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;background:#f8fafc;width:100%;resize:vertical;outline:none;font-family:inherit;" placeholder="Condição, histórico, notas..."></textarea>
-                </div>
+                <div class="field full-width"><label>Descrição</label><input type="text" id="eq_descricao"></div>
+                <div class="field full-width"><label>Descrição Field</label><input type="text" id="eq_descricao_field"></div>
+                <div class="field"><label>Patrimônio</label><input type="text" id="eq_patrimonio"></div>
+                <div class="field"><label>Série Fab</label><input type="text" id="eq_serie_fab"></div>
+                <div class="field"><label>OSE</label><input type="text" id="eq_ose"></div>
+                <div class="field"><label>Estado</label><input type="text" id="eq_estado" placeholder="Ex: Bom, Regular, Defeituoso..."></div>
+                <div class="field"><label>Operação</label><input type="text" id="eq_operacao"></div>
+                <div class="field"><label>Nome Técnico</label><input type="text" id="eq_nome_tecnico"></div>
+                <div class="field"><label>UF</label><input type="text" id="eq_uf" maxlength="2" style="text-transform:uppercase;"></div>
             </div>
         </div>
         <div class="modal-footer">
