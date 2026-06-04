@@ -2290,8 +2290,6 @@
 
 <!-- ── MÓDULO ESTOQUE ── -->
 <script>
-try {
-
 let estoqueCache   = [];
 let estoqueIdAtual = null;
 
@@ -2511,9 +2509,7 @@ function verDetalheEquip(id) {
     alert(`📦 Equipamento\n${'─'.repeat(40)}\n${linhas.map(([l,val]) => `${l}: ${val}`).join('\n')}`);
 }
 
-} catch(e) {
-    console.error('[estoque] erro ao inicializar módulo:', e);
-}
+
 </script>
 </body>
 </html>
