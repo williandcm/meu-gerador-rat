@@ -1307,7 +1307,7 @@
         fecharMobile();
         if (pagina === 'admin') carregarPerfisTecnicos();
         if (pagina === 'estoque') {
-            try { preencherSelectsEquip(); carregarEstoque(); }
+            try { carregarEstoque(); }
             catch(e) {
                 const st = document.getElementById('statusEstoque');
                 if (st) st.textContent = '⚠️ Módulo estoque indisponível: ' + e.message;
@@ -2288,18 +2288,11 @@
     }
 </script>
 
-<!-- Módulo estoque carregado por último — falha aqui não para o sistema principal -->
-<script>
-(function() {
-    var s = document.createElement('script');
-    s.src = 'estoque.js';
-    s.onerror = function() {
-        console.warn('[estoque] estoque.js não pôde ser carregado.');
-        var el = document.getElementById('statusEstoque');
-        if (el) el.textContent = '⚠️ Módulo estoque indisponível (arquivo não encontrado).';
-    };
-    document.body.appendChild(s);
-})();
-</script>
+<!-- Módulo estoque — arquivo separado, falha aqui não para o sistema principal -->
+<script src="estoque.js" onerror="
+    console.warn('[estoque] estoque.js não carregado.');
+    var el = document.getElementById('statusEstoque');
+    if (el) el.textContent = '⚠️ Módulo estoque indisponível (arquivo não encontrado).';
+"></script>
 </body>
 </html>
