@@ -591,7 +591,7 @@
                             <thead>
                                 <tr>
                                     <th>Ações</th><th>Descrição</th><th>Patrimônio</th>
-                                    <th>Número de Série</th><th>Modelo</th><th>MAC</th>
+                                    <th>Número de Série</th><th>Modelo</th><th>MAC</th><th>Qtd</th>
                                 </tr>
                             </thead>
                             <tbody id="corpoTabelaEstoque"></tbody>
@@ -606,7 +606,9 @@
                 <div id="avisoEstoqueSQL" style="display:none;" class="card" style="border-left:4px solid var(--warning);">
                     <h2 style="color:var(--warning);border-color:var(--warning);">⚠️ Tabela de estoque não encontrada</h2>
                     <p style="font-size:13px;color:#475569;margin-bottom:8px;">Execute o SQL abaixo no <strong>SQL Editor</strong> do seu painel Supabase para criar a tabela:</p>
-                    <div class="sql-box">-- Criar tabela (primeira vez):
+                    <div class="sql-box">-- Recriar tabela (apaga dados anteriores):
+drop table if exists estoque;
+
 create table estoque (
   id           bigserial primary key,
   descricao    text,
@@ -614,12 +616,9 @@ create table estoque (
   numero_serie text,
   modelo       text,
   mac          text,
+  quantidade   integer default 1,
   created_at   timestamptz default now()
-);
-
--- Se a tabela já existir com campos antigos, recrie:
--- drop table estoque;
--- (depois execute o create table acima)</div>
+);</div>
                     <p style="font-size:12px;color:#94a3b8;margin-top:8px;">Após criar a tabela, clique em 🔄 Atualizar.</p>
                 </div>
             </div>
@@ -737,6 +736,7 @@ create table estoque (
                 <div class="field"><label>Número de Série</label><input type="text" id="eq_numero_serie"></div>
                 <div class="field"><label>Modelo</label><input type="text" id="eq_modelo"></div>
                 <div class="field"><label>MAC</label><input type="text" id="eq_mac"></div>
+                <div class="field"><label>Quantidade</label><input type="number" id="eq_quantidade" min="1" value="1" style="text-transform:none;font-weight:normal;"></div>
             </div>
         </div>
         <div class="modal-footer">
@@ -2356,7 +2356,8 @@ function atualizarTabelaEstoque(lista) {
             <td style="font-weight:bold;">${_v(eq.patrimonio)}</td>
             <td>${_v(eq.numero_serie)}</td>
             <td>${_v(eq.modelo)}</td>
-            <td>${_v(eq.mac)}</td>`;
+            <td>${_v(eq.mac)}</td>
+            <td style="text-align:center;font-weight:bold;">${eq.quantidade ?? 1}</td>`;
         tr.addEventListener('click', () => verDetalheEquip(eq.id));
         tbody.appendChild(tr);
     });
@@ -2385,6 +2386,8 @@ function abrirModalEquip(id = null) {
     if (titulo) titulo.textContent = id ? 'Editar Equipamento' : 'Novo Equipamento';
     ['eq_descricao','eq_patrimonio','eq_numero_serie','eq_modelo','eq_mac']
         .forEach(elId => { const el = document.getElementById(elId); if (el) el.value = ''; });
+    const qtdEl = document.getElementById('eq_quantidade');
+    if (qtdEl) qtdEl.value = '1';
     if (id) {
         const eq = estoqueCache.find(x => x.id === id);
         if (!eq) return;
@@ -2394,6 +2397,7 @@ function abrirModalEquip(id = null) {
         set('eq_numero_serie', eq.numero_serie);
         set('eq_modelo',       eq.modelo);
         set('eq_mac',          eq.mac);
+        if (qtdEl) qtdEl.value = eq.quantidade ?? 1;
     }
     const modal = document.getElementById('modalEquip');
     if (modal) { modal.classList.add('open'); document.body.style.overflow = 'hidden'; }
@@ -2417,6 +2421,7 @@ async function salvarEquipamento() {
         numero_serie: gUP('eq_numero_serie'),
         modelo:       gUP('eq_modelo'),
         mac:          gUP('eq_mac'),
+        quantidade:   parseInt(document.getElementById('eq_quantidade')?.value || '1', 10) || 1,
     };
     try {
         let error;
@@ -2462,6 +2467,7 @@ function verDetalheEquip(id) {
         ['Número de Série', eq.numero_serie],
         ['Modelo',          eq.modelo],
         ['MAC',             eq.mac],
+        ['Quantidade',      String(eq.quantidade ?? 1)],
     ].filter(([, val]) => val && String(val).trim());
     alert(`📦 Equipamento\n${'─'.repeat(40)}\n${linhas.map(([l, val]) => `${l}: ${val}`).join('\n')}`);
 }
