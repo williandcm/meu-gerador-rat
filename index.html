@@ -2139,17 +2139,40 @@ create table estoque (
         const pdfDoc = await PDFLib.PDFDocument.load(modeloPdfBytes);
         const page = pdfDoc.getPages()[0];
         const cor = PDFLib.rgb(0, 0, 0);
+        const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
 
         const escrever = (id, cfg) => {
             const el = document.getElementById(id);
             if (!el) return;
             const t = el.value;
-            if (t && t !== '---' && t !== '') page.drawText(String(t).toUpperCase(), { x: cfg.x, y: cfg.y, size: cfg.s || 11, color: cor });
+            if (t && t !== '---' && t !== '') page.drawText(String(t).toUpperCase(), { x: cfg.x, y: cfg.y, size: cfg.s || 11, color: cor, font });
         };
         const escreverHora = (id, pH, pM) => {
             const v = document.getElementById(id).value.replace(":", "");
-            if (v.length >= 2) page.drawText(v.slice(0, 2), { x: pH.x, y: pH.y, size: 11, color: cor });
-            if (v.length === 4) page.drawText(v.slice(2, 4), { x: pM.x, y: pM.y, size: 11, color: cor });
+            if (v.length >= 2) page.drawText(v.slice(0, 2), { x: pH.x, y: pH.y, size: 11, color: cor, font });
+            if (v.length === 4) page.drawText(v.slice(2, 4), { x: pM.x, y: pM.y, size: 11, color: cor, font });
+        };
+        const escreverMultiLinha = (id, cfg, larguraMax, espacoLinha) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const texto = String(el.value || '').trim().toUpperCase();
+            if (!texto || texto === '---') return;
+            const palavras = texto.split(' ');
+            const linhas = [];
+            let linhaAtual = '';
+            for (const palavra of palavras) {
+                const teste = linhaAtual ? linhaAtual + ' ' + palavra : palavra;
+                if (font.widthOfTextAtSize(teste, cfg.s || 11) > larguraMax && linhaAtual) {
+                    linhas.push(linhaAtual);
+                    linhaAtual = palavra;
+                } else {
+                    linhaAtual = teste;
+                }
+            }
+            if (linhaAtual) linhas.push(linhaAtual);
+            linhas.forEach((linha, i) => {
+                page.drawText(linha, { x: cfg.x, y: cfg.y - (i * espacoLinha), size: cfg.s || 11, color: cor, font });
+            });
         };
 
         escrever('f_inc', POS.inc); escrever('f_uniorg', POS.uniorg); escrever('f_rua', POS.rua);
@@ -2159,7 +2182,7 @@ create table estoque (
         escrever('f_sn_ret', POS.sn); escrever('f_mac_ret', POS.mac);
         escrever('f_patri_inst', POS.patri_inst); escrever('f_sn_inst', POS.sn_inst);
         escrever('f_modelo_inst', POS.modelo_inst); escrever('f_host_inst', POS.host_inst); escrever('f_mac_inst', POS.mac_inst);
-        escrever('f_solucao', POS.solucao); escrever('f_resp', POS.resp); escrever('f_matricula', POS.matri);
+        escreverMultiLinha('f_solucao', POS.solucao, 510, 13); escrever('f_resp', POS.resp); escrever('f_matricula', POS.matri);
 
         const tecNome = document.getElementById('f_tecnico_nome').value || dados.tecnico;
         const tecCpf = document.getElementById('f_tecnico_cpf').value || dados.cpf;
