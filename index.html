@@ -576,7 +576,7 @@
                                     <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_ret"></div>
                                     <div class="field"><label>Modelo</label><input type="text" id="f_modelo_ret"></div>
                                     <div class="field"><label>Hostname</label><input type="text" id="f_host_ret"></div>
-                                    <div class="field"><label>MAC</label><input type="text" id="f_mac_ret" oninput="sincronizarMac()"></div>
+                                    <div class="field"><label>MAC</label><input type="text" id="f_mac_ret" maxlength="17" placeholder="00:00:00:00:00:00" oninput="mascaraMAC(this);sincronizarMac()"></div>
                                 </div>
                                 <div>
                                     <div style="font-weight:bold; font-size:14px; color:var(--dark); text-transform:uppercase; margin-bottom:12px; text-align:center; min-height:55px; display:flex; flex-direction:column; justify-content:flex-end;">
@@ -586,7 +586,7 @@
                                     <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_inst"></div>
                                     <div class="field"><label>Modelo</label><input type="text" id="f_modelo_inst"></div>
                                     <div class="field"><label>Hostname</label><input type="text" id="f_host_inst"></div>
-                                    <div class="field"><label>MAC</label><input type="text" id="f_mac_inst"></div>
+                                    <div class="field"><label>MAC</label><input type="text" id="f_mac_inst" maxlength="17" placeholder="00:00:00:00:00:00" oninput="mascaraMAC(this)"></div>
                                 </div>
                             </div>
                             <div class="field full-width"><label>Solução</label><textarea id="f_solucao" oninput="sincronizarMac()"></textarea></div>
@@ -2027,6 +2027,7 @@ create table estoque (
         idModalAtual = id;
 
         const val = (v) => v && v.trim() ? v.trim() : null;
+        const macValido = (v) => (v && /^[0:]+$/.test(v.trim())) ? '' : v;
         const set = (elId, v) => {
             const el = document.getElementById(elId);
             if (!el) return;
@@ -2058,12 +2059,12 @@ create table estoque (
         set('md_sn_ret', c.sn_ret);
         set('md_modelo_ret', c.modelo_ret);
         set('md_host_ret', c.host_ret);
-        set('md_mac_ret', c.mac_ret);
+        set('md_mac_ret',  macValido(c.mac_ret));
         set('md_patri_inst', c.patri_inst);
         set('md_sn_inst', c.sn_inst);
         set('md_modelo_inst', c.modelo_inst);
         set('md_host_inst', c.host_inst);
-        set('md_mac_inst', c.mac_inst);
+        set('md_mac_inst', macValido(c.mac_inst));
         set('md_defeito', c.descritivo_defeito_causa);
         set('md_solucao', c.solucao);
         set('md_resp', c.responsavel);
@@ -2217,8 +2218,11 @@ create table estoque (
     }
 
     function sincronizarMac() {
-        if (document.getElementById('f_solucao').value.toUpperCase().includes("PIN PAD"))
-            document.getElementById('f_mac_inst').value = document.getElementById('f_mac_ret').value;
+        if (document.getElementById('f_solucao').value.toUpperCase().includes("PIN PAD")) {
+            const inst = document.getElementById('f_mac_inst');
+            inst.value = document.getElementById('f_mac_ret').value;
+            mascaraMAC(inst);
+        }
     }
 
     function mascaraHora(input) {
