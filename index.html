@@ -2633,7 +2633,7 @@ function atualizarTabelaEstoque(lista) {
             <td style="font-weight:bold;">${_v(eq.patrimonio)}</td>
             <td>${_v(eq.numero_serie)}</td>
             <td>${_v(eq.modelo)}</td>
-            <td>${_v(eq.mac)}</td>
+            <td>${eq.mac && !/^[0:]+$/.test(eq.mac.trim()) ? eq.mac.trim().toUpperCase() : ''}</td>
             <td style="text-align:center;font-weight:bold;">${eq.quantidade ?? 1}</td>`;
         tr.addEventListener('click', () => verDetalheEquip(eq.id));
         tbody.appendChild(tr);
@@ -2854,7 +2854,7 @@ async function salvarEquipamento() {
         numero_serie: gUP('eq_numero_serie'),
         ean:          gUP('eq_ean'),
         modelo:       gUP('eq_modelo'),
-        mac:          gUP('eq_mac'),
+        mac:          (m => /^[0:]+$/.test(m) ? '' : m)(gUP('eq_mac')),
         quantidade:   parseInt(document.getElementById('eq_quantidade')?.value || '1', 10) || 1,
     };
     try {
