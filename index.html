@@ -159,6 +159,30 @@
         .btn-success-table { background: var(--success); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; border: none; }
         .btn-success-table:hover { background: #047857; }
 
+        /* ── LEITOR DE CÓDIGO DE BARRAS ── */
+        .input-scan-wrap { display: flex; gap: 4px; }
+        .input-scan-wrap input { flex: 1; min-width: 0; }
+        .scan-btn { background: #0ea5e9; color: white; border: none; border-radius: 6px; padding: 0 10px; cursor: pointer; font-size: 17px; flex-shrink: 0; transition: .15s; }
+        .scan-btn:hover { background: #0284c7; }
+        .scanner-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 2000; align-items: center; justify-content: center; }
+        .scanner-overlay.open { display: flex; }
+        .scanner-box { background: #1e293b; border-radius: 14px; width: 100%; max-width: 420px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+        .scanner-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #334155; }
+        .scanner-header span { color: white; font-weight: bold; font-size: 14px; }
+        .scanner-header small { color: #60a5fa; font-size: 12px; font-weight: normal; display: block; }
+        .scanner-header button { background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+        .scanner-header button:hover { background: #334155; color: white; }
+        .scanner-video-wrap { position: relative; background: #000; line-height: 0; }
+        #scannerVideo { width: 100%; max-height: 55vh; object-fit: cover; display: block; }
+        .scanner-mira { position: absolute; inset: 0; pointer-events: none; }
+        .scanner-mira::before { content: ''; position: absolute; top: 25%; left: 15%; right: 15%; bottom: 25%; border: 2px solid rgba(255,255,255,.5); border-radius: 4px; }
+        .scanner-linha { position: absolute; left: 15%; right: 15%; height: 2px; background: #ef4444; box-shadow: 0 0 8px #ef4444, 0 0 16px rgba(239,68,68,.4); animation: scan-sweep 1.8s ease-in-out infinite; top: 25%; }
+        @keyframes scan-sweep { 0%,100% { top: 28%; } 50% { top: 68%; } }
+        .scanner-status { padding: 12px 16px; color: #94a3b8; font-size: 13px; text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+        .scanner-footer { padding: 0 16px 16px; }
+        .scanner-cancel { width: 100%; padding: 11px; background: #334155; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: .15s; }
+        .scanner-cancel:hover { background: #475569; }
+
         /* ── KEBAB MENU ── */
         .kebab-wrap { position: relative; display: inline-block; }
         .kebab-btn { background: none; border: 1px solid #e2e8f0; cursor: pointer; font-size: 16px; color: #64748b; padding: 2px 9px; border-radius: 6px; line-height: 1.4; transition: .15s; font-weight: bold; }
@@ -749,6 +773,29 @@ create table estoque (
     </div>
 </div>
 
+<!-- MODAL SCANNER DE CÓDIGO DE BARRAS -->
+<div class="scanner-overlay" id="modalScanner">
+    <div class="scanner-box">
+        <div class="scanner-header">
+            <div>
+                <span>📷 Leitura de Código de Barras</span>
+                <small id="scannerCampoLabel">Campo: —</small>
+            </div>
+            <button onclick="fecharScanner()">✕</button>
+        </div>
+        <div class="scanner-video-wrap">
+            <video id="scannerVideo" autoplay playsinline muted></video>
+            <div class="scanner-mira">
+                <div class="scanner-linha"></div>
+            </div>
+        </div>
+        <div class="scanner-status" id="scannerStatus">Aponte a câmera para o código de barras</div>
+        <div class="scanner-footer">
+            <button class="scanner-cancel" onclick="fecharScanner()">Cancelar</button>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL EQUIPAMENTO (ESTOQUE) -->
 <div class="modal-overlay" id="modalEquip" onclick="fecharModalEquipFora(event)">
     <div class="modal-box" style="max-width:640px;">
@@ -759,8 +806,20 @@ create table estoque (
         <div class="modal-body">
             <div class="form-grid">
                 <div class="field full-width"><label>Descrição</label><input type="text" id="eq_descricao"></div>
-                <div class="field"><label>Patrimônio</label><input type="text" id="eq_patrimonio"></div>
-                <div class="field"><label>Número de Série</label><input type="text" id="eq_numero_serie"></div>
+                <div class="field">
+                    <label>Patrimônio</label>
+                    <div class="input-scan-wrap">
+                        <input type="text" id="eq_patrimonio">
+                        <button class="scan-btn" type="button" onclick="abrirScanner('eq_patrimonio','Patrimônio')" title="Ler código de barras">📷</button>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Número de Série</label>
+                    <div class="input-scan-wrap">
+                        <input type="text" id="eq_numero_serie">
+                        <button class="scan-btn" type="button" onclick="abrirScanner('eq_numero_serie','Número de Série')" title="Ler código de barras">📷</button>
+                    </div>
+                </div>
                 <div class="field"><label>Modelo</label><input type="text" id="eq_modelo"></div>
                 <div class="field"><label>MAC</label><input type="text" id="eq_mac"></div>
                 <div class="field"><label>Quantidade</label><input type="number" id="eq_quantidade" min="1" value="1" style="text-transform:none;font-weight:normal;"></div>
@@ -2606,6 +2665,78 @@ function fecharModalEquip() {
 function fecharModalEquipFora(e) {
     if (e.target === document.getElementById('modalEquip')) fecharModalEquip();
 }
+
+// ── SCANNER DE CÓDIGO DE BARRAS ──────────────────────────────────────────────
+
+let scannerStream      = null;
+let scannerAnimFrame   = null;
+let scannerCampoAlvo   = null;
+
+async function abrirScanner(campoId, campoLabel) {
+    scannerCampoAlvo = campoId;
+
+    if (!('BarcodeDetector' in window)) {
+        alert('Seu navegador não suporta leitura de código de barras.\n\nUse o Chrome (versão recente) no Android ou Desktop.');
+        return;
+    }
+
+    document.getElementById('scannerCampoLabel').textContent = 'Campo: ' + campoLabel;
+    document.getElementById('scannerStatus').textContent = 'Iniciando câmera…';
+    document.getElementById('modalScanner').classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    try {
+        scannerStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        const video = document.getElementById('scannerVideo');
+        video.srcObject = scannerStream;
+        await video.play();
+
+        document.getElementById('scannerStatus').textContent = 'Aponte a câmera para o código de barras';
+
+        const formatos = ['code_128','code_39','ean_13','ean_8','itf','upc_a','upc_e',
+                          'pdf417','codabar','data_matrix','qr_code','aztec'];
+        const formatosSuportados = await BarcodeDetector.getSupportedFormats().catch(() => formatos);
+        const detector = new BarcodeDetector({
+            formats: formatos.filter(f => formatosSuportados.includes(f))
+        });
+
+        async function varrer() {
+            if (!scannerStream) return;
+            try {
+                const video = document.getElementById('scannerVideo');
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    const codigos = await detector.detect(video);
+                    if (codigos.length > 0) {
+                        const valor = codigos[0].rawValue;
+                        document.getElementById(scannerCampoAlvo).value = valor.toUpperCase();
+                        document.getElementById('scannerStatus').textContent = '✅ Lido: ' + valor;
+                        setTimeout(fecharScanner, 400);
+                        return;
+                    }
+                }
+            } catch (_) {}
+            scannerAnimFrame = requestAnimationFrame(varrer);
+        }
+
+        scannerAnimFrame = requestAnimationFrame(varrer);
+
+    } catch (e) {
+        document.getElementById('scannerStatus').textContent = '⚠️ Câmera indisponível: ' + e.message;
+    }
+}
+
+function fecharScanner() {
+    if (scannerAnimFrame) { cancelAnimationFrame(scannerAnimFrame); scannerAnimFrame = null; }
+    if (scannerStream)    { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
+    const video = document.getElementById('scannerVideo');
+    if (video) video.srcObject = null;
+    document.getElementById('modalScanner').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function toggleKebab(event, menuId) {
     event.stopPropagation();
