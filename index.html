@@ -827,6 +827,13 @@ create table estoque (
                         <button class="scan-btn" type="button" onclick="abrirScanner('eq_numero_serie','Número de Série')" title="Ler código de barras"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 3l-4 4-4-4"/><line x1="12" y1="12" x2="12" y2="16"/></svg></button>
                     </div>
                 </div>
+                <div class="field full-width">
+                    <label>EAN</label>
+                    <div class="input-scan-wrap">
+                        <input type="text" id="eq_ean">
+                        <button class="scan-btn" type="button" onclick="abrirScanner('eq_ean','EAN')" title="Ler código de barras"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 3l-4 4-4-4"/><line x1="12" y1="12" x2="12" y2="16"/></svg></button>
+                    </div>
+                </div>
                 <div class="field"><label>Modelo</label><input type="text" id="eq_modelo"></div>
                 <div class="field"><label>MAC</label><input type="text" id="eq_mac" placeholder="00:00:00:00:00:00" maxlength="17" oninput="mascaraMAC(this)"></div>
                 <div class="field"><label>Quantidade</label><input type="number" id="eq_quantidade" min="1" value="1" style="text-transform:none;font-weight:normal;"></div>
@@ -2654,7 +2661,7 @@ function abrirModalEquip(id = null) {
     estoqueIdAtual = id;
     const titulo = document.getElementById('modalEquipTitulo');
     if (titulo) titulo.textContent = id ? 'Editar Equipamento' : 'Novo Equipamento';
-    ['eq_descricao','eq_patrimonio','eq_numero_serie','eq_modelo','eq_mac']
+    ['eq_descricao','eq_patrimonio','eq_numero_serie','eq_ean','eq_modelo','eq_mac']
         .forEach(elId => { const el = document.getElementById(elId); if (el) el.value = ''; });
     const qtdEl = document.getElementById('eq_quantidade');
     if (qtdEl) qtdEl.value = '1';
@@ -2665,6 +2672,7 @@ function abrirModalEquip(id = null) {
         set('eq_descricao',    eq.descricao);
         set('eq_patrimonio',   eq.patrimonio);
         set('eq_numero_serie', eq.numero_serie);
+        set('eq_ean',          eq.ean);
         set('eq_modelo',       eq.modelo);
         set('eq_mac',          eq.mac);
         if (qtdEl) qtdEl.value = eq.quantidade ?? 1;
@@ -2844,6 +2852,7 @@ async function salvarEquipamento() {
         descricao:    gUP('eq_descricao'),
         patrimonio:   gUP('eq_patrimonio'),
         numero_serie: gUP('eq_numero_serie'),
+        ean:          gUP('eq_ean'),
         modelo:       gUP('eq_modelo'),
         mac:          gUP('eq_mac'),
         quantidade:   parseInt(document.getElementById('eq_quantidade')?.value || '1', 10) || 1,
