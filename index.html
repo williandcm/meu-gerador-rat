@@ -2725,19 +2725,25 @@ async function abrirScanner(campoId, campoLabel) {
 
         document.getElementById('scannerStatus').textContent = 'Aponte a câmera para o código de barras';
 
-        const formatos = ['code_128','code_39','ean_13','ean_8','itf','upc_a','upc_e',
+        const formatos = ['code_128','code_39','code_93','ean_13','ean_8','itf','upc_a','upc_e',
                           'pdf417','codabar','data_matrix','qr_code','aztec'];
         const formatosSuportados = await BarcodeDetector.getSupportedFormats().catch(() => formatos);
         const detector = new BarcodeDetector({
             formats: formatos.filter(f => formatosSuportados.includes(f))
         });
 
+        const snapCanvas = document.createElement('canvas');
+        const snapCtx    = snapCanvas.getContext('2d', { willReadFrequently: true });
+
         async function varrer() {
             if (!scannerStream) return;
             try {
                 const video = document.getElementById('scannerVideo');
-                if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    const codigos = await detector.detect(video);
+                if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+                    snapCanvas.width  = video.videoWidth;
+                    snapCanvas.height = video.videoHeight;
+                    snapCtx.drawImage(video, 0, 0);
+                    const codigos = await detector.detect(snapCanvas);
                     if (codigos.length > 0) {
                         codigos
                             .map(c => c.rawValue.trim())
