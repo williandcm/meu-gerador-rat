@@ -639,7 +639,10 @@
                 <div class="card search-box">
                     <h2 style="border:none;margin-bottom:10px;color:#0284c7;">🔍 Filtrar Equipamentos</h2>
                     <div class="estoque-filter-row">
-                        <input type="text" id="filtroEstoqueTexto" placeholder="Descrição, Patrimônio, Série, Modelo, MAC..." oninput="filtrarEstoqueLocal()">
+                        <div class="input-scan-wrap" style="flex:1;">
+                            <input type="text" id="filtroEstoqueTexto" placeholder="Descrição, Patrimônio, Série, Modelo, MAC, EAN..." oninput="filtrarEstoqueLocal()">
+                            <button class="scan-btn" type="button" onclick="abrirScannerFiltro()" title="Pesquisar por código de barras"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 3l-4 4-4-4"/><line x1="12" y1="12" x2="12" y2="16"/></svg></button>
+                        </div>
                         <select id="filtroEstoqueModelo" onchange="filtrarEstoqueLocal()" style="text-transform:none;"><option value="">Todos os modelos</option></select>
                         <button class="btn-load-all" onclick="carregarEstoque()" id="btnAtualizarEstoque">🔄 Atualizar</button>
                     </div>
@@ -2648,7 +2651,7 @@ function filtrarEstoqueLocal() {
     const modelo = document.getElementById('filtroEstoqueModelo')?.value || '';
     const filtrado = estoqueCache.filter(eq =>
         (!modelo || eq.modelo === modelo) &&
-        (!texto  || [eq.descricao, eq.patrimonio, eq.numero_serie, eq.modelo, eq.mac]
+        (!texto  || [eq.descricao, eq.patrimonio, eq.numero_serie, eq.ean, eq.modelo, eq.mac]
             .some(c => c && c.toUpperCase().includes(texto)))
     );
     atualizarTabelaEstoque(filtrado);
@@ -2701,9 +2704,11 @@ let scannerVarrerFn    = null;
 let scannerCodigos     = [];
 let scannerColetados   = new Set();
 let scannerTimerColeta = null;
+let scannerCallback    = null;
 
-async function abrirScanner(campoId, campoLabel) {
+async function abrirScanner(campoId, campoLabel, callback = null) {
     scannerCampoAlvo = campoId;
+    scannerCallback  = callback;
 
     if (!('BarcodeDetector' in window)) {
         alert('Seu navegador não suporta leitura de código de barras.\n\nUse o Chrome (versão recente) no Android ou Desktop.');
@@ -2787,6 +2792,7 @@ function fecharScanner() {
     scannerVarrerFn  = null;
     scannerCodigos   = [];
     scannerColetados.clear();
+    scannerCallback  = null;
 }
 
 function finalizarColeta() {
@@ -2801,7 +2807,8 @@ function finalizarColeta() {
     if (lista.length === 1) {
         document.getElementById(scannerCampoAlvo).value = lista[0].toUpperCase();
         document.getElementById('scannerStatus').textContent = '✅ Código lido: ' + lista[0];
-        setTimeout(fecharScanner, 500);
+        const cb = scannerCallback;
+        setTimeout(() => { fecharScanner(); if (cb) cb(lista[0].toUpperCase()); }, 500);
     } else {
         mostrarSelecaoScanner(lista);
     }
@@ -2823,7 +2830,8 @@ function selecionarCodigoScanner(idx) {
     document.getElementById(scannerCampoAlvo).value = valor.toUpperCase();
     document.getElementById('scannerStatus').textContent = '✅ Selecionado: ' + valor;
     document.getElementById('scannerSelecao').innerHTML = '';
-    setTimeout(fecharScanner, 500);
+    const cb = scannerCallback;
+    setTimeout(() => { fecharScanner(); if (cb) cb(valor.toUpperCase()); }, 500);
 }
 
 function reiniciarScanner() {
@@ -2835,6 +2843,10 @@ function reiniciarScanner() {
     if (scannerVarrerFn && scannerStream) {
         setTimeout(() => { scannerAnimFrame = requestAnimationFrame(scannerVarrerFn); }, 200);
     }
+}
+
+function abrirScannerFiltro() {
+    abrirScanner('filtroEstoqueTexto', 'Pesquisa de Estoque', () => filtrarEstoqueLocal());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
