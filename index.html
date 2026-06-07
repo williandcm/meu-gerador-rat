@@ -922,6 +922,7 @@ create table estoque (
     let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO };
     let modeloPdfBytes = null;
     let timeoutRender = null;
+    let renderTaskAtual = null;
     let todosChamadosCache = [];
     let idRegistroAtual = null;
     let loggedInUser = null;
@@ -2275,6 +2276,12 @@ create table estoque (
     }
 
     async function gerarERenderizar() {
+        // Cancela render anterior para evitar sobreposição de transformações no canvas
+        if (renderTaskAtual) {
+            renderTaskAtual.cancel();
+            renderTaskAtual = null;
+        }
+
         const pdfDoc = await aplicarDadosNoPdf();
         if (!pdfDoc) return;
         const bytes = await pdfDoc.save();
@@ -2283,7 +2290,15 @@ create table estoque (
         const vp = pg.getViewport({ scale: 2.0 });
         const canvas = document.getElementById('pdfCanvas');
         canvas.height = vp.height; canvas.width = vp.width;
-        await pg.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+
+        renderTaskAtual = pg.render({ canvasContext: canvas.getContext('2d'), viewport: vp });
+        try {
+            await renderTaskAtual.promise;
+        } catch (e) {
+            if (e?.name !== 'RenderingCancelledException') console.warn('[PDF render]', e);
+        } finally {
+            renderTaskAtual = null;
+        }
     }
 
     async function baixarPdf() {
