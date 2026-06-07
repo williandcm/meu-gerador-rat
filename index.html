@@ -183,6 +183,11 @@
         .scanner-status { color: #94a3b8; font-size: 13px; text-align: center; min-height: 20px; }
         .scanner-cancel { width: 100%; padding: 13px; background: #334155; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 15px; font-weight: bold; transition: .15s; }
         .scanner-cancel:hover { background: #475569; }
+        .scanner-sel-titulo { color: #fbbf24; font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 8px; }
+        .scanner-sel-item { display: block; width: 100%; text-align: left; background: #1e3a5f; color: #e2e8f0; border: 1px solid #3b82f6; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; cursor: pointer; font-size: 13px; font-family: monospace; font-weight: bold; transition: .15s; }
+        .scanner-sel-item:hover { background: #2563eb; border-color: #60a5fa; color: white; }
+        .scanner-sel-retry { display: block; width: 100%; background: transparent; color: #60a5fa; border: 1px solid #475569; border-radius: 8px; padding: 9px; cursor: pointer; font-size: 13px; margin-top: 2px; margin-bottom: 8px; }
+        .scanner-sel-retry:hover { background: rgba(96,165,250,.1); }
 
         /* ── KEBAB MENU ── */
         .kebab-wrap { position: relative; display: inline-block; }
@@ -792,6 +797,7 @@ create table estoque (
         </div>
         <div class="scanner-bottom">
             <div class="scanner-status" id="scannerStatus">Aponte a câmera para o código de barras</div>
+            <div id="scannerSelecao"></div>
             <button class="scanner-cancel" onclick="fecharScanner()">Cancelar</button>
         </div>
     </div>
@@ -2682,6 +2688,8 @@ function fecharModalEquipFora(e) {
 let scannerStream      = null;
 let scannerAnimFrame   = null;
 let scannerCampoAlvo   = null;
+let scannerVarrerFn    = null;
+let scannerCodigos     = [];
 
 async function abrirScanner(campoId, campoLabel) {
     scannerCampoAlvo = campoId;
@@ -2719,11 +2727,16 @@ async function abrirScanner(campoId, campoLabel) {
                 const video = document.getElementById('scannerVideo');
                 if (video.readyState === video.HAVE_ENOUGH_DATA) {
                     const codigos = await detector.detect(video);
-                    if (codigos.length > 0) {
+                    if (codigos.length === 1) {
+                        // Único código — insere direto
                         const valor = codigos[0].rawValue;
                         document.getElementById(scannerCampoAlvo).value = valor.toUpperCase();
                         document.getElementById('scannerStatus').textContent = '✅ Código lido: ' + valor;
                         setTimeout(fecharScanner, 500);
+                        return;
+                    } else if (codigos.length > 1) {
+                        // Múltiplos códigos — pausa e exibe seleção
+                        mostrarSelecaoScanner(codigos.map(c => c.rawValue));
                         return;
                     }
                 }
@@ -2731,6 +2744,7 @@ async function abrirScanner(campoId, campoLabel) {
             setTimeout(() => { scannerAnimFrame = requestAnimationFrame(varrer); }, 200);
         }
 
+        scannerVarrerFn = varrer;
         scannerAnimFrame = requestAnimationFrame(varrer);
 
     } catch (e) {
@@ -2743,8 +2757,40 @@ function fecharScanner() {
     if (scannerStream)    { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
     const video = document.getElementById('scannerVideo');
     if (video) video.srcObject = null;
+    document.getElementById('scannerSelecao').innerHTML = '';
+    document.getElementById('scannerStatus').textContent = 'Aponte a câmera para o código de barras';
     document.getElementById('modalScanner').classList.remove('open');
     document.body.style.overflow = '';
+    scannerVarrerFn = null;
+    scannerCodigos  = [];
+}
+
+function mostrarSelecaoScanner(valores) {
+    scannerCodigos = valores;
+    document.getElementById('scannerStatus').textContent = '';
+    const sel = document.getElementById('scannerSelecao');
+    sel.innerHTML =
+        `<div class="scanner-sel-titulo">⚠️ ${valores.length} códigos detectados — toque no correto:</div>` +
+        valores.map((v, i) => `<button class="scanner-sel-item" onclick="selecionarCodigoScanner(${i})">${v}</button>`).join('') +
+        `<button class="scanner-sel-retry" onclick="reiniciarScanner()">🔄 Tentar novamente</button>`;
+}
+
+function selecionarCodigoScanner(idx) {
+    const valor = scannerCodigos[idx];
+    if (valor == null) return;
+    document.getElementById(scannerCampoAlvo).value = valor.toUpperCase();
+    document.getElementById('scannerStatus').textContent = '✅ Selecionado: ' + valor;
+    document.getElementById('scannerSelecao').innerHTML = '';
+    setTimeout(fecharScanner, 500);
+}
+
+function reiniciarScanner() {
+    document.getElementById('scannerSelecao').innerHTML = '';
+    document.getElementById('scannerStatus').textContent = 'Aponte a câmera para o código de barras';
+    scannerCodigos = [];
+    if (scannerVarrerFn && scannerStream) {
+        setTimeout(() => { scannerAnimFrame = requestAnimationFrame(scannerVarrerFn); }, 200);
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
