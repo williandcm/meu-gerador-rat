@@ -159,6 +159,23 @@
         .btn-success-table { background: var(--success); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; border: none; }
         .btn-success-table:hover { background: #047857; }
 
+        /* ── KEBAB MENU ── */
+        .kebab-wrap { position: relative; display: inline-block; }
+        .kebab-btn { background: none; border: 1px solid #e2e8f0; cursor: pointer; font-size: 16px; color: #64748b; padding: 2px 9px; border-radius: 6px; line-height: 1.4; transition: .15s; font-weight: bold; }
+        .kebab-btn:hover { background: #f1f5f9; border-color: #94a3b8; color: #1e293b; }
+        .kebab-menu { display: none; position: absolute; left: 0; top: calc(100% + 4px); z-index: 999; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.12); min-width: 130px; overflow: hidden; }
+        .kebab-menu.open { display: block; }
+        .kebab-menu button { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid #f1f5f9; padding: 9px 14px; cursor: pointer; font-size: 13px; color: #334155; transition: .1s; }
+        .kebab-menu button:last-child { border-bottom: none; }
+        .kebab-menu button:hover { background: #f8fafc; }
+        .kebab-menu .km-danger { color: var(--danger); }
+        .kebab-menu .km-danger:hover { background: #fee2e2; }
+        /* ── COLUNA ORDENÁVEL ── */
+        th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+        th.sortable:hover { background: rgba(59,130,246,.08); }
+        th.sortable .sort-icon { font-size: 10px; color: #94a3b8; margin-left: 3px; }
+        th.sortable.ativo .sort-icon { color: var(--primary); }
+
         /* ── EDITOR ── */
         textarea { width: 100%; height: 80px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; resize: none; outline: none; }
         .workspace { display: flex; gap: 20px; align-items: flex-start; }
@@ -1176,6 +1193,8 @@ create table estoque (
     }
 
     let colunasConfig = carregarColunasConfig();
+    let sortColAtual = null;
+    let sortDirecao = 'asc';
 
     function getColLabel(id) { return COLS_DEF.find(c => c.id === id)?.label || id; }
 
@@ -1671,6 +1690,42 @@ create table estoque (
         return p ? p.nome : email;
     }
 
+    function getValorSort(item, colId) {
+        switch (colId) {
+            case 'data': {
+                const p = (item.data_atendimento || '').split('/');
+                return p.length === 3 ? `${p[2]}${p[1]}${p[0]}` : '';
+            }
+            case 'chamado':     return item.chamado || '';
+            case 'tecnico':     return nomeTecnico(item.tecnico);
+            case 'uniorg':      return item.uniorg || '';
+            case 'responsavel': return item.responsavel || '';
+            case 'endereco':    return `${item.endereco || ''} ${item.cidade || ''}`;
+            case 'cidade':      return item.cidade || '';
+            case 'bairro':      return item.bairro || '';
+            case 'uf':          return item.uf || '';
+            case 'matricula':   return item.matricula || '';
+            case 'troca':       return item.sn_inst ? 'S' : 'N';
+            case 'patri_ret':   return item.patri_ret || '';
+            case 'sn_ret':      return item.sn_ret || '';
+            case 'modelo_ret':  return item.modelo_ret || '';
+            case 'patri_inst':  return item.patri_inst || '';
+            case 'sn_inst':     return item.sn_inst || '';
+            case 'modelo_inst': return item.modelo_inst || '';
+            default:            return '';
+        }
+    }
+
+    function ordenarTabela(colId) {
+        if (sortColAtual === colId) {
+            sortDirecao = sortDirecao === 'asc' ? 'desc' : 'asc';
+        } else {
+            sortColAtual = colId;
+            sortDirecao = 'asc';
+        }
+        filtrarListaLocal();
+    }
+
     function popularFiltrosChamados(lista) {
         const isAdmin = loggedInUser?.email?.toLowerCase() === ADMIN_EMAIL;
         const selTec = document.getElementById('filtroTecnico');
@@ -1703,10 +1758,14 @@ create table estoque (
         const visCols = colunasConfig.filter(c => c.visible);
         const totalCols = visCols.length + 1; // +1 coluna de ações
 
-        // cabeçalho dinâmico
+        // cabeçalho dinâmico com ordenação
         const header = document.getElementById('tHeaderRow');
         if (header) {
-            header.innerHTML = '<th>Ação</th>' + visCols.map(c => `<th>${getColLabel(c.id)}</th>`).join('');
+            header.innerHTML = '<th>Ação</th>' + visCols.map(c => {
+                const ativo = sortColAtual === c.id;
+                const icone = ativo ? (sortDirecao === 'asc' ? '▲' : '▼') : '⇅';
+                return `<th class="sortable${ativo ? ' ativo' : ''}" onclick="ordenarTabela('${c.id}')">${getColLabel(c.id)}<span class="sort-icon">${icone}</span></th>`;
+            }).join('');
         }
 
         const tbody = document.getElementById('corpoTabelaChamados');
@@ -1959,11 +2018,11 @@ create table estoque (
     }
 
     function filtrarListaLocal() {
-        const q      = document.getElementById('busca_inc').value.toUpperCase().trim();
+        const q       = document.getElementById('busca_inc').value.toUpperCase().trim();
         const tecnico = document.getElementById('filtroTecnico')?.value || '';
         const mes     = document.getElementById('filtroMes')?.value || '';
 
-        const f = todosChamadosCache.filter(i => {
+        let f = todosChamadosCache.filter(i => {
             if (tecnico && i.tecnico !== tecnico) return false;
             if (mes && i.data_atendimento) {
                 const p = i.data_atendimento.split('/');
@@ -1976,6 +2035,14 @@ create table estoque (
                    (i.cidade && i.cidade.toUpperCase().includes(q)) ||
                    (i.endereco && i.endereco.toUpperCase().includes(q));
         });
+
+        if (sortColAtual) {
+            f = [...f].sort((a, b) => {
+                const va = getValorSort(a, sortColAtual).toLowerCase();
+                const vb = getValorSort(b, sortColAtual).toLowerCase();
+                return sortDirecao === 'asc' ? va.localeCompare(vb, 'pt-BR') : vb.localeCompare(va, 'pt-BR');
+            });
+        }
 
         atualizarInterfaceTabela(f);
         const temFiltro = q || tecnico || mes;
@@ -2469,11 +2536,14 @@ function atualizarTabelaEstoque(lista) {
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
         tr.innerHTML = `
-            <td onclick="event.stopPropagation()">
-                <div style="display:flex;gap:5px;">
-                    <button class="btn-edit-table" style="background:#64748b;" onclick="verDetalheEquip(${eq.id})">Ver</button>
-                    ${isAdmin ? `<button class="btn-edit-table" onclick="abrirModalEquip(${eq.id})">Editar</button>` : ''}
-                    ${isAdmin ? `<button class="btn-danger-table" onclick="excluirEquipamento(${eq.id})">🗑</button>` : ''}
+            <td onclick="event.stopPropagation()" style="width:40px;">
+                <div class="kebab-wrap">
+                    <button class="kebab-btn" onclick="toggleKebab(event,'ke-${eq.id}')">⋮</button>
+                    <div class="kebab-menu" id="ke-${eq.id}">
+                        <button onclick="verDetalheEquip(${eq.id});fecharKebabs()">👁 Ver</button>
+                        ${isAdmin ? `<button onclick="abrirModalEquip(${eq.id});fecharKebabs()">✏️ Editar</button>` : ''}
+                        ${isAdmin ? `<button class="km-danger" onclick="excluirEquipamento(${eq.id});fecharKebabs()">🗑 Excluir</button>` : ''}
+                    </div>
                 </div>
             </td>
             <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${eq.descricao||''}">${_v(eq.descricao)}</td>
@@ -2536,6 +2606,20 @@ function fecharModalEquip() {
 function fecharModalEquipFora(e) {
     if (e.target === document.getElementById('modalEquip')) fecharModalEquip();
 }
+
+function toggleKebab(event, menuId) {
+    event.stopPropagation();
+    const menu = document.getElementById(menuId);
+    const aberto = menu?.classList.contains('open');
+    fecharKebabs();
+    if (!aberto && menu) menu.classList.add('open');
+}
+
+function fecharKebabs() {
+    document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
+}
+
+document.addEventListener('click', fecharKebabs);
 
 async function salvarEquipamento() {
     const gUP = id => (document.getElementById(id)?.value || '').trim().toUpperCase();
