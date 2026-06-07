@@ -2561,7 +2561,7 @@ create table estoque (
 let estoqueCache   = [];
 let estoqueIdAtual = null;
 
-function _v(val) { return val && String(val).trim() ? String(val).trim() : '—'; }
+function _v(val) { return val && String(val).trim() ? String(val).trim().toUpperCase() : ''; }
 
 async function carregarEstoque() {
     const btn    = document.getElementById('btnAtualizarEstoque');
