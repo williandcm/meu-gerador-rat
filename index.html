@@ -2690,6 +2690,8 @@ let scannerAnimFrame   = null;
 let scannerCampoAlvo   = null;
 let scannerVarrerFn    = null;
 let scannerCodigos     = [];
+let scannerColetados   = new Set();
+let scannerTimerColeta = null;
 
 async function abrirScanner(campoId, campoLabel) {
     scannerCampoAlvo = campoId;
@@ -2727,21 +2729,26 @@ async function abrirScanner(campoId, campoLabel) {
                 const video = document.getElementById('scannerVideo');
                 if (video.readyState === video.HAVE_ENOUGH_DATA) {
                     const codigos = await detector.detect(video);
-                    if (codigos.length === 1) {
-                        // Único código — insere direto
-                        const valor = codigos[0].rawValue;
-                        document.getElementById(scannerCampoAlvo).value = valor.toUpperCase();
-                        document.getElementById('scannerStatus').textContent = '✅ Código lido: ' + valor;
-                        setTimeout(fecharScanner, 500);
-                        return;
-                    } else if (codigos.length > 1) {
-                        // Múltiplos códigos — pausa e exibe seleção
-                        mostrarSelecaoScanner(codigos.map(c => c.rawValue));
-                        return;
+                    if (codigos.length > 0) {
+                        codigos
+                            .map(c => c.rawValue.trim())
+                            .filter(Boolean)
+                            .forEach(v => scannerColetados.add(v));
+
+                        const lista = [...scannerColetados];
+                        const statusEl = document.getElementById('scannerStatus');
+                        if (lista.length === 1) {
+                            statusEl.textContent = 'Detectado: ' + lista[0] + ' — aguardando...';
+                        } else {
+                            statusEl.textContent = lista.length + ' códigos detectados — aguardando...';
+                        }
+
+                        clearTimeout(scannerTimerColeta);
+                        scannerTimerColeta = setTimeout(finalizarColeta, 1200);
                     }
                 }
             } catch (_) {}
-            setTimeout(() => { scannerAnimFrame = requestAnimationFrame(varrer); }, 200);
+            setTimeout(() => { scannerAnimFrame = requestAnimationFrame(varrer); }, 150);
         }
 
         scannerVarrerFn = varrer;
@@ -2753,6 +2760,7 @@ async function abrirScanner(campoId, campoLabel) {
 }
 
 function fecharScanner() {
+    clearTimeout(scannerTimerColeta); scannerTimerColeta = null;
     if (scannerAnimFrame) { cancelAnimationFrame(scannerAnimFrame); scannerAnimFrame = null; }
     if (scannerStream)    { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
     const video = document.getElementById('scannerVideo');
@@ -2761,8 +2769,27 @@ function fecharScanner() {
     document.getElementById('scannerStatus').textContent = 'Aponte a câmera para o código de barras';
     document.getElementById('modalScanner').classList.remove('open');
     document.body.style.overflow = '';
-    scannerVarrerFn = null;
-    scannerCodigos  = [];
+    scannerVarrerFn  = null;
+    scannerCodigos   = [];
+    scannerColetados.clear();
+}
+
+function finalizarColeta() {
+    scannerTimerColeta = null;
+    if (scannerAnimFrame) { cancelAnimationFrame(scannerAnimFrame); scannerAnimFrame = null; }
+
+    const lista = [...scannerColetados];
+    scannerColetados.clear();
+
+    if (lista.length === 0) return;
+
+    if (lista.length === 1) {
+        document.getElementById(scannerCampoAlvo).value = lista[0].toUpperCase();
+        document.getElementById('scannerStatus').textContent = '✅ Código lido: ' + lista[0];
+        setTimeout(fecharScanner, 500);
+    } else {
+        mostrarSelecaoScanner(lista);
+    }
 }
 
 function mostrarSelecaoScanner(valores) {
@@ -2785,9 +2812,11 @@ function selecionarCodigoScanner(idx) {
 }
 
 function reiniciarScanner() {
+    clearTimeout(scannerTimerColeta); scannerTimerColeta = null;
+    scannerColetados.clear();
+    scannerCodigos = [];
     document.getElementById('scannerSelecao').innerHTML = '';
     document.getElementById('scannerStatus').textContent = 'Aponte a câmera para o código de barras';
-    scannerCodigos = [];
     if (scannerVarrerFn && scannerStream) {
         setTimeout(() => { scannerAnimFrame = requestAnimationFrame(scannerVarrerFn); }, 200);
     }
