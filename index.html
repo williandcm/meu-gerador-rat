@@ -822,7 +822,7 @@ create table estoque (
                     </div>
                 </div>
                 <div class="field"><label>Modelo</label><input type="text" id="eq_modelo"></div>
-                <div class="field"><label>MAC</label><input type="text" id="eq_mac"></div>
+                <div class="field"><label>MAC</label><input type="text" id="eq_mac" placeholder="00:00:00:00:00:00" maxlength="17" oninput="mascaraMAC(this)"></div>
                 <div class="field"><label>Quantidade</label><input type="number" id="eq_quantidade" min="1" value="1" style="text-transform:none;font-weight:normal;"></div>
             </div>
         </div>
@@ -2220,6 +2220,16 @@ create table estoque (
         if (v.length > 7) v = v.slice(0, 7) + "." + v.slice(7);
         if (v.length > 11) v = v.slice(0, 11) + "-" + v.slice(11, 13);
         input.value = v;
+    }
+
+    function mascaraMAC(input) {
+        const pos = input.selectionStart;
+        let v = input.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase().slice(0, 12);
+        const formatado = v.match(/.{1,2}/g)?.join(':') || '';
+        input.value = formatado;
+        // Reposiciona o cursor corretamente após inserção dos dois-pontos
+        const colons = (formatado.slice(0, pos + 1).match(/:/g) || []).length;
+        input.setSelectionRange(pos + colons, pos + colons);
     }
 
     function medirLarguraTexto(texto) {
