@@ -175,6 +175,7 @@
         .field input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; width: 100%; outline: none; }
         .field input.time-input { text-align: center; font-size: 16px; }
         .field input.lc { text-transform: none; font-weight: normal; }
+        .field textarea { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #f8fafc; font-weight: bold; text-transform: uppercase; width: 100%; outline: none; height: 70px; resize: vertical; font-family: inherit; line-height: 1.4; }
 
         .btn-group { display: flex; gap: 8px; margin-top: 15px; }
         button { flex: 1; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: .2s; font-size: 14px; }
@@ -462,6 +463,15 @@
                         <button class="btn-search" onclick="buscarChamado()" id="btnBuscar">Buscar</button>
                         <button class="btn-load-all" onclick="carregarTodosChamados()" id="btnCarregarTodos">🔄 Atualizar</button>
                         <button class="btn-load-all" onclick="abrirConfigColunas()" style="background:#7c3aed;" title="Configurar colunas visíveis">⚙️ Colunas</button>
+                        <button class="btn-load-all" onclick="exportarCSV()" style="background:#059669;" title="Exportar chamados visíveis para CSV">📊 CSV</button>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;" id="filtrosExtras">
+                        <select id="filtroTecnico" onchange="filtrarListaLocal()" style="padding:8px 10px;border:1px solid #93c5fd;border-radius:8px;font-size:13px;background:#fff;display:none;">
+                            <option value="">Todos os técnicos</option>
+                        </select>
+                        <select id="filtroMes" onchange="filtrarListaLocal()" style="padding:8px 10px;border:1px solid #93c5fd;border-radius:8px;font-size:13px;background:#fff;display:none;">
+                            <option value="">Todos os meses</option>
+                        </select>
                     </div>
                     <div class="table-container" id="containerTabela" style="display:none;">
                         <table>
@@ -532,7 +542,7 @@
                                     <div class="field"><label>MAC</label><input type="text" id="f_mac_inst"></div>
                                 </div>
                             </div>
-                            <div class="field full-width"><label>Solução</label><input type="text" id="f_solucao" oninput="sincronizarMac()"></div>
+                            <div class="field full-width"><label>Solução</label><textarea id="f_solucao" oninput="sincronizarMac()"></textarea></div>
                             <div class="field"><label>Responsável</label><input type="text" id="f_resp"></div>
                             <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
                             <div class="field"><label>Nome do Técnico (RAT)</label><input type="text" id="f_tecnico_nome" placeholder="NOME DO TÉCNICO" oninput="salvarDadosTecnicoLocal()"></div>
@@ -1264,8 +1274,17 @@ create table estoque (
             if (session) inicializarAplicacao(session.user);
             else mostrarTelaLogin();
 
-            const res = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
-            modeloPdfBytes = await res.arrayBuffer();
+            try {
+                const res = await fetch(URL_MODELO_PDF + '?v=' + Date.now());
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                modeloPdfBytes = await res.arrayBuffer();
+            } catch (ePdf) {
+                console.warn('[RAT] Template PDF indisponível:', ePdf.message);
+                const aviso = document.createElement('p');
+                aviso.style.cssText = 'color:#fca5a5;text-align:center;font-size:13px;padding:10px;background:rgba(239,68,68,.15);border-radius:8px;margin-bottom:8px;';
+                aviso.textContent = '⚠️ Template PDF indisponível. Pré-visualização e download desabilitados.';
+                document.getElementById('previewBox')?.prepend(aviso);
+            }
 
             const d = new Date();
             document.getElementById('f_data_picker').value = d.toISOString().split('T')[0];
@@ -1633,6 +1652,7 @@ create table estoque (
             atualizarStats(todosChamadosCache);
             document.getElementById('statusTabela').textContent = `${todosChamadosCache.length} chamados encontrados.`;
             document.getElementById('containerTabela').style.display = todosChamadosCache.length ? 'block' : 'none';
+            popularFiltrosChamados(todosChamadosCache);
         } catch (e) { document.getElementById('statusTabela').textContent = "Erro ao carregar dados."; }
         finally { btn.innerHTML = "🔄 Atualizar"; btn.disabled = false; }
     }
@@ -1648,6 +1668,34 @@ create table estoque (
         if (!email) return '---';
         const p = perfisTecnicosCache.find(t => t.email.toLowerCase() === email.toLowerCase());
         return p ? p.nome : email;
+    }
+
+    function popularFiltrosChamados(lista) {
+        const isAdmin = loggedInUser?.email?.toLowerCase() === ADMIN_EMAIL;
+        const selTec = document.getElementById('filtroTecnico');
+        const selMes = document.getElementById('filtroMes');
+        if (!selTec || !selMes) return;
+
+        // Filtro de técnico só aparece para admin
+        if (isAdmin) {
+            const tecs = [...new Set(lista.map(c => c.tecnico).filter(Boolean))];
+            selTec.innerHTML = '<option value="">Todos os técnicos</option>' +
+                tecs.map(t => `<option value="${t}">${nomeTecnico(t)}</option>`).join('');
+            selTec.style.display = 'block';
+        }
+
+        // Filtro de mês/ano baseado nos dados
+        const meses = [...new Set(lista.map(c => {
+            if (!c.data_atendimento) return null;
+            const p = c.data_atendimento.split('/');
+            return p.length === 3 ? `${p[1]}/${p[2]}` : null;
+        }).filter(Boolean))].sort((a, b) => {
+            const [ma, aa] = a.split('/'); const [mb, ab] = b.split('/');
+            return aa !== ab ? ab - aa : mb - ma;
+        });
+        selMes.innerHTML = '<option value="">Todos os meses</option>' +
+            meses.map(m => `<option value="${m}">${m}</option>`).join('');
+        selMes.style.display = meses.length > 1 ? 'block' : 'none';
     }
 
     function atualizarInterfaceTabela(lista) {
@@ -1910,17 +1958,29 @@ create table estoque (
     }
 
     function filtrarListaLocal() {
-        const q = document.getElementById('busca_inc').value.toUpperCase().trim();
-        if (!q) { atualizarInterfaceTabela(todosChamadosCache); document.getElementById('statusTabela').textContent = `${todosChamadosCache.length} chamados encontrados.`; return; }
-        const f = todosChamadosCache.filter(i =>
-            (i.chamado && i.chamado.toUpperCase().includes(q)) ||
-            (i.uniorg && i.uniorg.toUpperCase().includes(q)) ||
-            (i.responsavel && i.responsavel.toUpperCase().includes(q)) ||
-            (i.cidade && i.cidade.toUpperCase().includes(q)) ||
-            (i.endereco && i.endereco.toUpperCase().includes(q))
-        );
+        const q      = document.getElementById('busca_inc').value.toUpperCase().trim();
+        const tecnico = document.getElementById('filtroTecnico')?.value || '';
+        const mes     = document.getElementById('filtroMes')?.value || '';
+
+        const f = todosChamadosCache.filter(i => {
+            if (tecnico && i.tecnico !== tecnico) return false;
+            if (mes && i.data_atendimento) {
+                const p = i.data_atendimento.split('/');
+                if (p.length === 3 && `${p[1]}/${p[2]}` !== mes) return false;
+            }
+            if (!q) return true;
+            return (i.chamado && i.chamado.toUpperCase().includes(q)) ||
+                   (i.uniorg && i.uniorg.toUpperCase().includes(q)) ||
+                   (i.responsavel && i.responsavel.toUpperCase().includes(q)) ||
+                   (i.cidade && i.cidade.toUpperCase().includes(q)) ||
+                   (i.endereco && i.endereco.toUpperCase().includes(q));
+        });
+
         atualizarInterfaceTabela(f);
-        document.getElementById('statusTabela').textContent = `${f.length} resultado(s) para "${q}".`;
+        const temFiltro = q || tecnico || mes;
+        document.getElementById('statusTabela').textContent = temFiltro
+            ? `${f.length} resultado(s) filtrado(s).`
+            : `${todosChamadosCache.length} chamados encontrados.`;
     }
 
     function carregarChamadoDireto(id) {
@@ -2237,6 +2297,30 @@ create table estoque (
         link.click();
     }
 
+    function exportarCSV() {
+        if (!todosChamadosCache.length) { alert('Nenhum chamado carregado. Clique em "Atualizar" primeiro.'); return; }
+        const esc = v => `"${(v || '').replace(/"/g, '""')}"`;
+        const cab = ['Chamado','Data','Técnico','Uniorg','Responsável','Endereço','Número','Bairro','Cidade','UF',
+                     'Patri.Ret','Série Ret','Modelo Ret','Host Ret','MAC Ret',
+                     'Patri.Inst','Série Inst','Modelo Inst','Host Inst','MAC Inst',
+                     'Solução','Matrícula'];
+        const linhas = [cab.join(';')];
+        todosChamadosCache.forEach(c => {
+            linhas.push([
+                c.chamado, c.data_atendimento, c.tecnico, c.uniorg,
+                c.responsavel, c.endereco, c.numero, c.bairro, c.cidade, c.uf,
+                c.patri_ret, c.sn_ret, c.modelo_ret, c.host_ret, c.mac_ret,
+                c.patri_inst, c.sn_inst, c.modelo_inst, c.host_inst, c.mac_inst,
+                c.solucao, c.matricula
+            ].map(esc).join(';'));
+        });
+        const blob = new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `chamados_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+    }
+
     async function salvarAtendimento() {
         const inc = document.getElementById('f_inc').value.toUpperCase();
         if (!inc) { alert("Preencha o número do chamado antes de salvar."); return; }
@@ -2295,6 +2379,8 @@ create table estoque (
                 if (error) throw error;
                 alert("Chamado ATUALIZADO com sucesso!");
             } else {
+                const { data: existente } = await supabaseClient.from('chamados').select('id').eq('chamado', inc).maybeSingle();
+                if (existente) { alert(`Chamado ${inc} já existe no sistema!\n\nBusque-o na aba Chamados e clique em "Editar" para modificá-lo.`); return; }
                 const { error } = await supabaseClient.from('chamados').insert([payload]);
                 if (error) throw error;
                 alert("Chamado SALVO com sucesso!");
