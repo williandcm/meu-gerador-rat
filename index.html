@@ -2623,14 +2623,11 @@ function atualizarTabelaEstoque(lista) {
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
         tr.innerHTML = `
-            <td onclick="event.stopPropagation()" style="width:40px;">
-                <div class="kebab-wrap">
-                    <button class="kebab-btn" onclick="toggleKebab(event,'ke-${eq.id}')">⋮</button>
-                    <div class="kebab-menu" id="ke-${eq.id}">
-                        <button onclick="verDetalheEquip(${eq.id});fecharKebabs()">👁 Ver</button>
-                        ${isAdmin ? `<button onclick="abrirModalEquip(${eq.id});fecharKebabs()">✏️ Editar</button>` : ''}
-                        ${isAdmin ? `<button class="km-danger" onclick="excluirEquipamento(${eq.id});fecharKebabs()">🗑 Excluir</button>` : ''}
-                    </div>
+            <td onclick="event.stopPropagation()">
+                <div style="display:flex;gap:5px;">
+                    <button class="btn-edit-table" style="background:#64748b;" onclick="verDetalheEquip(${eq.id})">Ver</button>
+                    ${isAdmin ? `<button class="btn-edit-table" onclick="abrirModalEquip(${eq.id})">Editar</button>` : ''}
+                    ${isAdmin ? `<button class="btn-danger-table" onclick="excluirEquipamento(${eq.id})">🗑</button>` : ''}
                 </div>
             </td>
             <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${eq.descricao||''}">${_v(eq.descricao)}</td>
