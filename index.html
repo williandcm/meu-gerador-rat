@@ -159,6 +159,20 @@
         .btn-success-table { background: var(--success); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; border: none; }
         .btn-success-table:hover { background: #047857; }
 
+        /* ── TABS ESTOQUE / BAD ── */
+        .estoque-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 12px; }
+        .estoque-tab { padding: 9px 22px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 700; color: #64748b; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: .15s; }
+        .estoque-tab.ativo { color: var(--primary); border-bottom-color: var(--primary); }
+        .estoque-tab-bad.ativo { color: #dc2626; border-bottom-color: #dc2626; }
+        .bad-envio-ok { color: #16a34a; font-size: 11px; font-weight: bold; }
+        /* ── MODAL VINCULAR ESTOQUE ── */
+        .vincular-section { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+        .vincular-section h4 { font-size: 13px; font-weight: 700; color: #1e40af; margin: 0 0 8px; }
+        .vincular-section-bad h4 { color: #b91c1c; }
+        .vincular-info { font-size: 12px; color: #475569; font-family: monospace; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; margin-bottom: 10px; line-height: 1.7; }
+        .vincular-result { font-size: 12px; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; }
+        .vincular-result.ok { color: #166534; background: #dcfce7; border: 1px solid #86efac; }
+        .vincular-result.nao { color: #991b1b; background: #fee2e2; border: 1px solid #fca5a5; }
         /* ── LEITOR DE CÓDIGO DE BARRAS ── */
         .input-scan-wrap { display: flex; gap: 4px; }
         .input-scan-wrap input { flex: 1; min-width: 0; }
@@ -633,11 +647,18 @@
                 <div class="stats-row" id="statsEstoque">
                     <div class="stat-card"><div class="stat-value" id="stTotal">—</div><div class="stat-label">Total de Equipamentos</div></div>
                     <div class="stat-card green"><div class="stat-value" id="stModelos">—</div><div class="stat-label">Modelos Diferentes</div></div>
+                    <div class="stat-card" style="border-left-color:#dc2626;"><div class="stat-value" id="stBad" style="color:#dc2626;">—</div><div class="stat-label">Itens no BAD</div></div>
+                    <div class="stat-card" style="border-left-color:#f59e0b;"><div class="stat-value" id="stBadPendente" style="color:#f59e0b;">—</div><div class="stat-label">Aguard. Envio</div></div>
                 </div>
 
-                <!-- Filtros -->
-                <div class="card search-box">
-                    <h2 style="border:none;margin-bottom:10px;color:#0284c7;">🔍 Filtrar Equipamentos</h2>
+                <!-- Tabs -->
+                <div class="estoque-tabs">
+                    <button class="estoque-tab ativo" id="tabBtnEstoque" onclick="mostrarAbaEstoque()">📦 Estoque</button>
+                    <button class="estoque-tab estoque-tab-bad" id="tabBtnBad" onclick="mostrarAbaBad()">⚠️ BAD</button>
+                </div>
+
+                <!-- ABA ESTOQUE -->
+                <div id="abaEstoque" class="card search-box">
                     <div class="estoque-filter-row">
                         <div class="input-scan-wrap" style="flex:1;">
                             <input type="text" id="filtroEstoqueTexto" placeholder="Descrição, Patrimônio, Série, Modelo, MAC, EAN..." oninput="filtrarEstoqueLocal()">
@@ -659,6 +680,29 @@
                     </div>
                     <div id="statusEstoque" style="text-align:center;color:#64748b;font-size:12px;margin-top:8px;">
                         Clique em "Atualizar" para carregar o estoque.
+                    </div>
+                </div>
+
+                <!-- ABA BAD -->
+                <div id="abaBad" class="card search-box" style="display:none;">
+                    <div class="estoque-filter-row">
+                        <input type="text" id="filtroBADTexto" placeholder="Pesquisar no BAD..." style="flex:1;" oninput="filtrarBadLocal()">
+                        <button class="btn-load-all" onclick="carregarBad()" id="btnAtualizarBad">🔄 Atualizar</button>
+                    </div>
+                    <div class="table-container" id="containerBAD" style="display:none; margin-top:12px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Ações</th><th>Descrição</th><th>Patrimônio</th>
+                                    <th>Número de Série</th><th>Modelo</th><th>INC Ref.</th>
+                                    <th>Entrada BAD</th><th>Data Envio</th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpoTabelaBad"></tbody>
+                        </table>
+                    </div>
+                    <div id="statusBAD" style="text-align:center;color:#64748b;font-size:12px;margin-top:8px;">
+                        Clique em "Atualizar" para carregar o BAD.
                     </div>
                 </div>
 
@@ -807,6 +851,39 @@ create table estoque (
 </div>
 
 <!-- MODAL EQUIPAMENTO (ESTOQUE) -->
+<!-- MODAL VINCULAR ESTOQUE -->
+<div class="modal-overlay" id="modalVincularEstoque" onclick="if(event.target===this)fecharModalVincularEstoque()">
+    <div class="modal-box" style="max-width:560px;">
+        <div class="modal-header">
+            <div>
+                <h2>🔗 Vincular ao Estoque</h2>
+                <div class="modal-sub" id="vincularSubtitulo"></div>
+            </div>
+            <button class="modal-close" onclick="fecharModalVincularEstoque()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="vincular-section">
+                <h4>📤 Baixar do Estoque (equipamento instalado)</h4>
+                <div class="vincular-info" id="vincularInfoInst">—</div>
+                <div id="vincularResultBusca" style="display:none;" class="vincular-result"></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn-modal-close" style="flex:1;" onclick="buscarNoEstoqueParaBaixar()">🔍 Buscar no Estoque</button>
+                    <button class="btn-modal-edit" style="flex:1;display:none;" id="btnConfirmarBaixar" onclick="confirmarBaixarEstoque()">✅ Confirmar Baixa</button>
+                </div>
+            </div>
+            <div class="vincular-section vincular-section-bad">
+                <h4>📥 Cadastrar no BAD (equipamento retirado)</h4>
+                <div class="vincular-info" id="vincularInfoRet">—</div>
+                <div id="vincularResultBad" style="display:none;" class="vincular-result ok">✅ Cadastrado no BAD com sucesso.</div>
+                <button class="btn-modal-edit" id="btnCadastrarBad" style="background:#dc2626;width:100%;" onclick="confirmarCadastrarBad()">⚠️ Cadastrar no BAD</button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-close" onclick="fecharModalVincularEstoque()">Fechar</button>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="modalEquip" onclick="fecharModalEquipFora(event)">
     <div class="modal-box" style="max-width:640px;">
         <div class="modal-header">
@@ -2558,6 +2635,12 @@ create table estoque (
                 alert("Chamado SALVO com sucesso!");
             }
             carregarTodosChamados();
+
+            // Se for troca, oferecer vinculação ao estoque
+            if ((payload.sn_inst || payload.patri_inst) && confirm('Este chamado é uma troca de equipamento.\n\nDeseja vincular ao Estoque (baixar novo / cadastrar no BAD)?')) {
+                _vincularChamadoDados = payload;
+                abrirModalVincularEstoque(payload);
+            }
         } catch (e) { alert("Erro na operação: " + e.message); }
         finally { btn.innerHTML = orig; btn.disabled = false; }
     }
@@ -2578,7 +2661,9 @@ async function carregarEstoque() {
     btn.innerHTML = '⏳ Carregando...'; btn.disabled = true;
     if (aviso) aviso.style.display = 'none';
     try {
-        const { data, error } = await supabaseClient.from('estoque').select('*').order('id', { ascending: false });
+        const { data, error } = await supabaseClient.from('estoque').select('*')
+            .or('categoria.is.null,categoria.eq.estoque')
+            .order('id', { ascending: false });
         if (error) {
             if (error.code === '42P01' || error.message?.includes('does not exist')) {
                 if (aviso) aviso.style.display = 'block';
@@ -2847,6 +2932,245 @@ function reiniciarScanner() {
 
 function abrirScannerFiltro() {
     abrirScanner('filtroEstoqueTexto', 'Pesquisa de Estoque', () => filtrarEstoqueLocal());
+}
+
+// ── TABS ESTOQUE / BAD ────────────────────────────────────────────────────────
+
+function mostrarAbaEstoque() {
+    document.getElementById('abaEstoque').style.display = '';
+    document.getElementById('abaBad').style.display     = 'none';
+    document.getElementById('tabBtnEstoque').classList.add('ativo');
+    document.getElementById('tabBtnBad').classList.remove('ativo');
+}
+
+function mostrarAbaBad() {
+    document.getElementById('abaEstoque').style.display = 'none';
+    document.getElementById('abaBad').style.display     = '';
+    document.getElementById('tabBtnBad').classList.add('ativo');
+    document.getElementById('tabBtnEstoque').classList.remove('ativo');
+    if (!badCache.length) carregarBad();
+}
+
+// ── BAD ───────────────────────────────────────────────────────────────────────
+
+let badCache = [];
+
+async function carregarBad() {
+    const btn    = document.getElementById('btnAtualizarBad');
+    const status = document.getElementById('statusBAD');
+    if (btn) { btn.innerHTML = '⏳ Carregando...'; btn.disabled = true; }
+    try {
+        const { data, error } = await supabaseClient
+            .from('estoque')
+            .select('*')
+            .eq('categoria', 'bad')
+            .order('data_entrada_bad', { ascending: false });
+        if (error) throw error;
+        badCache = data || [];
+        atualizarTabelaBad(badCache);
+        atualizarStatsBad(badCache);
+        if (status) status.textContent = `${badCache.length} item(s) no BAD.`;
+    } catch (e) {
+        if (status) status.textContent = 'Erro: ' + e.message;
+    } finally {
+        if (btn) { btn.innerHTML = '🔄 Atualizar'; btn.disabled = false; }
+    }
+}
+
+function atualizarStatsBad(lista) {
+    const el = id => document.getElementById(id);
+    if (el('stBad'))        el('stBad').textContent        = lista.length;
+    if (el('stBadPendente'))el('stBadPendente').textContent= lista.filter(x => !x.data_envio).length;
+}
+
+function atualizarTabelaBad(lista) {
+    const tbody = document.getElementById('corpoTabelaBad');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    const container = document.getElementById('containerBAD');
+    if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;">Nenhum item no BAD.</td></tr>';
+        if (container) container.style.display = 'block';
+        return;
+    }
+    const isAdmin = loggedInUser?.email?.toLowerCase() === ADMIN_EMAIL;
+    lista.forEach(eq => {
+        const tr = document.createElement('tr');
+        const dataEntrada = eq.data_entrada_bad ? new Date(eq.data_entrada_bad + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+        const dataEnvio   = eq.data_envio       ? `<span class="bad-envio-ok">✅ ${new Date(eq.data_envio + 'T12:00:00').toLocaleDateString('pt-BR')}</span>` : '<span style="color:#f59e0b;font-size:11px;font-weight:bold;">Pendente</span>';
+        tr.innerHTML = `
+            <td onclick="event.stopPropagation()">
+                <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                    ${!eq.data_envio ? `<button class="btn-edit-table" style="background:#16a34a;" onclick="registrarEnvio(${eq.id})">📤 Registrar Envio</button>` : ''}
+                    ${isAdmin ? `<button class="btn-danger-table" onclick="excluirDoBAD(${eq.id})">🗑</button>` : ''}
+                </div>
+            </td>
+            <td>${_v(eq.descricao)}</td>
+            <td style="font-weight:bold;">${_v(eq.patrimonio)}</td>
+            <td>${_v(eq.numero_serie)}</td>
+            <td>${_v(eq.modelo)}</td>
+            <td style="font-family:monospace;color:#2563eb;">${_v(eq.chamado_ref)}</td>
+            <td>${dataEntrada}</td>
+            <td>${dataEnvio}</td>`;
+        tbody.appendChild(tr);
+    });
+    if (container) container.style.display = 'block';
+}
+
+function filtrarBadLocal() {
+    const texto = (document.getElementById('filtroBADTexto')?.value || '').toUpperCase().trim();
+    const filtrado = badCache.filter(eq =>
+        !texto || [eq.descricao, eq.patrimonio, eq.numero_serie, eq.modelo, eq.chamado_ref]
+            .some(c => c && c.toUpperCase().includes(texto))
+    );
+    atualizarTabelaBad(filtrado);
+    const st = document.getElementById('statusBAD');
+    if (st) st.textContent = texto ? `${filtrado.length} resultado(s).` : `${badCache.length} item(s) no BAD.`;
+}
+
+async function registrarEnvio(id) {
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (!confirm(`Registrar envio em ${new Date(hoje + 'T12:00:00').toLocaleDateString('pt-BR')}?`)) return;
+    try {
+        const { error } = await supabaseClient.from('estoque').update({ data_envio: hoje }).eq('id', id);
+        if (error) throw error;
+        await carregarBad();
+    } catch (e) {
+        alert('Erro: ' + e.message);
+    }
+}
+
+async function excluirDoBAD(id) {
+    if (!confirm('Excluir este item do BAD? Esta ação não pode ser desfeita.')) return;
+    try {
+        const { error } = await supabaseClient.from('estoque').delete().eq('id', id);
+        if (error) throw error;
+        badCache = badCache.filter(x => x.id !== id);
+        atualizarTabelaBad(badCache);
+        atualizarStatsBad(badCache);
+    } catch (e) {
+        alert('Erro: ' + e.message);
+    }
+}
+
+// ── VINCULAR ESTOQUE AO RAT ───────────────────────────────────────────────────
+
+let vincularEstoqueItemId = null;
+let vincularChamadoRef    = null;
+
+function abrirModalVincularEstoque(chamado) {
+    vincularEstoqueItemId = null;
+    vincularChamadoRef    = chamado.chamado || '';
+
+    document.getElementById('vincularSubtitulo').textContent = chamado.chamado || '';
+    document.getElementById('vincularResultBusca').style.display = 'none';
+    document.getElementById('vincularResultBad').style.display   = 'none';
+    document.getElementById('btnConfirmarBaixar').style.display  = 'none';
+    document.getElementById('btnCadastrarBad').style.display     = '';
+
+    const infoInst = [
+        chamado.patri_inst ? 'Patrimônio: ' + chamado.patri_inst : '',
+        chamado.sn_inst    ? 'Série: '      + chamado.sn_inst    : '',
+        chamado.modelo_inst? 'Modelo: '     + chamado.modelo_inst: '',
+    ].filter(Boolean).join('\n') || '(sem dados de equipamento instalado)';
+
+    const infoRet = [
+        chamado.patri_ret ? 'Patrimônio: ' + chamado.patri_ret : '',
+        chamado.sn_ret    ? 'Série: '      + chamado.sn_ret    : '',
+        chamado.modelo_ret? 'Modelo: '     + chamado.modelo_ret: '',
+    ].filter(Boolean).join('\n') || '(sem dados de equipamento retirado)';
+
+    document.getElementById('vincularInfoInst').innerText = infoInst;
+    document.getElementById('vincularInfoRet').innerText  = infoRet;
+
+    document.getElementById('modalVincularEstoque').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharModalVincularEstoque() {
+    document.getElementById('modalVincularEstoque').classList.remove('open');
+    document.body.style.overflow = '';
+    vincularEstoqueItemId = null;
+    vincularChamadoRef    = null;
+}
+
+let _vincularChamadoDados = null;
+
+async function buscarNoEstoqueParaBaixar() {
+    const sn    = (_vincularChamadoDados?.sn_inst    || '').trim().toUpperCase();
+    const patri = (_vincularChamadoDados?.patri_inst || '').trim().toUpperCase();
+    if (!sn && !patri) {
+        alert('Nenhum número de série ou patrimônio preenchido para o equipamento instalado.');
+        return;
+    }
+    const result = document.getElementById('vincularResultBusca');
+    result.style.display = '';
+    result.className = 'vincular-result';
+    result.textContent = 'Buscando...';
+    try {
+        let query = supabaseClient.from('estoque').select('*').or(`categoria.is.null,categoria.eq.estoque`);
+        if (sn)    query = query.ilike('numero_serie', sn);
+        else       query = query.ilike('patrimonio',   patri);
+        const { data, error } = await query.limit(1).maybeSingle();
+        if (error) throw error;
+        if (data) {
+            vincularEstoqueItemId = data.id;
+            result.className  = 'vincular-result ok';
+            result.textContent = `✅ Encontrado: ${data.descricao || ''} | SN: ${data.numero_serie || ''} | Pat: ${data.patrimonio || ''}`;
+            document.getElementById('btnConfirmarBaixar').style.display = '';
+        } else {
+            vincularEstoqueItemId = null;
+            result.className  = 'vincular-result nao';
+            result.textContent = '⚠️ Equipamento não encontrado no estoque.';
+            document.getElementById('btnConfirmarBaixar').style.display = 'none';
+        }
+    } catch (e) {
+        result.className  = 'vincular-result nao';
+        result.textContent = 'Erro: ' + e.message;
+    }
+}
+
+async function confirmarBaixarEstoque() {
+    if (!vincularEstoqueItemId) return;
+    if (!confirm('Confirmar baixa deste equipamento do estoque?')) return;
+    try {
+        const { error } = await supabaseClient.from('estoque').delete().eq('id', vincularEstoqueItemId);
+        if (error) throw error;
+        document.getElementById('vincularResultBusca').textContent = '✅ Baixado do estoque com sucesso.';
+        document.getElementById('btnConfirmarBaixar').style.display = 'none';
+        vincularEstoqueItemId = null;
+        estoqueCache = estoqueCache.filter(x => x.id !== vincularEstoqueItemId);
+        await carregarEstoque();
+    } catch (e) {
+        alert('Erro ao baixar: ' + e.message);
+    }
+}
+
+async function confirmarCadastrarBad() {
+    const d = _vincularChamadoDados;
+    if (!d) return;
+    const temDados = d.sn_ret || d.patri_ret || d.modelo_ret;
+    if (!temDados) { alert('Não há dados do equipamento retirado para cadastrar no BAD.'); return; }
+    const hoje = new Date().toISOString().slice(0, 10);
+    const payload = {
+        categoria:        'bad',
+        descricao:        (d.modelo_ret || '').toUpperCase() || null,
+        patrimonio:       (d.patri_ret  || '').toUpperCase() || null,
+        numero_serie:     (d.sn_ret     || '').toUpperCase() || null,
+        modelo:           (d.modelo_ret || '').toUpperCase() || null,
+        mac:              (d.mac_ret    || '') || null,
+        chamado_ref:      d.chamado || null,
+        data_entrada_bad: hoje,
+    };
+    try {
+        const { error } = await supabaseClient.from('estoque').insert([payload]);
+        if (error) throw error;
+        document.getElementById('vincularResultBad').style.display = '';
+        document.getElementById('btnCadastrarBad').style.display   = 'none';
+        await carregarBad();
+    } catch (e) {
+        alert('Erro ao cadastrar no BAD: ' + e.message);
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
