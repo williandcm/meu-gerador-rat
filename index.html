@@ -655,6 +655,7 @@
                 <div class="estoque-tabs">
                     <button class="estoque-tab ativo" id="tabBtnEstoque" onclick="mostrarAbaEstoque()">📦 Estoque</button>
                     <button class="estoque-tab estoque-tab-bad" id="tabBtnBad" onclick="mostrarAbaBad()">⚠️ BAD</button>
+                    <button class="estoque-tab" id="tabBtnHistorico" onclick="mostrarAbaHistorico()" style="color:#7c3aed;">📋 Histórico</button>
                 </div>
 
                 <!-- ABA ESTOQUE -->
@@ -703,6 +704,28 @@
                     </div>
                     <div id="statusBAD" style="text-align:center;color:#64748b;font-size:12px;margin-top:8px;">
                         Clique em "Atualizar" para carregar o BAD.
+                    </div>
+                </div>
+
+                <!-- ABA HISTÓRICO -->
+                <div id="abaHistorico" class="card search-box" style="display:none;">
+                    <div class="estoque-filter-row">
+                        <input type="text" id="filtroHistoricoTexto" placeholder="Pesquisar no histórico..." style="flex:1;" oninput="filtrarHistoricoLocal()">
+                        <button class="btn-load-all" onclick="carregarHistorico()" id="btnAtualizarHistorico">🔄 Atualizar</button>
+                    </div>
+                    <div class="table-container" id="containerHistorico" style="display:none; margin-top:12px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Descrição</th><th>Patrimônio</th><th>Número de Série</th>
+                                    <th>Modelo</th><th>INC Referência</th><th>Data Baixa</th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpoTabelaHistorico"></tbody>
+                        </table>
+                    </div>
+                    <div id="statusHistorico" style="text-align:center;color:#64748b;font-size:12px;margin-top:8px;">
+                        Clique em "Atualizar" para carregar o histórico.
                     </div>
                 </div>
 
@@ -1705,10 +1728,18 @@ create table estoque (
                 : `<button class="btn-success-table" onclick="alternarStatusTecnico('${tec.email}',true)">Reativar</button>`;
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><div style="display:flex;gap:5px;">
-                    <button class="btn-edit-table" onclick="carregarTecnicoParaEdicao('${tec.email}')">Editar</button>
-                    ${tec.email.toLowerCase() !== ADMIN_EMAIL ? btnStatus : ''}
-                </div></td>
+                <td>
+                    <div class="kebab-wrap">
+                        <button class="kebab-btn" onclick="toggleKebab(event,'kt-${tec.email}')">⋮</button>
+                        <div class="kebab-menu" id="kt-${tec.email}">
+                            <button onclick="carregarTecnicoParaEdicao('${tec.email}');fecharKebabs()">✏️ Editar</button>
+                            ${tec.email.toLowerCase() !== ADMIN_EMAIL ? (tec.ativo
+                                ? `<button class="km-danger" onclick="alternarStatusTecnico('${tec.email}',false);fecharKebabs()">🚫 Desativar</button>`
+                                : `<button onclick="alternarStatusTecnico('${tec.email}',true);fecharKebabs()">✅ Reativar</button>`)
+                            : ''}
+                        </div>
+                    </div>
+                </td>
                 <td style="font-weight:bold;color:var(--dark);">${tec.email}</td>
                 <td>${tec.nome}</td><td>${tec.cpf}</td><td>${badge}</td>
                 <td>${tec.email.toLowerCase() === ADMIN_EMAIL ? '<span style="font-size:11px;color:#94a3b8;">Acesso total</span>' : permBadges(tec.permissoes)}</td>`;
@@ -1933,11 +1964,15 @@ create table estoque (
             trMain.className = 'row-main';
             trMain.dataset.id = item.id;
             trMain.innerHTML = `
-                <td onclick="event.stopPropagation()">
-                    <div style="display:flex;gap:5px;">
-                        <button class="btn-edit-table" style="background:#64748b;" onclick="toggleDetalhe(${item.id})">Ver ▾</button>
-                        ${temPermissao('editar_chamado') ? `<button class="btn-edit-table" onclick="carregarChamadoDireto(${item.id})">Editar</button>` : ''}
-                        ${temPermissao('excluir_chamado') ? `<button class="btn-danger-table" onclick="excluirChamado(${item.id})">🗑</button>` : ''}
+                <td onclick="event.stopPropagation()" style="width:40px;">
+                    <div class="kebab-wrap">
+                        <button class="kebab-btn" onclick="toggleKebab(event,'kc-${item.id}')">⋮</button>
+                        <div class="kebab-menu" id="kc-${item.id}">
+                            <button onclick="toggleDetalhe(${item.id});fecharKebabs()">👁 Ver</button>
+                            ${temPermissao('editar_chamado') ? `<button onclick="carregarChamadoDireto(${item.id});fecharKebabs()">✏️ Editar</button>` : ''}
+                            ${(item.sn_inst || item.patri_inst) ? `<button onclick="vincularChamadoEstoque(${item.id});fecharKebabs()">🔗 Vincular Estoque</button>` : ''}
+                            ${temPermissao('excluir_chamado') ? `<button class="km-danger" onclick="excluirChamado(${item.id});fecharKebabs()">🗑 Excluir</button>` : ''}
+                        </div>
                     </div>
                 </td>
                 ${visCols.map(c => renderCelula(item, c.id)).join('')}`;
@@ -2664,6 +2699,7 @@ async function carregarEstoque() {
         const { data, error } = await supabaseClient.from('estoque').select('*')
             .or('categoria.is.null,categoria.eq.estoque')
             .order('id', { ascending: false });
+
         if (error) {
             if (error.code === '42P01' || error.message?.includes('does not exist')) {
                 if (aviso) aviso.style.display = 'block';
@@ -2713,9 +2749,14 @@ function atualizarTabelaEstoque(lista) {
         tr.innerHTML = `
             <td onclick="event.stopPropagation()">
                 <div style="display:flex;gap:5px;">
-                    <button class="btn-edit-table" style="background:#64748b;" onclick="verDetalheEquip(${eq.id})">Ver</button>
-                    ${isAdmin ? `<button class="btn-edit-table" onclick="abrirModalEquip(${eq.id})">Editar</button>` : ''}
-                    ${isAdmin ? `<button class="btn-danger-table" onclick="excluirEquipamento(${eq.id})">🗑</button>` : ''}
+                    <div class="kebab-wrap">
+                        <button class="kebab-btn" onclick="toggleKebab(event,'ke-${eq.id}')">⋮</button>
+                        <div class="kebab-menu" id="ke-${eq.id}">
+                            <button onclick="verDetalheEquip(${eq.id});fecharKebabs()">👁 Ver</button>
+                            ${isAdmin ? `<button onclick="abrirModalEquip(${eq.id});fecharKebabs()">✏️ Editar</button>` : ''}
+                            ${isAdmin ? `<button class="km-danger" onclick="excluirEquipamento(${eq.id});fecharKebabs()">🗑 Excluir</button>` : ''}
+                        </div>
+                    </div>
                 </div>
             </td>
             <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${eq.descricao||''}">${_v(eq.descricao)}</td>
@@ -2936,19 +2977,35 @@ function abrirScannerFiltro() {
 
 // ── TABS ESTOQUE / BAD ────────────────────────────────────────────────────────
 
+function _ocultarTodasAbas() {
+    ['abaEstoque','abaBad','abaHistorico'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    ['tabBtnEstoque','tabBtnBad','tabBtnHistorico'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('ativo');
+    });
+}
+
 function mostrarAbaEstoque() {
+    _ocultarTodasAbas();
     document.getElementById('abaEstoque').style.display = '';
-    document.getElementById('abaBad').style.display     = 'none';
     document.getElementById('tabBtnEstoque').classList.add('ativo');
-    document.getElementById('tabBtnBad').classList.remove('ativo');
 }
 
 function mostrarAbaBad() {
-    document.getElementById('abaEstoque').style.display = 'none';
-    document.getElementById('abaBad').style.display     = '';
+    _ocultarTodasAbas();
+    document.getElementById('abaBad').style.display = '';
     document.getElementById('tabBtnBad').classList.add('ativo');
-    document.getElementById('tabBtnEstoque').classList.remove('ativo');
     if (!badCache.length) carregarBad();
+}
+
+function mostrarAbaHistorico() {
+    _ocultarTodasAbas();
+    document.getElementById('abaHistorico').style.display = '';
+    document.getElementById('tabBtnHistorico').classList.add('ativo');
+    if (!historicoCache.length) carregarHistorico();
 }
 
 // ── BAD ───────────────────────────────────────────────────────────────────────
@@ -2999,10 +3056,13 @@ function atualizarTabelaBad(lista) {
         const dataEntrada = eq.data_entrada_bad ? new Date(eq.data_entrada_bad + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
         const dataEnvio   = eq.data_envio       ? `<span class="bad-envio-ok">✅ ${new Date(eq.data_envio + 'T12:00:00').toLocaleDateString('pt-BR')}</span>` : '<span style="color:#f59e0b;font-size:11px;font-weight:bold;">Pendente</span>';
         tr.innerHTML = `
-            <td onclick="event.stopPropagation()">
-                <div style="display:flex;gap:5px;flex-wrap:wrap;">
-                    ${!eq.data_envio ? `<button class="btn-edit-table" style="background:#16a34a;" onclick="registrarEnvio(${eq.id})">📤 Registrar Envio</button>` : ''}
-                    ${isAdmin ? `<button class="btn-danger-table" onclick="excluirDoBAD(${eq.id})">🗑</button>` : ''}
+            <td onclick="event.stopPropagation()" style="width:40px;">
+                <div class="kebab-wrap">
+                    <button class="kebab-btn" onclick="toggleKebab(event,'kb-${eq.id}')">⋮</button>
+                    <div class="kebab-menu" id="kb-${eq.id}">
+                        ${!eq.data_envio ? `<button onclick="registrarEnvio(${eq.id});fecharKebabs()">📤 Registrar Envio</button>` : '<button disabled style="color:#94a3b8;cursor:default;">✅ Enviado</button>'}
+                        ${isAdmin ? `<button class="km-danger" onclick="excluirDoBAD(${eq.id});fecharKebabs()">🗑 Excluir</button>` : ''}
+                    </div>
                 </div>
             </td>
             <td>${_v(eq.descricao)}</td>
@@ -3051,6 +3111,67 @@ async function excluirDoBAD(id) {
     } catch (e) {
         alert('Erro: ' + e.message);
     }
+}
+
+// ── HISTÓRICO DE BAIXAS ───────────────────────────────────────────────────────
+
+let historicoCache = [];
+
+async function carregarHistorico() {
+    const btn    = document.getElementById('btnAtualizarHistorico');
+    const status = document.getElementById('statusHistorico');
+    if (btn) { btn.innerHTML = '⏳ Carregando...'; btn.disabled = true; }
+    try {
+        const { data, error } = await supabaseClient
+            .from('estoque')
+            .select('*')
+            .eq('categoria', 'baixado')
+            .order('data_saida', { ascending: false });
+        if (error) throw error;
+        historicoCache = data || [];
+        atualizarTabelaHistorico(historicoCache);
+        if (status) status.textContent = `${historicoCache.length} item(s) no histórico.`;
+    } catch (e) {
+        if (status) status.textContent = 'Erro: ' + e.message;
+    } finally {
+        if (btn) { btn.innerHTML = '🔄 Atualizar'; btn.disabled = false; }
+    }
+}
+
+function atualizarTabelaHistorico(lista) {
+    const tbody = document.getElementById('corpoTabelaHistorico');
+    const container = document.getElementById('containerHistorico');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">Nenhuma baixa registrada.</td></tr>';
+        if (container) container.style.display = 'block';
+        return;
+    }
+    lista.forEach(eq => {
+        const dataSaida = eq.data_saida ? new Date(eq.data_saida + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${_v(eq.descricao)}</td>
+            <td style="font-weight:bold;">${_v(eq.patrimonio)}</td>
+            <td>${_v(eq.numero_serie)}</td>
+            <td>${_v(eq.modelo)}</td>
+            <td style="font-family:monospace;color:#2563eb;font-weight:bold;">${_v(eq.chamado_ref)}</td>
+            <td>${dataSaida}</td>`;
+        tbody.appendChild(tr);
+    });
+    if (container) container.style.display = 'block';
+}
+
+function filtrarHistoricoLocal() {
+    const texto = (document.getElementById('filtroHistoricoTexto')?.value || '').toUpperCase().trim();
+    const filtrado = historicoCache.filter(eq =>
+        !texto || [eq.descricao, eq.patrimonio, eq.numero_serie, eq.modelo, eq.chamado_ref]
+            .some(c => c && c.toUpperCase().includes(texto))
+    );
+    atualizarTabelaHistorico(filtrado);
+    const st = document.getElementById('statusHistorico');
+    if (st) st.textContent = texto ? `${filtrado.length} resultado(s).` : `${historicoCache.length} item(s) no histórico.`;
 }
 
 // ── VINCULAR ESTOQUE AO RAT ───────────────────────────────────────────────────
@@ -3134,16 +3255,29 @@ async function confirmarBaixarEstoque() {
     if (!vincularEstoqueItemId) return;
     if (!confirm('Confirmar baixa deste equipamento do estoque?')) return;
     try {
-        const { error } = await supabaseClient.from('estoque').delete().eq('id', vincularEstoqueItemId);
+        const hoje = new Date().toISOString().slice(0, 10);
+        const { error } = await supabaseClient.from('estoque').update({
+            categoria:  'baixado',
+            chamado_ref: vincularChamadoRef || null,
+            data_saida:  hoje,
+        }).eq('id', vincularEstoqueItemId);
         if (error) throw error;
-        document.getElementById('vincularResultBusca').textContent = '✅ Baixado do estoque com sucesso.';
+        const result = document.getElementById('vincularResultBusca');
+        result.className  = 'vincular-result ok';
+        result.textContent = '✅ Baixado do estoque com sucesso. Registrado no histórico.';
         document.getElementById('btnConfirmarBaixar').style.display = 'none';
         vincularEstoqueItemId = null;
-        estoqueCache = estoqueCache.filter(x => x.id !== vincularEstoqueItemId);
         await carregarEstoque();
     } catch (e) {
         alert('Erro ao baixar: ' + e.message);
     }
+}
+
+function vincularChamadoEstoque(id) {
+    const chamado = todosChamadosCache.find(x => x.id === id);
+    if (!chamado) { alert('Chamado não encontrado no cache. Atualize a lista de chamados e tente novamente.'); return; }
+    _vincularChamadoDados = chamado;
+    abrirModalVincularEstoque(chamado);
 }
 
 async function confirmarCadastrarBad() {
