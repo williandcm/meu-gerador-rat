@@ -604,6 +604,7 @@
                                 </div>
                             </div>
                             <div class="field full-width"><label>Solução</label><textarea id="f_solucao" oninput="sincronizarMac()"></textarea></div>
+                            <div class="field full-width"><label>Observações <span style="font-size:10px;color:#94a3b8;font-weight:normal;">(uso interno — não aparece na RAT)</span></label><textarea id="f_observacoes" placeholder="Registre aqui qualquer intercorrência, dificuldade de acesso, contato adicional ou informação relevante..."></textarea></div>
                             <div class="field"><label>Responsável</label><input type="text" id="f_resp"></div>
                             <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
                             <div class="field"><label>Nome do Técnico (RAT)</label><input type="text" id="f_tecnico_nome" placeholder="NOME DO TÉCNICO" oninput="salvarDadosTecnicoLocal()"></div>
@@ -1061,6 +1062,7 @@ create table estoque (
                 <div class="modal-grid">
                     <div class="modal-field span2"><div class="modal-field-label">Descritivo Defeito</div><div class="modal-field-value" id="md_defeito"></div></div>
                     <div class="modal-field span2"><div class="modal-field-label">Solução Aplicada</div><div class="modal-field-value" id="md_solucao"></div></div>
+                    <div class="modal-field span2" id="md_obs_wrap" style="display:none;"><div class="modal-field-label" style="color:#f59e0b;">📋 Observações Internas</div><div class="modal-field-value" id="md_observacoes" style="white-space:pre-wrap;background:#fffbeb;border-left:3px solid #f59e0b;padding:6px 10px;border-radius:0 4px 4px 0;"></div></div>
                 </div>
             </div>
 
@@ -2182,6 +2184,16 @@ create table estoque (
         set('md_mac_inst', macValido(c.mac_inst));
         set('md_defeito', c.descritivo_defeito_causa);
         set('md_solucao', c.solucao);
+        const obsEl = document.getElementById('md_observacoes');
+        const obsWrap = document.getElementById('md_obs_wrap');
+        if (obsEl && obsWrap) {
+            if (c.observacoes && c.observacoes.trim()) {
+                obsEl.textContent = c.observacoes.trim();
+                obsWrap.style.display = '';
+            } else {
+                obsWrap.style.display = 'none';
+            }
+        }
         set('md_resp', c.responsavel);
         set('md_matricula', c.matricula);
         set('md_local', c.cidade);
@@ -2293,7 +2305,7 @@ create table estoque (
         set('f_modelo_ret', d.modelo_ret); set('f_host_ret', d.host_ret); set('f_mac_ret', d.mac_ret);
         set('f_patri_inst', d.patri_inst); set('f_sn_inst', d.sn_inst);
         set('f_modelo_inst', d.modelo_inst); set('f_host_inst', d.host_inst); set('f_mac_inst', d.mac_inst);
-        set('f_solucao', d.solucao); set('f_resp', d.responsavel); set('f_matricula', d.matricula);
+        set('f_solucao', d.solucao); set('f_observacoes', d.observacoes); set('f_resp', d.responsavel); set('f_matricula', d.matricula);
         set('f_local_data_cidade', d.cidade); set('chamado_cerb', d.chamado_cerb);
         if (d.data_atendimento) {
             const p = d.data_atendimento.split('/');
@@ -2315,7 +2327,7 @@ create table estoque (
          'f_uniorg','f_rua','f_num','f_bai','f_cid','f_uf',
          'f_patri_ret','f_sn_ret','f_modelo_ret','f_host_ret','f_mac_ret',
          'f_patri_inst','f_sn_inst','f_modelo_inst','f_host_inst','f_mac_inst',
-         'f_solucao','f_resp','f_matricula'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+         'f_solucao','f_observacoes','f_resp','f_matricula'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         document.getElementById('f_descritivo_defeito').value = 'EQUIPAMENTO INOPERANTE';
         limparAssinaturaOverlay();
         carregarDadosTecnicoLocal();
@@ -2650,6 +2662,7 @@ create table estoque (
                 host_inst: document.getElementById('f_host_inst').value,
                 mac_inst: document.getElementById('f_mac_inst').value,
                 solucao: document.getElementById('f_solucao').value,
+                observacoes: document.getElementById('f_observacoes').value,
                 responsavel: document.getElementById('f_resp').value,
                 matricula: document.getElementById('f_matricula').value,
                 data_atendimento: document.getElementById('f_data_completa').value,
