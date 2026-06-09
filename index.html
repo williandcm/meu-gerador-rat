@@ -2681,14 +2681,14 @@ create table estoque (
                 const { error } = await supabaseClient.from('chamados').insert([payload]);
                 if (error) throw error;
                 alert("Chamado SALVO com sucesso!");
+
+                // Oferecer vinculação ao estoque apenas em cadastros novos com troca
+                if ((payload.sn_inst || payload.patri_inst) && confirm('Este chamado é uma troca de equipamento.\n\nDeseja vincular ao Estoque (baixar novo / cadastrar no BAD)?')) {
+                    _vincularChamadoDados = payload;
+                    abrirModalVincularEstoque(payload);
+                }
             }
             carregarTodosChamados();
-
-            // Se for troca, oferecer vinculação ao estoque
-            if ((payload.sn_inst || payload.patri_inst) && confirm('Este chamado é uma troca de equipamento.\n\nDeseja vincular ao Estoque (baixar novo / cadastrar no BAD)?')) {
-                _vincularChamadoDados = payload;
-                abrirModalVincularEstoque(payload);
-            }
         } catch (e) { alert("Erro na operação: " + e.message); }
         finally { btn.innerHTML = orig; btn.disabled = false; }
     }
@@ -3298,6 +3298,24 @@ async function confirmarCadastrarBad() {
     if (!d) return;
     const temDados = d.sn_ret || d.patri_ret || d.modelo_ret;
     if (!temDados) { alert('Não há dados do equipamento retirado para cadastrar no BAD.'); return; }
+
+    // Verificar duplicata pelo número do chamado
+    if (d.chamado) {
+        const { data: jaExiste } = await supabaseClient
+            .from('estoque').select('id')
+            .eq('categoria', 'bad')
+            .eq('chamado_ref', d.chamado)
+            .maybeSingle();
+        if (jaExiste) {
+            const result = document.getElementById('vincularResultBad');
+            result.className  = 'vincular-result nao';
+            result.textContent = `⚠️ O chamado ${d.chamado} já possui um equipamento no BAD. Entrada duplicada bloqueada.`;
+            result.style.display = '';
+            document.getElementById('btnCadastrarBad').style.display = 'none';
+            return;
+        }
+    }
+
     const hoje = new Date().toISOString().slice(0, 10);
     const payload = {
         categoria:        'bad',
