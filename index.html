@@ -951,6 +951,30 @@ create table estoque (
     </div>
 </div>
 
+<!-- MODAL EDITAR BAD -->
+<div class="modal-overlay" id="modalEditarBad" onclick="if(event.target===this)fecharModalEditarBad()">
+    <div class="modal-box" style="max-width:560px;">
+        <div class="modal-header">
+            <div><h2>Editar Item BAD</h2></div>
+            <button class="modal-close" onclick="fecharModalEditarBad()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid">
+                <div class="field full-width"><label>Descrição</label><input type="text" id="bad_descricao"></div>
+                <div class="field"><label>Patrimônio</label><input type="text" id="bad_patrimonio"></div>
+                <div class="field"><label>Número de Série</label><input type="text" id="bad_numero_serie"></div>
+                <div class="field"><label>Modelo</label><input type="text" id="bad_modelo"></div>
+                <div class="field"><label>Hostname</label><input type="text" id="bad_hostname"></div>
+                <div class="field"><label>MAC</label><input type="text" id="bad_mac" placeholder="00:00:00:00:00:00" maxlength="17" oninput="mascaraMAC(this)"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-close" onclick="fecharModalEditarBad()">Cancelar</button>
+            <button class="btn-modal-edit" onclick="salvarEdicaoBad()">💾 Salvar</button>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL VISUALIZADOR PDF ASSINADO -->
 <div class="modal-overlay" id="modalPdfViewer" onclick="fecharPdfViewerFora(event)">
     <div class="modal-box" style="max-width:680px;">
@@ -3138,6 +3162,7 @@ function atualizarTabelaBad(lista) {
                 <div class="kebab-wrap">
                     <button class="kebab-btn" onclick="toggleKebab(event,'kb-${eq.id}')">⋮</button>
                     <div class="kebab-menu" id="kb-${eq.id}">
+                        <button onclick="abrirModalEditarBad(${eq.id});fecharKebabs()">✏️ Editar</button>
                         ${!eq.data_envio ? `<button onclick="registrarEnvio(${eq.id});fecharKebabs()">📤 Registrar Envio</button>` : '<button disabled style="color:#94a3b8;cursor:default;">✅ Enviado</button>'}
                         ${isAdmin ? `<button class="km-danger" onclick="excluirDoBAD(${eq.id});fecharKebabs()">🗑 Excluir</button>` : ''}
                     </div>
@@ -3166,6 +3191,50 @@ function filtrarBadLocal() {
     atualizarTabelaBad(filtrado);
     const st = document.getElementById('statusBAD');
     if (st) st.textContent = texto ? `${filtrado.length} resultado(s).` : `${badCache.length} item(s) no BAD.`;
+}
+
+let badIdAtual = null;
+
+function abrirModalEditarBad(id) {
+    const eq = badCache.find(x => x.id === id);
+    if (!eq) return;
+    badIdAtual = id;
+    const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
+    set('bad_descricao',    eq.descricao);
+    set('bad_patrimonio',   eq.patrimonio);
+    set('bad_numero_serie', eq.numero_serie);
+    set('bad_modelo',       eq.modelo);
+    set('bad_hostname',     eq.hostname);
+    set('bad_mac',          eq.mac);
+    document.getElementById('modalEditarBad').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharModalEditarBad() {
+    document.getElementById('modalEditarBad').classList.remove('open');
+    document.body.style.overflow = '';
+    badIdAtual = null;
+}
+
+async function salvarEdicaoBad() {
+    if (!badIdAtual) return;
+    const gUP = id => (document.getElementById(id)?.value || '').trim().toUpperCase() || null;
+    const payload = {
+        descricao:    gUP('bad_descricao'),
+        patrimonio:   gUP('bad_patrimonio'),
+        numero_serie: gUP('bad_numero_serie'),
+        modelo:       gUP('bad_modelo'),
+        hostname:     gUP('bad_hostname'),
+        mac:          gUP('bad_mac') || null,
+    };
+    try {
+        const { error } = await supabaseClient.from('estoque').update(payload).eq('id', badIdAtual);
+        if (error) throw error;
+        fecharModalEditarBad();
+        await carregarBad();
+    } catch (e) {
+        alert('Erro ao salvar: ' + e.message);
+    }
 }
 
 async function registrarEnvio(id) {
