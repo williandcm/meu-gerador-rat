@@ -696,7 +696,8 @@
                             <thead>
                                 <tr>
                                     <th>Ações</th><th>Descrição</th><th>Patrimônio</th>
-                                    <th>Número de Série</th><th>Modelo</th><th>INC Ref.</th>
+                                    <th>Número de Série</th><th>Modelo</th><th>Hostname</th>
+                                    <th>MAC</th><th>INC Ref.</th>
                                     <th>Entrada BAD</th><th>Data Envio</th>
                                 </tr>
                             </thead>
@@ -3123,7 +3124,7 @@ function atualizarTabelaBad(lista) {
     tbody.innerHTML = '';
     const container = document.getElementById('containerBAD');
     if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;">Nenhum item no BAD.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#94a3b8;">Nenhum item no BAD.</td></tr>';
         if (container) container.style.display = 'block';
         return;
     }
@@ -3146,6 +3147,8 @@ function atualizarTabelaBad(lista) {
             <td style="font-weight:bold;">${_v(eq.patrimonio)}</td>
             <td>${_v(eq.numero_serie)}</td>
             <td>${_v(eq.modelo)}</td>
+            <td>${_v(eq.hostname)}</td>
+            <td style="font-family:monospace;font-size:11px;">${_v(eq.mac)}</td>
             <td style="font-family:monospace;color:#2563eb;">${_v(eq.chamado_ref)}</td>
             <td>${dataEntrada}</td>
             <td>${dataEnvio}</td>`;
@@ -3157,7 +3160,7 @@ function atualizarTabelaBad(lista) {
 function filtrarBadLocal() {
     const texto = (document.getElementById('filtroBADTexto')?.value || '').toUpperCase().trim();
     const filtrado = badCache.filter(eq =>
-        !texto || [eq.descricao, eq.patrimonio, eq.numero_serie, eq.modelo, eq.chamado_ref]
+        !texto || [eq.descricao, eq.patrimonio, eq.numero_serie, eq.modelo, eq.hostname, eq.mac, eq.chamado_ref]
             .some(c => c && c.toUpperCase().includes(texto))
     );
     atualizarTabelaBad(filtrado);
@@ -3387,6 +3390,7 @@ async function confirmarCadastrarBad() {
         patrimonio:       (d.patri_ret  || '').toUpperCase() || null,
         numero_serie:     (d.sn_ret     || '').toUpperCase() || null,
         modelo:           (d.modelo_ret || '').toUpperCase() || null,
+        hostname:         (d.host_ret   || '').toUpperCase() || null,
         mac:              (d.mac_ret    || '') || null,
         chamado_ref:      d.chamado || null,
         data_entrada_bad: hoje,
