@@ -1280,26 +1280,38 @@ create table estoque (
     // ── PDF VIEWER (chamado assinado) ──
     let pdfViewerCurrentId = null;
 
+    async function _buscarPdfBase64(id) {
+        const chamado = todosChamadosCache.find(x => x.id === id);
+        if (chamado?.pdf_base64) return chamado.pdf_base64;
+        const { data } = await supabaseClient.from('chamados').select('pdf_base64').eq('id', id).single();
+        const b64 = data?.pdf_base64 || null;
+        if (chamado && b64) chamado.pdf_base64 = b64; // cache para reuso na sessão
+        return b64;
+    }
+
     async function abrirPdfViewer(id) {
         const chamado = todosChamadosCache.find(x => x.id === id);
-        if (!chamado?.pdf_base64) { carregarChamadoDireto(id); return; }
-
         pdfViewerCurrentId = id;
-        document.getElementById('pdfViewerTitle').textContent = `RAT — ${chamado.chamado}`;
-        document.getElementById('pdfViewerSub').textContent = `${chamado.data_atendimento || ''} · ${nomeTecnico(chamado.tecnico)}`;
+
+        const canvas = document.getElementById('canvasPdfViewer');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        document.getElementById('pdfViewerTitle').textContent = `RAT — ${chamado?.chamado || ''}`;
+        document.getElementById('pdfViewerSub').textContent = `${chamado?.data_atendimento || ''} · ${nomeTecnico(chamado?.tecnico)}`;
+        document.getElementById('modalPdfViewer').classList.add('open');
+        document.body.style.overflow = 'hidden';
+
+        const b64 = await _buscarPdfBase64(id);
+        if (!b64) { fecharPdfViewer(); carregarChamadoDireto(id); return; }
 
         try {
-            const bytes = Uint8Array.from(atob(chamado.pdf_base64), c => c.charCodeAt(0));
+            const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
             const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
             const pg = await pdf.getPage(1);
             const vp = pg.getViewport({ scale: 1.8 });
-            const canvas = document.getElementById('canvasPdfViewer');
             canvas.height = vp.height; canvas.width = vp.width;
             await pg.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-        } catch (e) { alert('Erro ao renderizar PDF: ' + e.message); return; }
-
-        document.getElementById('modalPdfViewer').classList.add('open');
-        document.body.style.overflow = 'hidden';
+        } catch (e) { alert('Erro ao renderizar PDF: ' + e.message); }
     }
 
     function fecharPdfViewer() {
@@ -1314,13 +1326,14 @@ create table estoque (
         if (id) carregarChamadoDireto(id);
     }
 
-    function baixarPdfSalvo() {
+    async function baixarPdfSalvo() {
         const chamado = todosChamadosCache.find(x => x.id === pdfViewerCurrentId);
-        if (!chamado?.pdf_base64) return;
-        const bytes = Uint8Array.from(atob(chamado.pdf_base64), c => c.charCodeAt(0));
+        const b64 = await _buscarPdfBase64(pdfViewerCurrentId);
+        if (!b64) return;
+        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
         const link = document.createElement('a');
         link.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-        link.download = `RAT_${chamado.chamado}.pdf`;
+        link.download = `RAT_${chamado?.chamado || pdfViewerCurrentId}.pdf`;
         link.click();
     }
 
@@ -1380,7 +1393,7 @@ create table estoque (
         const v = (x) => x || '—';
         switch(colId) {
             case 'chamado': {
-                const signed = !!item.pdf_base64;
+                const signed = !!(item.has_pdf ?? item.pdf_base64);
                 const fn = signed ? `abrirPdfViewer(${item.id})` : `carregarChamadoDireto(${item.id})`;
                 const tip = signed ? 'Ver RAT assinada' : 'Abrir no editor';
                 const badge = signed ? `<span style="font-size:9px;color:var(--success);font-weight:700;margin-left:4px;">✔ assinada</span>` : '';
@@ -1842,18 +1855,41 @@ create table estoque (
     }
 
     // ── CHAMADOS ──
+    const COLS_LISTA =
+        'id,chamado,uniorg,hora_partida,hora_chegada,hora_inicio_ate,hora_termino_ate,' +
+        'endereco,numero,bairro,cidade,uf,descritivo_defeito_causa,' +
+        'patri_ret,sn_ret,modelo_ret,host_ret,mac_ret,' +
+        'patri_inst,sn_inst,modelo_inst,host_inst,mac_inst,' +
+        'solucao,observacoes,responsavel,matricula,data_atendimento,chamado_cerb,tecnico';
+
     async function carregarTodosChamados() {
         if (!loggedInUser) return;
         if (!await checarStatusAtivo()) return;
         const btn = document.getElementById('btnCarregarTodos');
         btn.innerHTML = "⏳ Carregando..."; btn.disabled = true;
         try {
-            let q = supabaseClient.from('chamados').select('*');
-            if (loggedInUser.email.toLowerCase() !== ADMIN_EMAIL) q = q.eq('tecnico', loggedInUser.email.toLowerCase());
-            else q = q.neq('chamado', 'CONFIG_TECNICOS');
-            const { data, error } = await q.order('id', { ascending: false });
+            const isAdmin = loggedInUser.email.toLowerCase() === ADMIN_EMAIL;
+
+            // Busca lista (sem pdf_base64) e IDs com PDF em paralelo
+            let qLista = supabaseClient.from('chamados').select(COLS_LISTA);
+            let qPdfs  = supabaseClient.from('chamados').select('id').not('pdf_base64', 'is', null);
+            if (!isAdmin) {
+                qLista = qLista.eq('tecnico', loggedInUser.email.toLowerCase());
+                qPdfs  = qPdfs.eq('tecnico',  loggedInUser.email.toLowerCase());
+            } else {
+                qLista = qLista.neq('chamado', 'CONFIG_TECNICOS');
+                qPdfs  = qPdfs.neq('chamado',  'CONFIG_TECNICOS');
+            }
+
+            const [{ data, error }, { data: comPdf }] = await Promise.all([
+                qLista.order('id', { ascending: false }),
+                qPdfs,
+            ]);
             if (error) throw error;
-            todosChamadosCache = data || [];
+
+            const pdfSet = new Set((comPdf || []).map(x => x.id));
+            todosChamadosCache = (data || []).map(c => ({ ...c, has_pdf: pdfSet.has(c.id) }));
+
             atualizarInterfaceTabela(todosChamadosCache);
             atualizarStats(todosChamadosCache);
             document.getElementById('statusTabela').textContent = `${todosChamadosCache.length} chamados encontrados.`;
