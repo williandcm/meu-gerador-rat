@@ -2440,18 +2440,19 @@ create table estoque (
     async function extrairDados() {
         const textoInput = document.getElementById('chamado_cerb').value;
         if (!textoInput) return;
-        if (!idRegistroAtual) {
-            resetarModoEdicao();
-            // Limpa todos os campos do formulário (mas não a textarea) para evitar
-            // que valores de um chamado anterior persistam quando o texto é trocado
-            ['f_inc','f_partida','f_chegada','f_inicio_ate','f_termino_ate',
-             'f_uniorg','f_rua','f_num','f_bai','f_cid','f_uf',
-             'f_patri_ret','f_sn_ret','f_modelo_ret','f_host_ret','f_mac_ret',
-             'f_patri_inst','f_sn_inst','f_modelo_inst','f_host_inst','f_mac_inst',
-             'f_solucao','f_observacoes','f_resp','f_matricula','f_local_data_cidade'
-            ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-            document.getElementById('f_descritivo_defeito').value = 'EQUIPAMENTO INOPERANTE';
-        }
+        // Em modo edição (chamado já salvo), o textarea não altera os campos
+        if (idRegistroAtual) return;
+
+        resetarModoEdicao();
+        // Limpa campos antes de preencher para não herdar valores de chamado anterior
+        ['f_inc','f_partida','f_chegada','f_inicio_ate','f_termino_ate',
+         'f_uniorg','f_rua','f_num','f_bai','f_cid','f_uf',
+         'f_patri_ret','f_sn_ret','f_modelo_ret','f_host_ret','f_mac_ret',
+         'f_patri_inst','f_sn_inst','f_modelo_inst','f_host_inst','f_mac_inst',
+         'f_solucao','f_observacoes','f_resp','f_matricula','f_local_data_cidade'
+        ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        document.getElementById('f_descritivo_defeito').value = 'EQUIPAMENTO INOPERANTE';
+
         const texto = textoInput.toUpperCase();
 
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
@@ -2725,14 +2726,23 @@ create table estoque (
             } else {
                 const { data: existente } = await supabaseClient.from('chamados').select('id').eq('chamado', inc).maybeSingle();
                 if (existente) { alert(`Chamado ${inc} já existe no sistema!\n\nBusque-o na aba Chamados e clique em "Editar" para modificá-lo.`); return; }
-                const { error } = await supabaseClient.from('chamados').insert([payload]);
+                const { data: novoReg, error } = await supabaseClient.from('chamados').insert([payload]).select('id').single();
                 if (error) throw error;
+
+                // Entrar em modo edição após salvar — impede que o textarea
+                // continue alterando os campos automaticamente
+                idRegistroAtual = novoReg.id;
+                document.getElementById('modo_edicao_label').style.display = 'inline';
+                document.getElementById('editorSub').textContent = `Editando: ${inc}`;
+                document.getElementById('btnSalvar').innerHTML = "💾 Atualizar Alterações";
+                document.getElementById('btnSalvar').className = 'btn-update';
+
                 alert("Chamado SALVO com sucesso!");
 
                 // Oferecer vinculação ao estoque apenas em cadastros novos com troca
                 if ((payload.sn_inst || payload.patri_inst) && confirm('Este chamado é uma troca de equipamento.\n\nDeseja vincular ao Estoque (baixar novo / cadastrar no BAD)?')) {
-                    _vincularChamadoDados = payload;
-                    abrirModalVincularEstoque(payload);
+                    _vincularChamadoDados = { ...payload, id: novoReg.id };
+                    abrirModalVincularEstoque({ ...payload, id: novoReg.id });
                 }
             }
             carregarTodosChamados();
