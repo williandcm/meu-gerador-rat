@@ -719,8 +719,7 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Descrição</th><th>Patrimônio</th><th>Número de Série</th>
-                                    <th>Modelo</th><th>INC Referência</th><th>Data Baixa</th>
+                                    <th>Data / Hora</th><th>Usuário</th><th>Ação</th><th>Descrição</th>
                                 </tr>
                             </thead>
                             <tbody id="corpoTabelaHistorico"></tbody>
@@ -2747,6 +2746,7 @@ create table estoque (
             if (idRegistroAtual !== null) {
                 const { error } = await supabaseClient.from('chamados').update(payload).eq('id', idRegistroAtual);
                 if (error) throw error;
+                await logMovimentacao('EDIÇÃO CHAMADO', inc + (payload.uniorg ? ' | UNIORG: ' + payload.uniorg : ''));
                 alert("Chamado ATUALIZADO com sucesso!");
             } else {
                 const { data: existente } = await supabaseClient.from('chamados').select('id').eq('chamado', inc).maybeSingle();
@@ -2767,6 +2767,7 @@ create table estoque (
                 document.getElementById('btnSalvar').innerHTML = "💾 Atualizar Alterações";
                 document.getElementById('btnSalvar').className = 'btn-update';
 
+                await logMovimentacao('NOVO CHAMADO', inc + (payload.uniorg ? ' | UNIORG: ' + payload.uniorg : '') + (payload.solucao ? ' | ' + payload.solucao : ''));
                 alert("Chamado SALVO com sucesso!");
 
                 // Oferecer vinculação ao estoque apenas em cadastros novos com troca
@@ -3230,6 +3231,8 @@ async function salvarEdicaoBad() {
     try {
         const { error } = await supabaseClient.from('estoque').update(payload).eq('id', badIdAtual);
         if (error) throw error;
+        const desc = [payload.descricao, payload.patrimonio ? 'Pat: ' + payload.patrimonio : '', payload.numero_serie ? 'SN: ' + payload.numero_serie : ''].filter(Boolean).join(' | ');
+        await logMovimentacao('EDIÇÃO BAD', desc);
         fecharModalEditarBad();
         await carregarBad();
     } catch (e) {
@@ -3243,6 +3246,9 @@ async function registrarEnvio(id) {
     try {
         const { error } = await supabaseClient.from('estoque').update({ data_envio: hoje }).eq('id', id);
         if (error) throw error;
+        const eq = badCache.find(x => x.id === id);
+        const desc = [eq?.descricao, eq?.patrimonio ? 'Pat: ' + eq.patrimonio : '', eq?.chamado_ref ? 'INC: ' + eq.chamado_ref : ''].filter(Boolean).join(' | ');
+        await logMovimentacao('ENVIO BAD', desc);
         await carregarBad();
     } catch (e) {
         alert('Erro: ' + e.message);
@@ -3252,8 +3258,11 @@ async function registrarEnvio(id) {
 async function excluirDoBAD(id) {
     if (!confirm('Excluir este item do BAD? Esta ação não pode ser desfeita.')) return;
     try {
+        const eq = badCache.find(x => x.id === id);
         const { error } = await supabaseClient.from('estoque').delete().eq('id', id);
         if (error) throw error;
+        const desc = [eq?.descricao, eq?.patrimonio ? 'Pat: ' + eq.patrimonio : '', eq?.numero_serie ? 'SN: ' + eq.numero_serie : ''].filter(Boolean).join(' | ');
+        await logMovimentacao('EXCLUSÃO BAD', desc);
         badCache = badCache.filter(x => x.id !== id);
         atualizarTabelaBad(badCache);
         atualizarStatsBad(badCache);
@@ -3266,20 +3275,30 @@ async function excluirDoBAD(id) {
 
 let historicoCache = [];
 
+async function logMovimentacao(acao, descricao) {
+    try {
+        await supabaseClient.from('movimentacoes').insert([{
+            usuario:   loggedInUser?.email || 'desconhecido',
+            acao,
+            descricao,
+        }]);
+    } catch (_) {}
+}
+
 async function carregarHistorico() {
     const btn    = document.getElementById('btnAtualizarHistorico');
     const status = document.getElementById('statusHistorico');
     if (btn) { btn.innerHTML = '⏳ Carregando...'; btn.disabled = true; }
     try {
         const { data, error } = await supabaseClient
-            .from('estoque')
+            .from('movimentacoes')
             .select('*')
-            .eq('categoria', 'baixado')
-            .order('data_saida', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(500);
         if (error) throw error;
         historicoCache = data || [];
         atualizarTabelaHistorico(historicoCache);
-        if (status) status.textContent = `${historicoCache.length} item(s) no histórico.`;
+        if (status) status.textContent = `${historicoCache.length} registro(s).`;
     } catch (e) {
         if (status) status.textContent = 'Erro: ' + e.message;
     } finally {
@@ -3287,26 +3306,42 @@ async function carregarHistorico() {
     }
 }
 
+const _ACAO_CORES = {
+    'BAIXA ESTOQUE':      '#2563eb',
+    'ENTRADA BAD':        '#dc2626',
+    'EDIÇÃO BAD':         '#d97706',
+    'ENVIO BAD':          '#16a34a',
+    'EXCLUSÃO BAD':       '#dc2626',
+    'NOVO EQUIPAMENTO':   '#16a34a',
+    'EDIÇÃO EQUIPAMENTO': '#d97706',
+    'EXCLUSÃO EQUIPAMENTO': '#dc2626',
+    'EDIÇÃO CHAMADO':     '#7c3aed',
+    'NOVO CHAMADO':       '#0891b2',
+};
+
 function atualizarTabelaHistorico(lista) {
     const tbody = document.getElementById('corpoTabelaHistorico');
     const container = document.getElementById('containerHistorico');
     if (!tbody) return;
     tbody.innerHTML = '';
     if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">Nenhuma baixa registrada.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;">Nenhuma movimentação registrada.</td></tr>';
         if (container) container.style.display = 'block';
         return;
     }
-    lista.forEach(eq => {
-        const dataSaida = eq.data_saida ? new Date(eq.data_saida + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+    lista.forEach(m => {
+        const dt = m.created_at ? new Date(m.created_at) : null;
+        const dataHora = dt
+            ? dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            : '—';
+        const cor = _ACAO_CORES[m.acao] || '#475569';
+        const badge = `<span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${cor}18;color:${cor};white-space:nowrap;">${m.acao || ''}</span>`;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${_v(eq.descricao)}</td>
-            <td style="font-weight:bold;">${_v(eq.patrimonio)}</td>
-            <td>${_v(eq.numero_serie)}</td>
-            <td>${_v(eq.modelo)}</td>
-            <td style="font-family:monospace;color:#2563eb;font-weight:bold;">${_v(eq.chamado_ref)}</td>
-            <td>${dataSaida}</td>`;
+            <td style="white-space:nowrap;font-size:12px;color:#64748b;">${dataHora}</td>
+            <td style="font-size:12px;">${(m.usuario || '').toLowerCase()}</td>
+            <td>${badge}</td>
+            <td style="font-size:13px;">${m.descricao || ''}</td>`;
         tbody.appendChild(tr);
     });
     if (container) container.style.display = 'block';
@@ -3314,13 +3349,13 @@ function atualizarTabelaHistorico(lista) {
 
 function filtrarHistoricoLocal() {
     const texto = (document.getElementById('filtroHistoricoTexto')?.value || '').toUpperCase().trim();
-    const filtrado = historicoCache.filter(eq =>
-        !texto || [eq.descricao, eq.patrimonio, eq.numero_serie, eq.modelo, eq.chamado_ref]
+    const filtrado = historicoCache.filter(m =>
+        !texto || [m.usuario, m.acao, m.descricao]
             .some(c => c && c.toUpperCase().includes(texto))
     );
     atualizarTabelaHistorico(filtrado);
     const st = document.getElementById('statusHistorico');
-    if (st) st.textContent = texto ? `${filtrado.length} resultado(s).` : `${historicoCache.length} item(s) no histórico.`;
+    if (st) st.textContent = texto ? `${filtrado.length} resultado(s).` : `${historicoCache.length} registro(s).`;
 }
 
 // ── VINCULAR ESTOQUE AO RAT ───────────────────────────────────────────────────
@@ -3411,9 +3446,12 @@ async function confirmarBaixarEstoque() {
             data_saida:  hoje,
         }).eq('id', vincularEstoqueItemId);
         if (error) throw error;
+        const eq = estoqueCache.find(x => x.id === vincularEstoqueItemId);
+        const desc = [eq?.descricao, eq?.patrimonio ? 'Pat: ' + eq.patrimonio : '', eq?.numero_serie ? 'SN: ' + eq.numero_serie : '', vincularChamadoRef ? 'INC: ' + vincularChamadoRef : ''].filter(Boolean).join(' | ');
+        await logMovimentacao('BAIXA ESTOQUE', desc);
         const result = document.getElementById('vincularResultBusca');
         result.className  = 'vincular-result ok';
-        result.textContent = '✅ Baixado do estoque com sucesso. Registrado no histórico.';
+        result.textContent = '✅ Baixado do estoque com sucesso.';
         document.getElementById('btnConfirmarBaixar').style.display = 'none';
         vincularEstoqueItemId = null;
         await carregarEstoque();
@@ -3467,6 +3505,8 @@ async function confirmarCadastrarBad() {
     try {
         const { error } = await supabaseClient.from('estoque').insert([payload]);
         if (error) throw error;
+        const desc = [payload.descricao, payload.patrimonio ? 'Pat: ' + payload.patrimonio : '', payload.numero_serie ? 'SN: ' + payload.numero_serie : '', payload.chamado_ref ? 'INC: ' + payload.chamado_ref : ''].filter(Boolean).join(' | ');
+        await logMovimentacao('ENTRADA BAD', desc);
         document.getElementById('vincularResultBad').style.display = '';
         document.getElementById('btnCadastrarBad').style.display   = 'none';
         await carregarBad();
@@ -3525,6 +3565,8 @@ async function salvarEquipamento() {
             ({ error } = await supabaseClient.from('estoque').insert([payload]));
         }
         if (error) throw error;
+        const desc = [payload.descricao, payload.patrimonio ? 'Pat: ' + payload.patrimonio : '', payload.numero_serie ? 'SN: ' + payload.numero_serie : ''].filter(Boolean).join(' | ');
+        await logMovimentacao(estoqueIdAtual ? 'EDIÇÃO EQUIPAMENTO' : 'NOVO EQUIPAMENTO', desc);
         fecharModalEquip();
         await carregarEstoque();
     } catch (e) {
@@ -3534,11 +3576,12 @@ async function salvarEquipamento() {
 
 async function excluirEquipamento(id) {
     const eq   = estoqueCache.find(x => x.id === id);
-    const desc = [eq?.descricao, eq?.patrimonio].filter(Boolean).join(' / ') || '#' + id;
-    if (!confirm(`Excluir definitivamente:\n${desc}\n\nEsta ação não pode ser desfeita.`)) return;
+    const desc = [eq?.descricao, eq?.patrimonio ? 'Pat: ' + eq.patrimonio : '', eq?.numero_serie ? 'SN: ' + eq.numero_serie : ''].filter(Boolean).join(' | ') || '#' + id;
+    if (!confirm(`Excluir definitivamente:\n${eq?.descricao || '#' + id}\n\nEsta ação não pode ser desfeita.`)) return;
     try {
         const { error } = await supabaseClient.from('estoque').delete().eq('id', id);
         if (error) throw error;
+        await logMovimentacao('EXCLUSÃO EQUIPAMENTO', desc);
         estoqueCache = estoqueCache.filter(x => x.id !== id);
         atualizarTabelaEstoque(estoqueCache);
         atualizarStatsEstoque(estoqueCache);
