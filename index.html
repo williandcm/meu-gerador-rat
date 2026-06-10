@@ -2726,12 +2726,17 @@ create table estoque (
             } else {
                 const { data: existente } = await supabaseClient.from('chamados').select('id').eq('chamado', inc).maybeSingle();
                 if (existente) { alert(`Chamado ${inc} já existe no sistema!\n\nBusque-o na aba Chamados e clique em "Editar" para modificá-lo.`); return; }
-                const { data: novoReg, error } = await supabaseClient.from('chamados').insert([payload]).select('id').single();
-                if (error) throw error;
+
+                const { error: errInsert } = await supabaseClient.from('chamados').insert([payload]);
+                if (errInsert) throw errInsert;
+
+                // Buscar o ID do registro recém-criado (separado do INSERT para evitar
+                // problemas de RLS que impediriam o SELECT junto ao INSERT)
+                const { data: novoReg } = await supabaseClient.from('chamados').select('id').eq('chamado', inc).maybeSingle();
 
                 // Entrar em modo edição após salvar — impede que o textarea
                 // continue alterando os campos automaticamente
-                idRegistroAtual = novoReg.id;
+                idRegistroAtual = novoReg?.id || null;
                 document.getElementById('modo_edicao_label').style.display = 'inline';
                 document.getElementById('editorSub').textContent = `Editando: ${inc}`;
                 document.getElementById('btnSalvar').innerHTML = "💾 Atualizar Alterações";
@@ -2740,9 +2745,11 @@ create table estoque (
                 alert("Chamado SALVO com sucesso!");
 
                 // Oferecer vinculação ao estoque apenas em cadastros novos com troca
-                if ((payload.sn_inst || payload.patri_inst) && confirm('Este chamado é uma troca de equipamento.\n\nDeseja vincular ao Estoque (baixar novo / cadastrar no BAD)?')) {
-                    _vincularChamadoDados = { ...payload, id: novoReg.id };
-                    abrirModalVincularEstoque({ ...payload, id: novoReg.id });
+                const temTroca = !!(payload.sn_inst || payload.patri_inst);
+                if (temTroca && confirm('Este chamado é uma troca de equipamento.\n\nDeseja vincular ao Estoque (baixar novo / cadastrar no BAD)?')) {
+                    const dadosVinculo = { ...payload, id: idRegistroAtual };
+                    _vincularChamadoDados = dadosVinculo;
+                    abrirModalVincularEstoque(dadosVinculo);
                 }
             }
             carregarTodosChamados();
