@@ -2404,7 +2404,7 @@ create table estoque (
     async function extrairDados() {
         const textoInput = document.getElementById('chamado_cerb').value;
         if (!textoInput) return;
-        resetarModoEdicao();
+        if (!idRegistroAtual) resetarModoEdicao();
         const texto = textoInput.toUpperCase();
 
         dados.inc = (/(INC\d+)/i.exec(texto) || ["","---"])[1];
