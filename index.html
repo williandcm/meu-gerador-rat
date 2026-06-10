@@ -207,7 +207,7 @@
         .kebab-wrap { position: relative; display: inline-block; }
         .kebab-btn { background: none; border: 1px solid #e2e8f0; cursor: pointer; font-size: 16px; color: #64748b; padding: 2px 9px; border-radius: 6px; line-height: 1.4; transition: .15s; font-weight: bold; }
         .kebab-btn:hover { background: #f1f5f9; border-color: #94a3b8; color: #1e293b; }
-        .kebab-menu { display: none; position: absolute; left: 0; top: calc(100% + 4px); z-index: 999; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.12); min-width: 130px; overflow: hidden; }
+        .kebab-menu { display: none; position: fixed; z-index: 9999; background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.12); min-width: 150px; overflow: hidden; }
         .kebab-menu.open { display: block; }
         .kebab-menu button { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid #f1f5f9; padding: 9px 14px; cursor: pointer; font-size: 13px; color: #334155; transition: .1s; }
         .kebab-menu button:last-child { border-bottom: none; }
@@ -3482,7 +3482,22 @@ function toggleKebab(event, menuId) {
     const menu = document.getElementById(menuId);
     const aberto = menu?.classList.contains('open');
     fecharKebabs();
-    if (!aberto && menu) menu.classList.add('open');
+    if (!aberto && menu) {
+        const btn = event.currentTarget;
+        const rect = btn.getBoundingClientRect();
+        menu.classList.add('open');
+        // Posiciona abaixo do botão
+        let top  = rect.bottom + 4;
+        let left = rect.left;
+        // Garante que não sai pela direita
+        const menuW = menu.offsetWidth || 150;
+        if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+        // Garante que não sai pela parte de baixo
+        const menuH = menu.offsetHeight || 120;
+        if (top + menuH > window.innerHeight - 8) top = rect.top - menuH - 4;
+        menu.style.top  = top  + 'px';
+        menu.style.left = left + 'px';
+    }
 }
 
 function fecharKebabs() {
