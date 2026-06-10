@@ -214,6 +214,25 @@
         .kebab-menu button:hover { background: #f8fafc; }
         .kebab-menu .km-danger { color: var(--danger); }
         .kebab-menu .km-danger:hover { background: #fee2e2; }
+        /* ── AJUDA ── */
+        .ajuda-toc { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:18px 22px; margin-bottom:28px; }
+        .ajuda-toc h3 { margin:0 0 12px; font-size:14px; color:#1e293b; }
+        .ajuda-toc a { display:block; color:var(--primary); font-size:13px; text-decoration:none; padding:3px 0; border-bottom:1px solid #f1f5f9; }
+        .ajuda-toc a:last-child { border-bottom:none; }
+        .ajuda-toc a:hover { text-decoration:underline; }
+        .ajuda-sec { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:24px 28px; margin-bottom:20px; scroll-margin-top:80px; }
+        .ajuda-sec h2 { font-size:17px; color:#1e293b; margin:0 0 4px; display:flex; align-items:center; gap:8px; }
+        .ajuda-sec .ajuda-sub { font-size:12px; color:#64748b; margin:0 0 18px; }
+        .ajuda-step { display:flex; gap:14px; margin-bottom:14px; align-items:flex-start; }
+        .ajuda-step-num { min-width:26px; height:26px; background:var(--primary); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex-shrink:0; margin-top:1px; }
+        .ajuda-step-body { font-size:13px; color:#334155; line-height:1.6; }
+        .ajuda-step-body strong { color:#1e293b; }
+        .ajuda-tip { background:#eff6ff; border-left:3px solid var(--primary); border-radius:0 8px 8px 0; padding:10px 14px; font-size:12px; color:#1e40af; margin:12px 0; }
+        .ajuda-warn { background:#fff7ed; border-left:3px solid #f59e0b; border-radius:0 8px 8px 0; padding:10px 14px; font-size:12px; color:#92400e; margin:12px 0; }
+        .ajuda-tag { display:inline-block; background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; margin:0 2px; white-space:nowrap; }
+        .ajuda-tag.red { background:#fee2e2; color:#b91c1c; }
+        .ajuda-tag.green { background:#dcfce7; color:#15803d; }
+        .ajuda-tag.yellow { background:#fef9c3; color:#854d0e; }
         /* ── COLUNA ORDENÁVEL ── */
         th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
         th.sortable:hover { background: rgba(59,130,246,.08); }
@@ -474,6 +493,10 @@
             <div class="nav-item" id="nav-admin" onclick="ir('admin')" style="display:none;">
                 <span class="nav-icon">⚙️</span>
                 <span class="nav-label">Administração</span>
+            </div>
+            <div class="nav-item" id="nav-ajuda" onclick="ir('ajuda')">
+                <span class="nav-icon">📖</span>
+                <span class="nav-label">Ajuda</span>
             </div>
         </nav>
         <div class="sidebar-footer">
@@ -844,6 +867,19 @@ create table estoque (
             <div class="sign-doc-inner" id="signDocInner">
                 <canvas id="signBaseCanvas"></canvas>
                 <canvas id="signOverlayCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- PAGE AJUDA -->
+        <div class="page" id="page-ajuda">
+            <div class="page-inner">
+                <div class="page-header">
+                    <div>
+                        <h1>📖 Documentação</h1>
+                        <div class="page-sub">Guia completo de uso do RAT Pro</div>
+                    </div>
+                </div>
+                <div id="ajuda-content" style="max-width:860px;margin:0 auto;"></div>
             </div>
         </div>
 
@@ -1554,6 +1590,7 @@ create table estoque (
         document.getElementById('page-' + pagina).classList.add('active');
         fecharMobile();
         if (pagina === 'admin') carregarPerfisTecnicos();
+        if (pagina === 'ajuda') renderizarAjuda();
         if (pagina === 'estoque') {
             try { carregarEstoque(); }
             catch(e) {
@@ -1562,6 +1599,165 @@ create table estoque (
                 console.warn('[estoque] módulo não carregado:', e);
             }
         }
+    }
+
+    function renderizarAjuda() {
+        const el = document.getElementById('ajuda-content');
+        if (!el || el.dataset.rendered) return;
+        el.dataset.rendered = '1';
+
+        const sec = (id, icon, titulo, sub, corpo) =>
+            `<div class="ajuda-sec" id="ajuda-${id}">
+                <h2>${icon} ${titulo}</h2>
+                <div class="ajuda-sub">${sub}</div>
+                ${corpo}
+             </div>`;
+
+        const step = (n, html) =>
+            `<div class="ajuda-step">
+                <div class="ajuda-step-num">${n}</div>
+                <div class="ajuda-step-body">${html}</div>
+             </div>`;
+
+        const tip  = t => `<div class="ajuda-tip">💡 ${t}</div>`;
+        const warn = t => `<div class="ajuda-warn">⚠️ ${t}</div>`;
+        const tag  = (t, c='') => `<span class="ajuda-tag ${c}">${t}</span>`;
+
+        el.innerHTML = `
+        <div class="ajuda-toc">
+            <h3>📋 Índice</h3>
+            <a href="#ajuda-login">1. Acesso ao sistema</a>
+            <a href="#ajuda-chamados">2. Tela de Chamados</a>
+            <a href="#ajuda-editor">3. Editor RAT — Criar novo chamado</a>
+            <a href="#ajuda-editar">4. Editar um chamado existente</a>
+            <a href="#ajuda-assinar">5. Assinar a RAT</a>
+            <a href="#ajuda-estoque">6. Estoque de equipamentos</a>
+            <a href="#ajuda-bad">7. BAD — Equipamentos com defeito</a>
+            <a href="#ajuda-historico">8. Histórico de movimentações</a>
+            <a href="#ajuda-vincular">9. Vincular troca ao Estoque / BAD</a>
+            <a href="#ajuda-admin">10. Administração (somente admin)</a>
+        </div>
+
+        ${sec('login','🔐','Acesso ao sistema','Como fazer login no RAT Pro', `
+            ${step(1,'Abra o sistema no navegador. A tela de login será exibida automaticamente.')}
+            ${step(2,'Digite seu <strong>e-mail</strong> e <strong>senha</strong> fornecidos pelo administrador.')}
+            ${step(3,'Clique em <strong>Entrar</strong>. O sistema carregará a lista de chamados.')}
+            ${tip('Use o Chrome para ter acesso ao leitor de código de barras.')}
+            ${warn('Caso esqueça a senha, entre em contato com o administrador do sistema.')}
+        `)}
+
+        ${sec('chamados','📋','Tela de Chamados','Visualize, busque e gerencie todos os seus chamados', `
+            ${step(1,'Ao entrar no sistema, você é levado automaticamente à tela <strong>Chamados</strong>.')}
+            ${step(2,'Clique em <strong>🔄 Atualizar</strong> para carregar a lista de chamados do banco de dados.')}
+            ${step(3,'Use os filtros no topo da tabela para buscar por técnico, data, UF, status de assinatura, entre outros.')}
+            ${step(4,'Clique no <strong>número do chamado</strong> (em azul) para abrir a RAT no editor ou visualizar o PDF assinado.')}
+            ${step(5,'Clique no botão <strong>⋮</strong> (três pontos) na coluna Ações para ver as opções disponíveis:')}
+            <div style="margin-left:40px;margin-top:6px;font-size:13px;color:#334155;line-height:2;">
+                ${tag('👁 Ver')} — Abre um painel com todos os dados do chamado.<br>
+                ${tag('✏️ Editar')} — Abre o chamado no editor para alterações.<br>
+                ${tag('🔗 Vincular Estoque','green')} — Aparece quando há troca de equipamento; permite baixar do estoque e cadastrar no BAD.<br>
+                ${tag('🗑 Excluir','red')} — Remove o chamado permanentemente (somente admin).
+            </div>
+            ${tip('Os chamados com RAT assinada exibem o badge <strong>✔ assinada</strong> ao lado do número. Clique nele para visualizar o PDF.')}
+        `)}
+
+        ${sec('editor','✏️','Editor RAT — Criar novo chamado','Preencha e salve um novo relatório de atendimento', `
+            ${step(1,'No menu lateral, clique em <strong>✏️ Editor RAT</strong>.')}
+            ${step(2,'Na seção <strong>"1. Cole o Chamado"</strong>, cole o texto completo do chamado copiado do sistema de origem (ex.: CERBERUS). O sistema preencherá automaticamente os campos como INC, UNIORG, endereço, hostname, serial e horários.')}
+            ${step(3,'Revise e complete os campos na seção <strong>"2. Editor em Tempo Real"</strong>. Os principais são:')}
+            <div style="margin-left:40px;font-size:13px;color:#334155;line-height:2;">
+                • <strong>Chamado</strong> — número INC extraído automaticamente.<br>
+                • <strong>Hora Partida / Chegada / Início / Término</strong> — horários do atendimento.<br>
+                • <strong>Uniorg</strong> — código da agência.<br>
+                • <strong>Endereço</strong> — preenchido automaticamente; ajuste se necessário.<br>
+                • <strong>Equipamento a ser atendido</strong> — marque o tipo correto.<br>
+                • <strong>Patrimônio, Número de Série, Modelo, Hostname, MAC</strong> — dados do equipamento.<br>
+                • <strong>Solução</strong> — descreva o que foi realizado.<br>
+                • <strong>Observações</strong> — campo interno; não é impresso na RAT.
+            </div>
+            ${step(4,'Acompanhe a <strong>pré-visualização da RAT</strong> no painel à direita. Ela é atualizada em tempo real conforme você preenche os campos.')}
+            ${step(5,'Selecione a <strong>data do atendimento</strong> no campo de data.')}
+            ${step(6,'Clique em <strong>💾 Salvar Novo</strong>. O chamado será registrado no banco de dados.')}
+            ${tip('Se o chamado for uma troca de equipamento (com número de série ou patrimônio novo preenchido), o sistema perguntará automaticamente se deseja vincular ao Estoque e ao BAD.')}
+            ${warn('Após salvar, o formulário entra em modo de edição. Para criar um novo chamado diferente, clique em <strong>🧹 Limpar</strong> no topo.')}
+        `)}
+
+        ${sec('editar','🔁','Editar um chamado existente','Altere dados de um chamado já salvo', `
+            ${step(1,'Na tela <strong>Chamados</strong>, clique no botão <strong>⋮</strong> do chamado desejado e selecione <strong>✏️ Editar</strong>.')}
+            ${step(2,'O chamado será aberto no Editor RAT. O botão de salvar mostrará <strong>💾 Atualizar Alterações</strong>.')}
+            ${step(3,'Altere os campos necessários diretamente no formulário.')}
+            ${step(4,'Clique em <strong>💾 Atualizar Alterações</strong> para salvar.')}
+            ${warn('Em modo edição, modificar o texto na área "Cole o Chamado" <strong>não altera</strong> os campos do formulário. Edite os campos diretamente.')}
+            ${tip('Para sair do modo edição e criar um chamado novo, clique em <strong>🧹 Limpar</strong>.')}
+        `)}
+
+        ${sec('assinar','✍️','Assinar a RAT','Como coletar a assinatura do responsável', `
+            ${step(1,'Com o chamado aberto no Editor, clique no botão <strong>✍️ Assinar RAT</strong> (abaixo da pré-visualização).')}
+            ${step(2,'Uma área de assinatura será exibida. O responsável deve assinar com o dedo (celular/tablet) ou com o mouse.')}
+            ${step(3,'Clique em <strong>✅ Confirmar Assinatura</strong>. O PDF será gerado com a assinatura incorporada e salvo no chamado.')}
+            ${step(4,'Após assinar, o chamado aparecerá na lista com o badge <strong>✔ assinada</strong>. Clique nele para visualizar ou baixar o PDF.')}
+            ${tip('Para baixar o PDF assinado, abra-o pelo badge ✔ assinada e clique em <strong>⬇️ Baixar PDF</strong>.')}
+        `)}
+
+        ${sec('estoque','📦','Estoque de equipamentos','Controle os equipamentos disponíveis para uso', `
+            ${step(1,'No menu lateral, clique em <strong>📦 Estoque</strong>. A aba <strong>Estoque</strong> será aberta.')}
+            ${step(2,'Clique em <strong>🔄 Atualizar</strong> para carregar os equipamentos cadastrados.')}
+            ${step(3,'Para <strong>cadastrar um novo equipamento</strong>, clique em <strong>+ Novo Equipamento</strong> e preencha os campos: Descrição, Patrimônio, Número de Série, EAN, Modelo, MAC e Quantidade. Clique em <strong>💾 Salvar</strong>.')}
+            ${step(4,'Use o campo de pesquisa para buscar equipamentos por qualquer campo. Clique em <strong>🔍</strong> (ícone de câmera) para usar o leitor de código de barras.')}
+            ${step(5,'Clique em <strong>⋮</strong> no item para as opções:')}
+            <div style="margin-left:40px;font-size:13px;color:#334155;line-height:2;">
+                ${tag('✏️ Editar')} — Altera os dados do equipamento.<br>
+                ${tag('📋 Detalhes')} — Exibe todas as informações.<br>
+                ${tag('🗑 Excluir','red')} — Remove o equipamento do estoque.
+            </div>
+            ${tip('O campo EAN suporta leitura por código de barras. Use o Chrome e permita o acesso à câmera.')}
+        `)}
+
+        ${sec('bad','⚠️','BAD — Equipamentos com defeito','Gerencie equipamentos retirados e aguardando envio', `
+            ${step(1,'Na tela Estoque, clique na aba <strong>⚠️ BAD</strong>.')}
+            ${step(2,'O BAD lista equipamentos retirados de campo com defeito que serão devolvidos à empresa.')}
+            ${step(3,'Para <strong>editar</strong> um item do BAD, clique em <strong>⋮ → ✏️ Editar</strong> e atualize os campos desejados.')}
+            ${step(4,'Quando o equipamento for enviado fisicamente, clique em <strong>⋮ → 📤 Registrar Envio</strong>. A data de envio será registrada e o item ficará marcado como <strong>✅ Enviado</strong>.')}
+            ${warn('Um mesmo número de chamado não pode ter dois equipamentos no BAD. O sistema bloqueará entradas duplicadas.')}
+            ${tip('Os campos Hostname e MAC do equipamento retirado são preenchidos automaticamente ao cadastrar via vinculação de chamado.')}
+        `)}
+
+        ${sec('historico','📋','Histórico de movimentações','Consulte todas as ações realizadas no sistema', `
+            ${step(1,'Na tela Estoque, clique na aba <strong>📋 Histórico</strong>.')}
+            ${step(2,'Clique em <strong>🔄 Atualizar</strong> para carregar os registros.')}
+            ${step(3,'Cada linha mostra: <strong>Data/Hora</strong>, <strong>Usuário</strong> que realizou a ação, <strong>Ação</strong> (com badge colorido) e a <strong>Descrição</strong> do que foi feito.')}
+            <div style="margin-left:40px;margin-top:6px;font-size:13px;color:#334155;line-height:2.2;">
+                ${tag('NOVO CHAMADO','green')} ${tag('EDIÇÃO CHAMADO','yellow')} — operações de RAT<br>
+                ${tag('BAIXA ESTOQUE')} — equipamento retirado do estoque<br>
+                ${tag('ENTRADA BAD','red')} ${tag('EDIÇÃO BAD','yellow')} ${tag('ENVIO BAD','green')} ${tag('EXCLUSÃO BAD','red')} — operações do BAD<br>
+                ${tag('NOVO EQUIPAMENTO','green')} ${tag('EDIÇÃO EQUIPAMENTO','yellow')} ${tag('EXCLUSÃO EQUIPAMENTO','red')} — estoque
+            </div>
+            ${step(4,'Use o campo de pesquisa para filtrar por usuário, tipo de ação ou descrição.')}
+        `)}
+
+        ${sec('vincular','🔗','Vincular troca ao Estoque / BAD','Como registrar a entrada e saída de equipamento em uma troca', `
+            ${step(1,'Ao salvar um chamado com equipamento novo (campos <strong>Patrimônio</strong> ou <strong>Número de Série</strong> do equipamento instalado preenchidos), o sistema pergunta automaticamente: <em>"Deseja vincular ao Estoque?"</em>')}
+            ${step(2,'Clique <strong>OK</strong>. O modal de vinculação abrirá com os dados do chamado.')}
+            ${step(3,'<strong>Baixar do Estoque (equipamento novo):</strong> No campo de busca, pesquise o equipamento pelo patrimônio ou serial. Clique em <strong>🔍 Buscar</strong>. Quando encontrado, clique em <strong>✅ Confirmar Baixa</strong>. O equipamento sairá do estoque e ficará registrado no histórico.')}
+            ${step(4,'<strong>Cadastrar no BAD (equipamento retirado):</strong> Clique em <strong>⚠️ Cadastrar no BAD</strong>. O equipamento retirado (com hostname, MAC, serial e patrimônio) será salvo no BAD automaticamente com a referência do chamado.')}
+            ${step(5,'Caso tenha esquecido de vincular no momento do salvamento, vá à tela <strong>Chamados</strong>, clique em <strong>⋮ → 🔗 Vincular Estoque</strong> no chamado desejado.')}
+            ${warn('O botão "Vincular Estoque" só aparece em chamados que possuem dados de equipamento instalado (patrimônio ou serial novo).')}
+        `)}
+
+        ${sec('admin','⚙️','Administração (somente admin)','Gerencie usuários e permissões do sistema', `
+            ${step(1,'No menu lateral, clique em <strong>⚙️ Administração</strong> (visível apenas para o administrador).')}
+            ${step(2,'Para <strong>cadastrar um novo técnico</strong>: preencha e-mail, senha provisória, nome completo e CPF. Marque as permissões de acesso desejadas e clique em <strong>➕ Cadastrar Técnico</strong>.')}
+            ${step(3,'A lista de técnicos cadastrados é exibida abaixo. Para cada técnico, clique em <strong>⋮</strong> para:')}
+            <div style="margin-left:40px;font-size:13px;color:#334155;line-height:2;">
+                ${tag('✏️ Editar')} — Altera nome, CPF e permissões.<br>
+                ${tag('🔴 Desativar / 🟢 Ativar')} — Bloqueia ou libera o acesso sem excluir o técnico.<br>
+                ${tag('🗑 Excluir','red')} — Remove o técnico permanentemente.
+            </div>
+            ${step(4,'As <strong>Permissões</strong> controlam o que cada técnico pode fazer: editar chamados, excluir chamados, acessar estoque, etc.')}
+            ${warn('Técnicos desativados não conseguem logar no sistema. A desativação é imediata.')}
+            ${tip('O administrador (email: ' + (typeof ADMIN_EMAIL !== "undefined" ? ADMIN_EMAIL : 'configurado no sistema') + ') sempre tem acesso total, independente das permissões.')}
+        `)}
+        `;
     }
     function novoAtendimento() { limparFormulario(); ir('editor'); }
 
