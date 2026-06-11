@@ -3855,3 +3855,10 @@ function verDetalheEquip(id) {
         ['Número de Série', eq.numero_serie],
         ['Modelo',          eq.modelo],
         ['MAC',             eq.mac],
+        ['Quantidade',      String(eq.quantidade ?? 1)],
+    ].filter(([, val]) => val && String(val).trim());
+    alert(`📦 Equipamento\n${'─'.repeat(40)}\n${linhas.map(([l, val]) => `${l}: ${val}`).join('\n')}`);
+}
+</script>
+</body>
+</html>
