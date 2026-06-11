@@ -1164,7 +1164,7 @@ create table estoque (
     const authRegistrationClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 
     const POS = {
-        inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10 },
+        inc: { x: 123, y: 768 }, uniorg: { x: 64, y: 714 }, rua: { x: 79, y: 701, s: 10, maxW: 210 },
         num: { x: 300, y: 702 }, cid: { x: 338, y: 689 }, uf: { x: 43, y: 675 },
         bai: { x: 65, y: 688 }, modelo: { x: 69, y: 457 }, host: { x: 78, y: 443 },
         patri: { x: 88, y: 485 }, sn: { x: 110, y: 471 }, mac: { x: 91, y: 430 },
@@ -2763,8 +2763,15 @@ create table estoque (
         const escrever = (id, cfg) => {
             const el = document.getElementById(id);
             if (!el) return;
-            const t = el.value;
-            if (t && t !== '---' && t !== '') page.drawText(String(t).toUpperCase(), { x: cfg.x, y: cfg.y, size: cfg.s || 11, color: cor, font });
+            let t = String(el.value || '').trim().toUpperCase();
+            if (!t || t === '---') return;
+            // Trunca o texto se maxW estiver definido no POS
+            if (cfg.maxW) {
+                while (t.length > 0 && font.widthOfTextAtSize(t, cfg.s || 11) > cfg.maxW) {
+                    t = t.slice(0, -1);
+                }
+            }
+            page.drawText(t, { x: cfg.x, y: cfg.y, size: cfg.s || 11, color: cor, font });
         };
         const escreverHora = (id, pH, pM) => {
             const v = document.getElementById(id).value.replace(":", "");
@@ -3848,10 +3855,3 @@ function verDetalheEquip(id) {
         ['Número de Série', eq.numero_serie],
         ['Modelo',          eq.modelo],
         ['MAC',             eq.mac],
-        ['Quantidade',      String(eq.quantidade ?? 1)],
-    ].filter(([, val]) => val && String(val).trim());
-    alert(`📦 Equipamento\n${'─'.repeat(40)}\n${linhas.map(([l, val]) => `${l}: ${val}`).join('\n')}`);
-}
-</script>
-</body>
-</html>
