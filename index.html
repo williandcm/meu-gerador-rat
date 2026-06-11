@@ -713,6 +713,7 @@
                     <div class="estoque-filter-row">
                         <input type="text" id="filtroBADTexto" placeholder="Pesquisar no BAD..." style="flex:1;" oninput="filtrarBadLocal()">
                         <button class="btn-load-all" onclick="carregarBad()" id="btnAtualizarBad">🔄 Atualizar</button>
+                        <button class="btn-load-all" style="background:#dc2626;color:#fff;border-color:#dc2626;" onclick="abrirNovoItemBad()">+ Novo Item BAD</button>
                     </div>
                     <div class="table-container" id="containerBAD" style="display:none; margin-top:12px;">
                         <table>
@@ -934,6 +935,10 @@ create table estoque (
             <div class="vincular-section vincular-section-bad">
                 <h4>📥 Cadastrar no BAD (equipamento retirado)</h4>
                 <div class="vincular-info" id="vincularInfoRet">—</div>
+                <div id="vincularBadSemDados" style="display:none;margin:8px 0;">
+                    <label style="font-size:12px;color:#92400e;font-weight:600;display:block;margin-bottom:4px;">⚠️ Equipamento sem dados — informe a descrição:</label>
+                    <input type="text" id="vincularBadDescManual" placeholder="Ex: HUB USB, TECLADO, MONITOR..." style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid #fca5a5;border-radius:6px;font-size:13px;text-transform:uppercase;">
+                </div>
                 <div id="vincularResultBad" style="display:none;" class="vincular-result ok">✅ Cadastrado no BAD com sucesso.</div>
                 <button class="btn-modal-edit" id="btnCadastrarBad" style="background:#dc2626;width:100%;" onclick="confirmarCadastrarBad()">⚠️ Cadastrar no BAD</button>
             </div>
@@ -1716,8 +1721,9 @@ create table estoque (
         ${sec('bad','⚠️','BAD — Equipamentos com defeito','Gerencie equipamentos retirados e aguardando envio', `
             ${step(1,'Na tela Estoque, clique na aba <strong>⚠️ BAD</strong>.')}
             ${step(2,'O BAD lista equipamentos retirados de campo com defeito que serão devolvidos à empresa.')}
-            ${step(3,'Para <strong>editar</strong> um item do BAD, clique em <strong>⋮ → ✏️ Editar</strong> e atualize os campos desejados.')}
-            ${step(4,'Quando o equipamento for enviado fisicamente, clique em <strong>⋮ → 📤 Registrar Envio</strong>. A data de envio será registrada e o item ficará marcado como <strong>✅ Enviado</strong>.')}
+            ${step(3,'Para <strong>adicionar um item manualmente</strong> (sem vínculo de chamado), clique em <strong>+ Novo Item BAD</strong>, preencha ao menos a Descrição e salve.')}
+            ${step(4,'Para <strong>editar</strong> um item do BAD, clique em <strong>⋮ → ✏️ Editar</strong> e atualize os campos desejados.')}
+            ${step(5,'Quando o equipamento for enviado fisicamente, clique em <strong>⋮ → 📤 Registrar Envio</strong>. A data de envio será registrada e o item ficará marcado como <strong>✅ Enviado</strong>.')}
             ${warn('Um mesmo número de chamado não pode ter dois equipamentos no BAD. O sistema bloqueará entradas duplicadas.')}
             ${tip('Os campos Hostname e MAC do equipamento retirado são preenchidos automaticamente ao cadastrar via vinculação de chamado.')}
         `)}
@@ -1739,9 +1745,11 @@ create table estoque (
             ${step(1,'Ao salvar um chamado com equipamento novo (campos <strong>Patrimônio</strong> ou <strong>Número de Série</strong> do equipamento instalado preenchidos), o sistema pergunta automaticamente: <em>"Deseja vincular ao Estoque?"</em>')}
             ${step(2,'Clique <strong>OK</strong>. O modal de vinculação abrirá com os dados do chamado.')}
             ${step(3,'<strong>Baixar do Estoque (equipamento novo):</strong> No campo de busca, pesquise o equipamento pelo patrimônio ou serial. Clique em <strong>🔍 Buscar</strong>. Quando encontrado, clique em <strong>✅ Confirmar Baixa</strong>. O equipamento sairá do estoque e ficará registrado no histórico.')}
-            ${step(4,'<strong>Cadastrar no BAD (equipamento retirado):</strong> Clique em <strong>⚠️ Cadastrar no BAD</strong>. O equipamento retirado (com hostname, MAC, serial e patrimônio) será salvo no BAD automaticamente com a referência do chamado.')}
-            ${step(5,'Caso tenha esquecido de vincular no momento do salvamento, vá à tela <strong>Chamados</strong>, clique em <strong>⋮ → 🔗 Vincular Estoque</strong> no chamado desejado.')}
-            ${warn('O botão "Vincular Estoque" só aparece em chamados que possuem dados de equipamento instalado (patrimônio ou serial novo).')}
+            ${step(4,'<strong>Cadastrar no BAD (equipamento retirado com dados):</strong> Clique em <strong>⚠️ Cadastrar no BAD</strong>. O equipamento retirado (hostname, MAC, serial e patrimônio) será salvo automaticamente com o número do chamado.')}
+            ${step(5,'<strong>Equipamento retirado sem informações (ex: HUB USB, teclado):</strong> O sistema exibirá um campo extra pedindo uma descrição. Preencha (ex: <em>HUB USB</em>) e clique em <strong>⚠️ Cadastrar no BAD</strong>.')}
+            ${step(6,'Caso tenha esquecido de vincular no momento do salvamento, vá à tela <strong>Chamados</strong>, clique em <strong>⋮ → 🔗 Vincular Estoque</strong> no chamado desejado.')}
+            ${warn('O botão "Vincular Estoque" só aparece em chamados com dados de equipamento instalado (patrimônio ou serial novo).')}
+            ${tip('Para equipamentos sem nenhuma referência de chamado, use <strong>+ Novo Item BAD</strong> diretamente na aba BAD.')}
         `)}
 
         ${sec('admin','⚙️','Administração (somente admin)','Gerencie usuários e permissões do sistema', `
@@ -3391,11 +3399,23 @@ function filtrarBadLocal() {
 }
 
 let badIdAtual = null;
+let badModoNovo = false;
+
+function abrirNovoItemBad() {
+    badIdAtual = null;
+    badModoNovo = true;
+    ['bad_descricao','bad_patrimonio','bad_numero_serie','bad_modelo','bad_hostname','bad_mac']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    document.querySelector('#modalEditarBad h2').textContent = 'Novo Item BAD';
+    document.getElementById('modalEditarBad').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
 
 function abrirModalEditarBad(id) {
     const eq = badCache.find(x => x.id === id);
     if (!eq) return;
     badIdAtual = id;
+    badModoNovo = false;
     const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
     set('bad_descricao',    eq.descricao);
     set('bad_patrimonio',   eq.patrimonio);
@@ -3403,6 +3423,7 @@ function abrirModalEditarBad(id) {
     set('bad_modelo',       eq.modelo);
     set('bad_hostname',     eq.hostname);
     set('bad_mac',          eq.mac);
+    document.querySelector('#modalEditarBad h2').textContent = 'Editar Item BAD';
     document.getElementById('modalEditarBad').classList.add('open');
     document.body.style.overflow = 'hidden';
 }
@@ -3411,24 +3432,34 @@ function fecharModalEditarBad() {
     document.getElementById('modalEditarBad').classList.remove('open');
     document.body.style.overflow = '';
     badIdAtual = null;
+    badModoNovo = false;
 }
 
 async function salvarEdicaoBad() {
-    if (!badIdAtual) return;
     const gUP = id => (document.getElementById(id)?.value || '').trim().toUpperCase() || null;
+    const descricao = gUP('bad_descricao');
+    if (!descricao) { alert('Informe ao menos a Descrição do equipamento.'); return; }
     const payload = {
-        descricao:    gUP('bad_descricao'),
+        descricao,
         patrimonio:   gUP('bad_patrimonio'),
         numero_serie: gUP('bad_numero_serie'),
         modelo:       gUP('bad_modelo'),
         hostname:     gUP('bad_hostname'),
         mac:          gUP('bad_mac') || null,
     };
+    const desc = [descricao, payload.patrimonio ? 'Pat: ' + payload.patrimonio : '', payload.numero_serie ? 'SN: ' + payload.numero_serie : ''].filter(Boolean).join(' | ');
     try {
-        const { error } = await supabaseClient.from('estoque').update(payload).eq('id', badIdAtual);
-        if (error) throw error;
-        const desc = [payload.descricao, payload.patrimonio ? 'Pat: ' + payload.patrimonio : '', payload.numero_serie ? 'SN: ' + payload.numero_serie : ''].filter(Boolean).join(' | ');
-        await logMovimentacao('EDIÇÃO BAD', desc);
+        if (badModoNovo) {
+            const hoje = new Date().toISOString().slice(0, 10);
+            const { error } = await supabaseClient.from('estoque').insert([{ ...payload, categoria: 'bad', data_entrada_bad: hoje }]);
+            if (error) throw error;
+            await logMovimentacao('ENTRADA BAD', desc + ' (manual)');
+        } else {
+            if (!badIdAtual) return;
+            const { error } = await supabaseClient.from('estoque').update(payload).eq('id', badIdAtual);
+            if (error) throw error;
+            await logMovimentacao('EDIÇÃO BAD', desc);
+        }
         fecharModalEditarBad();
         await carregarBad();
     } catch (e) {
@@ -3584,6 +3615,13 @@ function abrirModalVincularEstoque(chamado) {
     document.getElementById('vincularInfoInst').innerText = infoInst;
     document.getElementById('vincularInfoRet').innerText  = infoRet;
 
+    // Mostra campo de descrição manual quando o equipamento retirado não tem dados
+    const semDados = !chamado.sn_ret && !chamado.patri_ret && !chamado.modelo_ret;
+    const semDadosEl = document.getElementById('vincularBadSemDados');
+    const descManualEl = document.getElementById('vincularBadDescManual');
+    if (semDadosEl) semDadosEl.style.display = semDados ? '' : 'none';
+    if (descManualEl) descManualEl.value = '';
+
     document.getElementById('modalVincularEstoque').classList.add('open');
     document.body.style.overflow = 'hidden';
 }
@@ -3667,7 +3705,14 @@ async function confirmarCadastrarBad() {
     const d = _vincularChamadoDados;
     if (!d) return;
     const temDados = d.sn_ret || d.patri_ret || d.modelo_ret;
-    if (!temDados) { alert('Não há dados do equipamento retirado para cadastrar no BAD.'); return; }
+
+    // Quando não há dados do equipamento retirado, exige ao menos uma descrição manual
+    const descManual = (document.getElementById('vincularBadDescManual')?.value || '').trim().toUpperCase();
+    if (!temDados && !descManual) {
+        alert('O equipamento retirado não possui dados.\nInforme ao menos uma descrição (ex: HUB USB) no campo acima.');
+        document.getElementById('vincularBadDescManual')?.focus();
+        return;
+    }
 
     // Verificar duplicata pelo número do chamado
     if (d.chamado) {
@@ -3689,7 +3734,7 @@ async function confirmarCadastrarBad() {
     const hoje = new Date().toISOString().slice(0, 10);
     const payload = {
         categoria:        'bad',
-        descricao:        (d.modelo_ret || '').toUpperCase() || null,
+        descricao:        (d.modelo_ret || descManual || '').toUpperCase() || null,
         patrimonio:       (d.patri_ret  || '').toUpperCase() || null,
         numero_serie:     (d.sn_ret     || '').toUpperCase() || null,
         modelo:           (d.modelo_ret || '').toUpperCase() || null,
