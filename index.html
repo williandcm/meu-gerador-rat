@@ -1001,6 +1001,7 @@ create table estoque (
         <div class="modal-body">
             <div class="form-grid">
                 <div class="field full-width"><label>Descrição</label><input type="text" id="bad_descricao"></div>
+                <div class="field"><label>INC Ref.</label><input type="text" id="bad_chamado_ref" placeholder="INC000000000"></div>
                 <div class="field"><label>Patrimônio</label><input type="text" id="bad_patrimonio"></div>
                 <div class="field"><label>Número de Série</label><input type="text" id="bad_numero_serie"></div>
                 <div class="field"><label>Modelo</label><input type="text" id="bad_modelo"></div>
@@ -3404,7 +3405,7 @@ let badModoNovo = false;
 function abrirNovoItemBad() {
     badIdAtual = null;
     badModoNovo = true;
-    ['bad_descricao','bad_patrimonio','bad_numero_serie','bad_modelo','bad_hostname','bad_mac']
+    ['bad_descricao','bad_chamado_ref','bad_patrimonio','bad_numero_serie','bad_modelo','bad_hostname','bad_mac']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     document.querySelector('#modalEditarBad h2').textContent = 'Novo Item BAD';
     document.getElementById('modalEditarBad').classList.add('open');
@@ -3418,6 +3419,7 @@ function abrirModalEditarBad(id) {
     badModoNovo = false;
     const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
     set('bad_descricao',    eq.descricao);
+    set('bad_chamado_ref',  eq.chamado_ref);
     set('bad_patrimonio',   eq.patrimonio);
     set('bad_numero_serie', eq.numero_serie);
     set('bad_modelo',       eq.modelo);
@@ -3441,13 +3443,14 @@ async function salvarEdicaoBad() {
     if (!descricao) { alert('Informe ao menos a Descrição do equipamento.'); return; }
     const payload = {
         descricao,
+        chamado_ref:  gUP('bad_chamado_ref') || null,
         patrimonio:   gUP('bad_patrimonio'),
         numero_serie: gUP('bad_numero_serie'),
         modelo:       gUP('bad_modelo'),
         hostname:     gUP('bad_hostname'),
         mac:          gUP('bad_mac') || null,
     };
-    const desc = [descricao, payload.patrimonio ? 'Pat: ' + payload.patrimonio : '', payload.numero_serie ? 'SN: ' + payload.numero_serie : ''].filter(Boolean).join(' | ');
+    const desc = [descricao, payload.chamado_ref ? 'INC: ' + payload.chamado_ref : '', payload.patrimonio ? 'Pat: ' + payload.patrimonio : '', payload.numero_serie ? 'SN: ' + payload.numero_serie : ''].filter(Boolean).join(' | ');
     try {
         if (badModoNovo) {
             const hoje = new Date().toISOString().slice(0, 10);
