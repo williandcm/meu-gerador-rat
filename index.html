@@ -824,6 +824,27 @@ create table estoque (
                     </div>
                     <div id="adminStatusMsg" style="margin-top:15px; font-size:14px; line-height:1.5; padding:10px; border-radius:6px; display:none;"></div>
                 </div>
+                <div class="admin-card" style="margin-top:16px; border-top:3px solid #7c3aed;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
+                        <div style="background:linear-gradient(135deg,#7c3aed,#a855f7); color:white; width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;">🎯</div>
+                        <div>
+                            <h2 style="margin:0; font-size:15px; color:var(--dark);">Gerar Acesso para Demonstração</h2>
+                            <div style="font-size:12px; color:#64748b;">Cria um acesso temporário com credenciais prontas para compartilhar</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                        <div class="field" style="flex:1; min-width:180px; margin:0;">
+                            <label>Nome do Cliente</label>
+                            <input type="text" id="demo_nome_cliente" placeholder="Ex: JOÃO SILVA" style="text-transform:uppercase;">
+                        </div>
+                        <div class="field" style="flex:1; min-width:200px; margin:0;">
+                            <label>E-mail (opcional — deixe em branco para gerar)</label>
+                            <input type="email" id="demo_email_cliente" class="lc" placeholder="cliente@empresa.com">
+                        </div>
+                        <button onclick="gerarAcessoDemo()" id="btnGerarDemo" style="background:linear-gradient(135deg,#7c3aed,#a855f7); color:white; padding:10px 20px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; white-space:nowrap;">⚡ Gerar Acesso</button>
+                    </div>
+                    <div id="demoCardResult" style="display:none; margin-top:15px;"></div>
+                </div>
             </div>
         </div>
 
@@ -1766,6 +1787,21 @@ create table estoque (
             ${warn('Técnicos desativados não conseguem logar no sistema. A desativação é imediata.')}
             ${tip('O administrador (email: ' + (typeof ADMIN_EMAIL !== "undefined" ? ADMIN_EMAIL : 'configurado no sistema') + ') sempre tem acesso total, independente das permissões.')}
         `)}
+
+        ${sec('demo','🎯','Gerar Acesso para Demonstração','Crie credenciais temporárias para apresentar o sistema a um cliente', `
+            ${step(1,'No painel de <strong>⚙️ Administração</strong>, role até a seção <strong>🎯 Gerar Acesso para Demonstração</strong>.')}
+            ${step(2,'Preencha o <strong>Nome do Cliente</strong>. O e-mail é opcional — se deixado em branco, um e-mail de acesso temporário será gerado automaticamente.')}
+            ${step(3,'Clique em <strong>⚡ Gerar Acesso</strong>. Em segundos, um cartão com as credenciais será exibido na tela.')}
+            ${step(4,'Use os botões do cartão:')}
+            <div style="margin-left:40px;font-size:13px;color:#334155;line-height:2;">
+                ${tag('📲 Copiar para WhatsApp','green')} — Copia uma mensagem formatada com link, login e senha pronta para colar no WhatsApp.<br>
+                ${tag('📋 Só as Credenciais')} — Copia apenas o e-mail e a senha em formato simples.
+            </div>
+            ${step(5,'O acesso gerado aparece na tabela de técnicos com o badge <strong>DEMO</strong> e tem permissão somente leitura (não cria nem edita chamados).')}
+            ${step(6,'Após a apresentação, desative o acesso via <strong>⋮ → 🚫 Desativar</strong> na tabela de técnicos.')}
+            ${warn('Nunca compartilhe as credenciais de administrador. Sempre gere um acesso demo específico para cada apresentação.')}
+            ${tip('Se o cliente usar o próprio e-mail, ele poderá redefinir a senha depois pelo fluxo de recuperação do Supabase.')}
+        `)}
         `;
     }
     function novoAtendimento() { limparFormulario(); ir('editor'); }
@@ -1966,7 +2002,7 @@ create table estoque (
         }
         perfisTecnicosCache.forEach(tec => {
             if (tec.ativo === undefined) tec.ativo = true;
-            const badge = tec.ativo ? '<span class="badge badge-ok">ATIVO</span>' : '<span class="badge badge-off">INATIVO</span>';
+            const badge = (tec.ativo ? '<span class="badge badge-ok">ATIVO</span>' : '<span class="badge badge-off">INATIVO</span>') + (tec.isDemo ? ' <span class="badge" style="background:#ede9fe;color:#7c3aed;border:1px solid #c4b5fd;">DEMO</span>' : '');
             const btnStatus = tec.ativo
                 ? `<button class="btn-danger-table" onclick="alternarStatusTecnico('${tec.email}',false)">Desativar</button>`
                 : `<button class="btn-success-table" onclick="alternarStatusTecnico('${tec.email}',true)">Reativar</button>`;
@@ -2081,6 +2117,114 @@ create table estoque (
             else if (m.includes('rate limit')) mostrarMsgAdmin("❌ Limite excedido. Aumente o Email Rate Limit no painel do Supabase (Auth > Settings > Security).", 'err');
             else mostrarMsgAdmin("❌ Erro: " + m, 'err');
         } finally { btn.disabled = false; btn.textContent = "Cadastrar Técnico"; }
+    }
+
+    // ── ACESSO DEMO ──
+    let _ultimoDemoAcesso = null;
+
+    async function gerarAcessoDemo() {
+        const nomeInput = (document.getElementById('demo_nome_cliente').value || '').trim();
+        const emailInput = (document.getElementById('demo_email_cliente').value || '').trim().toLowerCase();
+        const card = document.getElementById('demoCardResult');
+
+        if (!nomeInput) {
+            card.innerHTML = '<div style="color:#dc2626;padding:8px;background:#fef2f2;border-radius:6px;">⚠ Informe o nome do cliente.</div>';
+            card.style.display = 'block';
+            return;
+        }
+
+        const btn = document.getElementById('btnGerarDemo');
+        btn.disabled = true; btn.textContent = '⏳ Gerando...';
+        card.style.display = 'none';
+
+        try {
+            const slug = nomeInput.toLowerCase()
+                .normalize('NFD').replace(/[̀-ͯ]/g, '')
+                .replace(/[^a-z0-9]+/g, '.');
+            const ts = Date.now().toString(36);
+            const email = emailInput || `demo.${slug}.${ts}@acesso.ratpro.app`;
+            const senha = _gerarSenhaAleatoria();
+            const nome = `DEMO - ${nomeInput.toUpperCase()}`;
+
+            const { error } = await authRegistrationClient.auth.signUp({
+                email, password: senha,
+                options: { data: { full_name: nome } }
+            });
+            if (error) throw error;
+
+            perfisTecnicosCache.push({
+                email, nome, cpf: '000.000.000-00', ativo: true, isDemo: true,
+                permissoes: { criar_chamado: false, editar_chamado: false, excluir_chamado: false, assinar_rat: false, baixar_pdf: true }
+            });
+            await salvarPerfisTecnicosNoBanco();
+            await carregarPerfisTecnicos();
+
+            _ultimoDemoAcesso = { nome, email, senha, url: window.location.href };
+            _mostrarCartaoDemo();
+            document.getElementById('demo_nome_cliente').value = '';
+            document.getElementById('demo_email_cliente').value = '';
+        } catch (e) {
+            const m = (e.message || '').toLowerCase();
+            let msg = '❌ Erro: ' + e.message;
+            if (m.includes('already')) msg = '❌ Este e-mail já possui acesso cadastrado.';
+            else if (m.includes('rate limit')) msg = '❌ Limite de cadastros excedido. Aguarde alguns minutos.';
+            card.innerHTML = `<div style="color:#dc2626;padding:8px;background:#fef2f2;border-radius:6px;">${msg}</div>`;
+            card.style.display = 'block';
+        } finally {
+            btn.disabled = false; btn.textContent = '⚡ Gerar Acesso';
+        }
+    }
+
+    function _gerarSenhaAleatoria() {
+        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    }
+
+    function _mostrarCartaoDemo() {
+        const { nome, email, senha, url } = _ultimoDemoAcesso;
+        const card = document.getElementById('demoCardResult');
+        card.style.display = 'block';
+        card.innerHTML = `
+            <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:10px; padding:15px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                    <span style="font-size:18px;">✅</span>
+                    <strong style="color:#166534; font-size:14px;">Acesso criado com sucesso!</strong>
+                </div>
+                <div style="background:white; border:1px solid #d1fae5; border-radius:8px; padding:12px; font-size:13px;">
+                    <div style="margin-bottom:8px;"><span style="color:#64748b; font-size:11px; font-weight:600; text-transform:uppercase;">👤 Usuário</span><br><strong>${nome}</strong></div>
+                    <div style="margin-bottom:8px;"><span style="color:#64748b; font-size:11px; font-weight:600; text-transform:uppercase;">📧 Login</span><br><strong style="word-break:break-all;">${email}</strong></div>
+                    <div style="margin-bottom:8px;"><span style="color:#64748b; font-size:11px; font-weight:600; text-transform:uppercase;">🔑 Senha</span><br><strong style="font-family:monospace; font-size:16px; letter-spacing:2px; color:#1e40af;">${senha}</strong></div>
+                    <div><span style="color:#64748b; font-size:11px; font-weight:600; text-transform:uppercase;">🔗 Link do sistema</span><br><strong style="word-break:break-all; font-size:12px;">${url}</strong></div>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+                    <button onclick="_copiarCartaoWhatsApp()" style="background:#25D366; color:white; border:none; border-radius:8px; padding:9px 16px; font-weight:bold; cursor:pointer; flex:1;">📲 Copiar para WhatsApp</button>
+                    <button onclick="_copiarApenasCredenciais()" style="background:#0ea5e9; color:white; border:none; border-radius:8px; padding:9px 16px; font-weight:bold; cursor:pointer; flex:1;">📋 Só as Credenciais</button>
+                    <button onclick="document.getElementById('demoCardResult').style.display='none'" style="background:#e2e8f0; color:#475569; border:none; border-radius:8px; padding:9px 12px; font-weight:bold; cursor:pointer;">✕</button>
+                </div>
+                <div style="margin-top:10px; font-size:11px; color:#94a3b8;">⚠ Acesso somente leitura. Desative-o a qualquer hora na tabela de técnicos acima.</div>
+            </div>`;
+    }
+
+    async function _copiarCartaoWhatsApp() {
+        if (!_ultimoDemoAcesso) return;
+        const { email, senha, url } = _ultimoDemoAcesso;
+        const texto = `Olá! Seguem suas credenciais de acesso ao *RAT Pro*:\n\n🔗 *Link:* ${url}\n📧 *Login:* ${email}\n🔑 *Senha:* ${senha}\n\nEste é um acesso de demonstração (somente leitura).\nQualquer dúvida estou à disposição! 😊`;
+        try { await navigator.clipboard.writeText(texto); } catch {
+            const t = document.createElement('textarea'); t.value = texto;
+            document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+        }
+        alert('✅ Copiado! Cole no WhatsApp.');
+    }
+
+    async function _copiarApenasCredenciais() {
+        if (!_ultimoDemoAcesso) return;
+        const { email, senha } = _ultimoDemoAcesso;
+        const texto = `Login: ${email}\nSenha: ${senha}`;
+        try { await navigator.clipboard.writeText(texto); } catch {
+            const t = document.createElement('textarea'); t.value = texto;
+            document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+        }
+        alert('✅ Credenciais copiadas!');
     }
 
     // ── CHAMADOS ──
