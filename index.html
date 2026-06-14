@@ -1584,33 +1584,27 @@ create table estoque (
         renderListaColunas();
     }
 
-    async function _loginPorToken(token) {
+    async function _loginPorDemoUrl(encoded) {
         history.replaceState(null, '', location.pathname + location.hash);
         const errorDiv = document.getElementById('loginError');
         try {
-            const { data, error } = await supabaseClient
-                .from('chamados').select('solucao').eq('chamado', 'DEMO_TOKEN_' + token).maybeSingle();
-            if (error || !data) throw new Error('Link inválido ou já utilizado.');
-
-            const td = JSON.parse(data.solucao);
-            await supabaseClient.from('chamados').delete().eq('chamado', 'DEMO_TOKEN_' + token);
-
+            const td = await _demoDecrypt(encoded);
             if (Date.now() > td.expires_at) throw new Error('Este link expirou. Solicite um novo acesso ao administrador.');
-
             const { data: ld, error: le } = await supabaseClient.auth.signInWithPassword({ email: td.email, password: td.senha });
             if (le) throw le;
             inicializarAplicacao(ld.user);
         } catch (e) {
             mostrarTelaLogin();
-            errorDiv.textContent = '🔗 ' + e.message;
+            const msg = e.message.includes('expirou') ? e.message : 'Link inválido ou corrompido.';
+            errorDiv.textContent = '🔗 ' + msg;
             errorDiv.style.display = 'block';
         }
     }
 
     window.onload = async () => {
         try {
-            const urlToken = new URLSearchParams(location.search).get('token');
-            if (urlToken) { await _loginPorToken(urlToken); }
+            const demoParam = new URLSearchParams(location.search).get('d');
+            if (demoParam) { await _loginPorDemoUrl(demoParam); }
             else {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 if (session) inicializarAplicacao(session.user);
@@ -2167,6 +2161,29 @@ create table estoque (
     // ── ACESSO DEMO ──
     let _ultimoDemoAcesso = null;
 
+    const _DEMO_KEY = 'RATProDemo2024SecretKey!@#$%^&*()';
+
+    async function _demoCryptoKey() {
+        const raw = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(_DEMO_KEY));
+        return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+    }
+
+    async function _demoEncrypt(obj) {
+        const key = await _demoCryptoKey();
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj)));
+        const buf = new Uint8Array(12 + ct.byteLength);
+        buf.set(iv); buf.set(new Uint8Array(ct), 12);
+        return btoa(String.fromCharCode(...buf)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+    }
+
+    async function _demoDecrypt(encoded) {
+        const bin = Uint8Array.from(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0));
+        const key = await _demoCryptoKey();
+        const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bin.slice(0,12) }, key, bin.slice(12));
+        return JSON.parse(new TextDecoder().decode(pt));
+    }
+
     async function gerarAcessoDemo() {
         const email = (document.getElementById('demo_email_usuario').value || '').trim().toLowerCase();
         const senha = (document.getElementById('demo_senha_usuario').value || '').trim();
@@ -2184,18 +2201,9 @@ create table estoque (
         card.style.display = 'none';
 
         try {
-            const token = crypto.randomUUID();
-            const expires_at = Date.now() + horas * 60 * 60 * 1000;
-
-            const { error } = await supabaseClient.from('chamados').insert([{
-                chamado: 'DEMO_TOKEN_' + token,
-                solucao: JSON.stringify({ email, senha, expires_at }),
-                tecnico: 'SISTEMA_ADMIN'
-            }]);
-            if (error) throw error;
-
-            const baseUrl = window.location.origin + window.location.pathname;
-            const url = baseUrl + '?token=' + token;
+            const payload = { email, senha, expires_at: Date.now() + horas * 3600000 };
+            const d = await _demoEncrypt(payload);
+            const url = window.location.origin + window.location.pathname + '?d=' + d;
             _ultimoDemoAcesso = { email, url, horas };
             _mostrarCartaoDemo();
             document.getElementById('demo_email_usuario').value = '';
@@ -2276,8 +2284,8 @@ create table estoque (
                 qLista = qLista.eq('tecnico', loggedInUser.email.toLowerCase());
                 qPdfs  = qPdfs.eq('tecnico',  loggedInUser.email.toLowerCase());
             } else {
-                qLista = qLista.neq('chamado', 'CONFIG_TECNICOS').not('chamado', 'ilike', 'DEMO_TOKEN_%');
-                qPdfs  = qPdfs.neq('chamado',  'CONFIG_TECNICOS').not('chamado', 'ilike', 'DEMO_TOKEN_%');
+                qLista = qLista.neq('chamado', 'CONFIG_TECNICOS');
+                qPdfs  = qPdfs.neq('chamado',  'CONFIG_TECNICOS');
             }
 
             const [{ data, error }, { data: comPdf }] = await Promise.all([
