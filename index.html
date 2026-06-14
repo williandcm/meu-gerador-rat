@@ -1587,16 +1587,28 @@ create table estoque (
     async function _loginPorDemoUrl(encoded) {
         history.replaceState(null, '', location.pathname + location.hash);
         const errorDiv = document.getElementById('loginError');
+        let td;
         try {
-            const td = await _demoDecrypt(encoded);
-            if (Date.now() > td.expires_at) throw new Error('Este link expirou. Solicite um novo acesso ao administrador.');
+            td = await _demoDecrypt(encoded);
+        } catch {
+            mostrarTelaLogin();
+            errorDiv.textContent = '🔗 Link inválido ou corrompido. Solicite um novo link ao administrador.';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        try {
+            if (Date.now() > td.expires_at) throw new Error('expirou');
             const { data: ld, error: le } = await supabaseClient.auth.signInWithPassword({ email: td.email, password: td.senha });
-            if (le) throw le;
+            if (le) throw new Error('credenciais');
             inicializarAplicacao(ld.user);
         } catch (e) {
             mostrarTelaLogin();
-            const msg = e.message.includes('expirou') ? e.message : 'Link inválido ou corrompido.';
-            errorDiv.textContent = '🔗 ' + msg;
+            if (e.message === 'expirou')
+                errorDiv.textContent = '⏰ Este link já expirou. Solicite um novo acesso ao administrador.';
+            else if (e.message === 'credenciais')
+                errorDiv.textContent = '🔗 As credenciais do link estão incorretas. O administrador deve gerar um novo link.';
+            else
+                errorDiv.textContent = '🔗 Erro ao acessar: ' + e.message;
             errorDiv.style.display = 'block';
         }
     }
@@ -2178,7 +2190,9 @@ create table estoque (
     }
 
     async function _demoDecrypt(encoded) {
-        const bin = Uint8Array.from(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0));
+        const b64 = encoded.replace(/-/g,'+').replace(/_/g,'/');
+        const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+        const bin = Uint8Array.from(atob(padded), c => c.charCodeAt(0));
         const key = await _demoCryptoKey();
         const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bin.slice(0,12) }, key, bin.slice(12));
         return JSON.parse(new TextDecoder().decode(pt));
