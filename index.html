@@ -843,12 +843,8 @@ create table estoque (
                     </div>
                     <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
                         <div class="field" style="flex:1; min-width:200px; margin:0;">
-                            <label>E-mail do usuário demo</label>
-                            <input type="email" id="demo_email_usuario" class="lc" placeholder="demo@empresa.com">
-                        </div>
-                        <div class="field" style="flex:1; min-width:160px; margin:0;">
-                            <label>Senha do usuário demo</label>
-                            <input type="password" id="demo_senha_usuario" class="lc" placeholder="••••••••">
+                            <label>Nome do cliente</label>
+                            <input type="text" id="demo_nome_cliente" placeholder="Ex: JOÃO SILVA" style="text-transform:uppercase;">
                         </div>
                         <div class="field" style="min-width:110px; margin:0;">
                             <label>Validade</label>
@@ -2198,32 +2194,54 @@ create table estoque (
         return JSON.parse(new TextDecoder().decode(pt));
     }
 
+    function _gerarSenhaAleatoria() {
+        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+        return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    }
+
     async function gerarAcessoDemo() {
-        const email = (document.getElementById('demo_email_usuario').value || '').trim().toLowerCase();
-        const senha = (document.getElementById('demo_senha_usuario').value || '').trim();
+        const nomeInput = (document.getElementById('demo_nome_cliente').value || '').trim();
         const horas = parseInt(document.getElementById('demo_validade').value) || 1;
         const card = document.getElementById('demoCardResult');
 
-        if (!email || !senha) {
-            card.innerHTML = '<div style="color:#dc2626;padding:8px;background:#fef2f2;border-radius:6px;">⚠ Informe o e-mail e a senha do usuário demo.</div>';
+        if (!nomeInput) {
+            card.innerHTML = '<div style="color:#dc2626;padding:8px;background:#fef2f2;border-radius:6px;">⚠ Informe o nome do cliente.</div>';
             card.style.display = 'block';
             return;
         }
 
         const btn = document.getElementById('btnGerarDemo');
-        btn.disabled = true; btn.textContent = '⏳ Gerando...';
+        btn.disabled = true; btn.textContent = '⏳ Criando acesso...';
         card.style.display = 'none';
 
         try {
+            const slug = nomeInput.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '.');
+            const ts = Date.now().toString(36);
+            const email = `demo.${slug}.${ts}@demo.ratpro`;
+            const senha = _gerarSenhaAleatoria();
+            const nome = `DEMO - ${nomeInput.toUpperCase()}`;
+
+            const { error: signUpErr } = await authRegistrationClient.auth.signUp({ email, password: senha, options: { data: { full_name: nome } } });
+            if (signUpErr) throw signUpErr;
+
+            perfisTecnicosCache.push({ email, nome, cpf: '000.000.000-00', ativo: true, isDemo: true,
+                permissoes: { criar_chamado: false, editar_chamado: false, excluir_chamado: false, assinar_rat: false, baixar_pdf: true } });
+            await salvarPerfisTecnicosNoBanco();
+            await carregarPerfisTecnicos();
+
             const payload = { email, senha, expires_at: Date.now() + horas * 3600000 };
             const d = await _demoEncrypt(payload);
             const url = window.location.origin + window.location.pathname + '?d=' + d;
-            _ultimoDemoAcesso = { email, url, horas };
+            _ultimoDemoAcesso = { nome, email, url, horas };
             _mostrarCartaoDemo();
-            document.getElementById('demo_email_usuario').value = '';
-            document.getElementById('demo_senha_usuario').value = '';
+            document.getElementById('demo_nome_cliente').value = '';
         } catch (e) {
-            card.innerHTML = `<div style="color:#dc2626;padding:8px;background:#fef2f2;border-radius:6px;">❌ Erro: ${e.message}</div>`;
+            const m = (e.message || '').toLowerCase();
+            let msg = '❌ Erro: ' + e.message;
+            if (m.includes('already')) msg = '❌ Já existe um acesso para este nome. Tente um nome diferente.';
+            else if (m.includes('rate limit') || m.includes('rate_limit')) msg = '❌ Limite atingido. Aguarde alguns minutos e tente novamente.';
+            else if (m.includes('signups not allowed')) msg = '❌ Cadastro desativado no Supabase. Ative em Authentication → Sign In / Providers → Allow new users to sign up.';
+            card.innerHTML = `<div style="color:#dc2626;padding:8px;background:#fef2f2;border-radius:6px;">${msg}</div>`;
             card.style.display = 'block';
         } finally {
             btn.disabled = false; btn.textContent = '⚡ Gerar Link';
