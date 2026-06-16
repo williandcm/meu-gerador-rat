@@ -1586,25 +1586,23 @@ create table estoque (
         let td;
         try {
             td = await _demoDecrypt(encoded);
-        } catch {
+        } catch (e) {
             mostrarTelaLogin();
-            errorDiv.textContent = '🔗 Link inválido ou corrompido. Solicite um novo link ao administrador.';
+            errorDiv.textContent = '🔗 Link inválido ou corrompido. Solicite um novo link ao administrador. (detalhe: ' + e.message + ')';
             errorDiv.style.display = 'block';
             return;
         }
         try {
             if (Date.now() > td.expires_at) throw new Error('expirou');
             const { data: ld, error: le } = await supabaseClient.auth.signInWithPassword({ email: td.email, password: td.senha });
-            if (le) throw new Error('credenciais');
+            if (le) throw new Error('supabase: ' + le.message);
             inicializarAplicacao(ld.user);
         } catch (e) {
             mostrarTelaLogin();
             if (e.message === 'expirou')
                 errorDiv.textContent = '⏰ Este link já expirou. Solicite um novo acesso ao administrador.';
-            else if (e.message === 'credenciais')
-                errorDiv.textContent = '🔗 As credenciais do link estão incorretas. O administrador deve gerar um novo link.';
             else
-                errorDiv.textContent = '🔗 Erro ao acessar: ' + e.message;
+                errorDiv.textContent = '🔗 Falha no acesso automático: ' + e.message;
             errorDiv.style.display = 'block';
         }
     }
@@ -2195,7 +2193,7 @@ create table estoque (
     }
 
     function _gerarSenhaAleatoria() {
-        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
         return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
     }
 
@@ -2217,7 +2215,7 @@ create table estoque (
         try {
             const slug = nomeInput.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '.');
             const ts = Date.now().toString(36);
-            const email = `demo.${slug}.${ts}@demo.ratpro`;
+            const email = `demo.${slug}.${ts}@acesso.ratpro.app`;
             const senha = _gerarSenhaAleatoria();
             const nome = `DEMO - ${nomeInput.toUpperCase()}`;
 
