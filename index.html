@@ -2591,8 +2591,9 @@ create table estoque (
         if (!confirma) return;
 
         try {
-            const { error } = await supabaseClient.from('chamados').delete().eq('id', id);
+            const { data: deletado, error } = await supabaseClient.from('chamados').delete().eq('id', id).select('id');
             if (error) throw error;
+            if (!deletado || deletado.length === 0) throw new Error('Nenhum registro foi excluído. Verifique as políticas RLS da tabela no Supabase (a política DELETE pode estar ausente).');
 
             // remove do cache local e atualiza a tabela sem nova chamada ao banco
             todosChamadosCache = todosChamadosCache.filter(x => x.id !== id);
