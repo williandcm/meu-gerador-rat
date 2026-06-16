@@ -599,7 +599,11 @@
                     <div class="editor-box" id="editorBox">
                         <h2>2. Editor em Tempo Real <span id="modo_edicao_label" style="color:var(--warning); font-size:12px; display:none;">(Modo Edição)</span></h2>
                         <div class="form-grid">
-                            <div class="field full-width"><label>Chamado</label><input type="text" id="f_inc"></div>
+                            <div class="field full-width">
+                                <label>Chamado</label>
+                                <input type="text" id="f_inc" onblur="verificarChamadoDuplicado()">
+                                <div id="aviso_inc_duplicado" style="display:none; margin-top:5px; padding:8px 10px; background:#fef9c3; border:1px solid #fde047; border-radius:6px; font-size:12px; color:#854d0e;"></div>
+                            </div>
                             <div class="time-container">
                                 <div class="field"><label>Hora Partida</label><input type="text" id="f_partida" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
                                 <div class="field"><label>Hora Chegada</label><input type="text" id="f_chegada" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
@@ -2797,6 +2801,8 @@ create table estoque (
 
     function limparFormulario() {
         resetarModoEdicao();
+        const avisoInc = document.getElementById('aviso_inc_duplicado');
+        if (avisoInc) avisoInc.style.display = 'none';
         ['chamado_cerb','f_inc','f_partida','f_chegada','f_inicio_ate','f_termino_ate',
          'f_uniorg','f_rua','f_num','f_bai','f_cid','f_uf',
          'f_patri_ret','f_sn_ret','f_modelo_ret','f_host_ret','f_mac_ret',
@@ -3110,10 +3116,30 @@ create table estoque (
         a.click();
     }
 
+    function verificarChamadoDuplicado() {
+        const inc = (document.getElementById('f_inc').value || '').trim().toUpperCase();
+        const aviso = document.getElementById('aviso_inc_duplicado');
+        if (!aviso) return;
+        if (idRegistroAtual !== null || !inc) { aviso.style.display = 'none'; return; }
+        const existente = todosChamadosCache.find(c => c.chamado && c.chamado.toUpperCase() === inc);
+        if (existente) {
+            const data = existente.data_atendimento ? ` em ${existente.data_atendimento}` : '';
+            const tec = existente.tecnico ? ` — ${nomeTecnico(existente.tecnico)}` : '';
+            aviso.innerHTML = `⚠️ Chamado já registrado${data}${tec}. <a href="#" onclick="carregarChamadoDireto(${existente.id});return false;" style="color:#92400e;font-weight:bold;">Abrir para editar →</a>`;
+            aviso.style.display = 'block';
+        } else {
+            aviso.style.display = 'none';
+        }
+    }
+
     async function salvarAtendimento() {
         const inc = document.getElementById('f_inc').value.toUpperCase();
         if (!inc) { alert("Preencha o número do chamado antes de salvar."); return; }
         const isNovo = idRegistroAtual === null;
+        if (isNovo) {
+            const existente = todosChamadosCache.find(c => c.chamado && c.chamado.toUpperCase() === inc);
+            if (existente && !confirm(`O chamado ${inc} já está registrado.\n\nDeseja criar um segundo registro mesmo assim?`)) return;
+        }
         if (isNovo && !temPermissao('criar_chamado')) { alert('Sem permissão para criar chamados.'); return; }
         if (!isNovo && !temPermissao('editar_chamado')) { alert('Sem permissão para editar chamados.'); return; }
         if (!await checarStatusAtivo()) return;
