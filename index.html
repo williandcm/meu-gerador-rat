@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RAT Pro Editor - Willian</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.2/dist/umd/supabase.min.js" integrity="sha384-JWEyvHh+lRf0sN/WWY+QTQwX+CyWqmNg4tkc8GQzAMEtR2wGNrCJlvnu1lHD1kDm" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js" integrity="sha384-lrb5efVIYR2lZw+OsuztHZzP9wpGNrhui+0VlpiHb/iPcZSCDT3CeETsL9EMQ8ih" crossorigin="anonymous"></script>
     <!-- Módulo estoque em arquivo separado — falha isolada não afeta o sistema -->
     <link rel="stylesheet" href="estoque.css" onerror="console.warn('[estoque] CSS não carregado')">
     <style>
@@ -1230,6 +1230,11 @@ create table estoque (
     let emailTecnicoSendoEditado = null;
     let sidebarCollapsed = false;
 
+    function escHtml(v) {
+        if (v == null) return '';
+        return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
     // ── ASSINAR DIRETO NO DOCUMENTO ──
     let overlaySignData = null;   // PNG bytes com os traços (fundo transparente)
     let _signColor = '#000080';
@@ -1495,7 +1500,7 @@ create table estoque (
     function getColLabel(id) { return COLS_DEF.find(c => c.id === id)?.label || id; }
 
     function renderCelula(item, colId) {
-        const v = (x) => x || '—';
+        const v = (x) => escHtml(x) || '—';
         switch(colId) {
             case 'chamado': {
                 const signed = !!(item.has_pdf ?? item.pdf_base64);
@@ -1938,7 +1943,7 @@ create table estoque (
         } else {
             const m = loggedInUser.user_metadata;
             document.getElementById('f_tecnico_nome').value = m?.full_name || localStorage.getItem('tec_nome_' + k) || (k === ADMIN_EMAIL ? 'WILLIAN DO CARMO MORAIS' : '');
-            document.getElementById('f_tecnico_cpf').value = m?.cpf || localStorage.getItem('tec_cpf_' + k) || (k === ADMIN_EMAIL ? CPF_FIXO : '');
+            document.getElementById('f_tecnico_cpf').value = m?.cpf || (k === ADMIN_EMAIL ? CPF_FIXO : '');
         }
         clearTimeout(timeoutRender);
         timeoutRender = setTimeout(gerarERenderizar, 500);
@@ -1948,7 +1953,6 @@ create table estoque (
         if (!loggedInUser) return;
         const k = loggedInUser.email.toLowerCase();
         localStorage.setItem('tec_nome_' + k, document.getElementById('f_tecnico_nome').value);
-        localStorage.setItem('tec_cpf_' + k, document.getElementById('f_tecnico_cpf').value);
         clearTimeout(timeoutRender);
         timeoutRender = setTimeout(gerarERenderizar, 500);
     }
@@ -2494,9 +2498,7 @@ create table estoque (
         const perfil = perfisTecnicosCache.find(t => t.email && item.tecnico && t.email.toLowerCase() === item.tecnico.toLowerCase());
         const cpfT = perfil ? perfil.cpf : '';
 
-        const f = (v) => (v && String(v).trim())
-            ? `<span class="dv">${String(v).trim()}</span>`
-            : `<span class="dv empty">—</span>`;
+        const f = (v) => { const s = v ? String(v).trim() : ''; return s ? `<span class="dv">${escHtml(s)}</span>` : `<span class="dv empty">—</span>`; };
 
         const campo = (label, val) => `<div><div class="dfl">${label}</div>${f(val)}</div>`;
 
@@ -3236,7 +3238,7 @@ create table estoque (
 let estoqueCache   = [];
 let estoqueIdAtual = null;
 
-function _v(val) { return val && String(val).trim() ? String(val).trim().toUpperCase() : ''; }
+function _v(val) { return val && String(val).trim() ? escHtml(String(val).trim().toUpperCase()) : ''; }
 
 async function carregarEstoque() {
     const btn    = document.getElementById('btnAtualizarEstoque');
@@ -3281,7 +3283,7 @@ function popularFiltrosEstoque(lista) {
     const modelos = [...new Set(lista.map(x => x.modelo).filter(Boolean))].sort();
     const sel = document.getElementById('filtroEstoqueModelo');
     if (sel) sel.innerHTML = '<option value="">Todos os modelos</option>' +
-        modelos.map(m => `<option value="${m}">${m}</option>`).join('');
+        modelos.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
 }
 
 function atualizarTabelaEstoque(lista) {
@@ -3309,11 +3311,11 @@ function atualizarTabelaEstoque(lista) {
                     </div>
                 </div>
             </td>
-            <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${eq.descricao||''}">${_v(eq.descricao)}</td>
+            <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(eq.descricao||'')}">${_v(eq.descricao)}</td>
             <td style="font-weight:bold;">${_v(eq.patrimonio)}</td>
             <td>${_v(eq.numero_serie)}</td>
             <td>${_v(eq.modelo)}</td>
-            <td>${eq.mac && !/^[0:]+$/.test(eq.mac.trim()) ? eq.mac.trim().toUpperCase() : ''}</td>
+            <td>${eq.mac && !/^[0:]+$/.test(eq.mac.trim()) ? escHtml(eq.mac.trim().toUpperCase()) : ''}</td>
             <td style="text-align:center;font-weight:bold;">${eq.quantidade ?? 1}</td>`;
         tr.addEventListener('click', () => verDetalheEquip(eq.id));
         tbody.appendChild(tr);
@@ -3496,7 +3498,7 @@ function mostrarSelecaoScanner(valores) {
     const sel = document.getElementById('scannerSelecao');
     sel.innerHTML =
         `<div class="scanner-sel-titulo">⚠️ ${valores.length} códigos detectados — toque no correto:</div>` +
-        valores.map((v, i) => `<button class="scanner-sel-item" onclick="selecionarCodigoScanner(${i})">${v}</button>`).join('') +
+        valores.map((v, i) => `<button class="scanner-sel-item" onclick="selecionarCodigoScanner(${i})">${escHtml(v)}</button>`).join('') +
         `<button class="scanner-sel-retry" onclick="reiniciarScanner()">🔄 Tentar novamente</button>`;
 }
 
@@ -3696,7 +3698,7 @@ async function salvarEdicaoBad() {
     try {
         if (badModoNovo) {
             const hoje = new Date().toISOString().slice(0, 10);
-            const { error } = await supabaseClient.from('estoque').insert([{ ...payload, categoria: 'bad', data_entrada_bad: hoje }]);
+            const { error } = await supabaseClient.from('estoque').insert([{ ...payload, categoria: 'bad', data_entrada_bad: hoje, criado_por: loggedInUser?.email || null }]);
             if (error) throw error;
             await logMovimentacao('ENTRADA BAD', desc + ' (manual)');
         } else {
@@ -3807,13 +3809,13 @@ function atualizarTabelaHistorico(lista) {
             ? dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
             : '—';
         const cor = _ACAO_CORES[m.acao] || '#475569';
-        const badge = `<span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${cor}18;color:${cor};white-space:nowrap;">${m.acao || ''}</span>`;
+        const badge = `<span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${cor}18;color:${cor};white-space:nowrap;">${escHtml(m.acao || '')}</span>`;
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td style="white-space:nowrap;font-size:12px;color:#64748b;">${dataHora}</td>
-            <td style="font-size:12px;">${(m.usuario || '').toLowerCase()}</td>
+            <td style="font-size:12px;">${escHtml((m.usuario || '').toLowerCase())}</td>
             <td>${badge}</td>
-            <td style="font-size:13px;">${m.descricao || ''}</td>`;
+            <td style="font-size:13px;">${escHtml(m.descricao || '')}</td>`;
         tbody.appendChild(tr);
     });
     if (container) container.style.display = 'block';
@@ -3989,7 +3991,7 @@ async function confirmarCadastrarBad() {
         data_entrada_bad: hoje,
     };
     try {
-        const { error } = await supabaseClient.from('estoque').insert([payload]);
+        const { error } = await supabaseClient.from('estoque').insert([{ ...payload, criado_por: loggedInUser?.email || null }]);
         if (error) throw error;
         const desc = [payload.descricao, payload.patrimonio ? 'Pat: ' + payload.patrimonio : '', payload.numero_serie ? 'SN: ' + payload.numero_serie : '', payload.chamado_ref ? 'INC: ' + payload.chamado_ref : ''].filter(Boolean).join(' | ');
         await logMovimentacao('ENTRADA BAD', desc);
@@ -4048,7 +4050,7 @@ async function salvarEquipamento() {
         if (estoqueIdAtual) {
             ({ error } = await supabaseClient.from('estoque').update(payload).eq('id', estoqueIdAtual));
         } else {
-            ({ error } = await supabaseClient.from('estoque').insert([payload]));
+            ({ error } = await supabaseClient.from('estoque').insert([{ ...payload, criado_por: loggedInUser?.email || null }]));
         }
         if (error) throw error;
         const desc = [payload.descricao, payload.patrimonio ? 'Pat: ' + payload.patrimonio : '', payload.numero_serie ? 'SN: ' + payload.numero_serie : ''].filter(Boolean).join(' | ');

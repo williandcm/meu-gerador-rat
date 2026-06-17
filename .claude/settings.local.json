@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"d:\\\\Workspace\\\\meu-gerador-rat\\\\migrations\")",
+      "Bash(git add *)"
+    ],
+    "additionalDirectories": [
+      "d:\\Workspace\\meu-gerador-rat\\migrations"
+    ]
+  }
+}
