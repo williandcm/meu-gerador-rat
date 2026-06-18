@@ -693,6 +693,7 @@
                     <button class="estoque-tab ativo" id="tabBtnEstoque" onclick="mostrarAbaEstoque()">📦 Estoque</button>
                     <button class="estoque-tab estoque-tab-bad" id="tabBtnBad" onclick="mostrarAbaBad()">⚠️ BAD</button>
                     <button class="estoque-tab" id="tabBtnHistorico" onclick="mostrarAbaHistorico()" style="color:#7c3aed;">📋 Histórico</button>
+                    <button class="estoque-tab" id="tabBtnCatalogo" onclick="mostrarAbaCatalogo()" style="color:#0891b2;display:none;">📚 Catálogo</button>
                 </div>
 
                 <!-- ABA ESTOQUE -->
@@ -764,6 +765,24 @@
                     </div>
                     <div id="statusHistorico" style="text-align:center;color:#64748b;font-size:12px;margin-top:8px;">
                         Clique em "Atualizar" para carregar o histórico.
+                    </div>
+                </div>
+
+                <!-- ABA CATÁLOGO (admin) -->
+                <div id="abaCatalogo" class="card search-box" style="display:none;">
+                    <div class="estoque-filter-row">
+                        <input type="text" id="filtroCatalogoTexto" placeholder="Filtrar modelos..." style="flex:1;" oninput="filtrarCatalogoLocal()">
+                        <button class="btn-load-all" onclick="carregarCatalogo()" id="btnAtualizarCatalogo">🔄 Atualizar</button>
+                        <button class="btn-load-all" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="abrirModalNovoCatalogo()">+ Novo Modelo</button>
+                    </div>
+                    <div class="table-container" id="containerCatalogo" style="display:none; margin-top:12px;">
+                        <table>
+                            <thead><tr><th>Ações</th><th>Descrição</th><th>Categoria</th></tr></thead>
+                            <tbody id="corpoTabelaCatalogo"></tbody>
+                        </table>
+                    </div>
+                    <div id="statusCatalogo" style="text-align:center;color:#64748b;font-size:12px;margin-top:8px;">
+                        Clique em "Atualizar" para carregar o catálogo.
                     </div>
                 </div>
 
@@ -996,7 +1015,16 @@ create table estoque (
         </div>
         <div class="modal-body">
             <div class="form-grid">
-                <div class="field full-width"><label>Descrição</label><input type="text" id="eq_descricao"></div>
+                <div class="field full-width">
+                    <label>Modelo / Descrição <span style="color:#ef4444;">*</span></label>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <select id="eq_modelo_id" style="flex:1;text-transform:none;font-size:13px;" onchange="onCatalogoSelectChange(this)">
+                            <option value="">— Selecione do catálogo —</option>
+                        </select>
+                        <button type="button" id="btnAddCatalogoModal" style="padding:8px 12px;background:var(--success);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:16px;line-height:1;display:none;" onclick="abrirModalNovoCatalogo(true)" title="Adicionar novo modelo ao catálogo">+</button>
+                    </div>
+                    <input type="hidden" id="eq_descricao">
+                </div>
                 <div class="field full-width">
                     <label>Patrimônio</label>
                     <div class="input-scan-wrap">
@@ -1026,6 +1054,34 @@ create table estoque (
         <div class="modal-footer">
             <button class="btn-modal-close" onclick="fecharModalEquip()">Cancelar</button>
             <button class="btn-modal-edit" onclick="salvarEquipamento()">💾 Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NOVO MODELO CATÁLOGO -->
+<div class="modal-overlay" id="modalNovoCatalogo" onclick="if(event.target===this)fecharModalNovoCatalogo()">
+    <div class="modal-box" style="max-width:440px;">
+        <div class="modal-header">
+            <div><h2 id="modalCatalogoTitulo">Novo Modelo no Catálogo</h2></div>
+            <button class="modal-close" onclick="fecharModalNovoCatalogo()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-grid">
+                <div class="field full-width">
+                    <label>Descrição <span style="color:#ef4444;">*</span></label>
+                    <input type="text" id="cat_descricao" placeholder="Ex: PINPAD INGENICO ISC250" style="text-transform:uppercase;">
+                </div>
+                <div class="field full-width">
+                    <label>Categoria</label>
+                    <input type="text" id="cat_categoria" list="cat_categorias_lista" placeholder="Ex: PINPAD, COMPUTADOR, HUB USB">
+                    <datalist id="cat_categorias_lista"></datalist>
+                </div>
+            </div>
+            <p style="font-size:11px;color:#94a3b8;margin-top:8px;">A descrição deve ser única e padronizada. Ela será usada para identificar este tipo de equipamento em todo o sistema.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-close" onclick="fecharModalNovoCatalogo()">Cancelar</button>
+            <button class="btn-modal-edit" onclick="salvarNovoCatalogo()">💾 Salvar</button>
         </div>
     </div>
 </div>
@@ -1875,8 +1931,12 @@ create table estoque (
 
         await carregarPerfisTecnicos();
 
-        document.getElementById('nav-admin').style.display =
-            user.email.toLowerCase() === ADMIN_EMAIL ? 'flex' : 'none';
+        const isAdminUser = user.email.toLowerCase() === ADMIN_EMAIL;
+        document.getElementById('nav-admin').style.display = isAdminUser ? 'flex' : 'none';
+
+        // Aba catálogo visível apenas para admin
+        const tabCat = document.getElementById('tabBtnCatalogo');
+        if (tabCat) tabCat.style.display = isAdminUser ? '' : 'none';
 
         carregarDadosTecnicoLocal();
         document.getElementById('login_senha').value = '';
@@ -3237,8 +3297,159 @@ create table estoque (
 <script>
 let estoqueCache   = [];
 let estoqueIdAtual = null;
+let catalogoCache  = [];
+let _catalogoCallbackAposNovo = null;
 
 function _v(val) { return val && String(val).trim() ? escHtml(String(val).trim().toUpperCase()) : ''; }
+
+// ── CATÁLOGO DE MODELOS ───────────────────────────────────────────────────────
+
+async function carregarCatalogo() {
+    const btn    = document.getElementById('btnAtualizarCatalogo');
+    const status = document.getElementById('statusCatalogo');
+    if (btn) { btn.innerHTML = '⏳ Carregando...'; btn.disabled = true; }
+    try {
+        const { data, error } = await supabaseClient
+            .from('modelos_estoque')
+            .select('*')
+            .order('descricao', { ascending: true });
+        if (error) throw error;
+        catalogoCache = data || [];
+        atualizarTabelaCatalogo(catalogoCache);
+        popularSelectCatalogo();
+        if (status) status.textContent = `${catalogoCache.length} modelo(s) no catálogo.`;
+        const container = document.getElementById('containerCatalogo');
+        if (container) container.style.display = catalogoCache.length ? 'block' : 'none';
+    } catch (e) {
+        if (status) status.textContent = 'Erro: ' + e.message;
+    } finally {
+        if (btn) { btn.innerHTML = '🔄 Atualizar'; btn.disabled = false; }
+    }
+}
+
+function atualizarTabelaCatalogo(lista) {
+    const tbody = document.getElementById('corpoTabelaCatalogo');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#94a3b8;">Nenhum modelo cadastrado. Clique em "+ Novo Modelo" para começar.</td></tr>';
+        const c = document.getElementById('containerCatalogo');
+        if (c) c.style.display = 'block';
+        return;
+    }
+    lista.forEach(m => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td onclick="event.stopPropagation()" style="width:40px;">
+                <button class="btn-danger-table" onclick="excluirCatalogo(${m.id})" title="Excluir modelo">🗑</button>
+            </td>
+            <td style="font-weight:600;">${_v(m.descricao)}</td>
+            <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;">${_v(m.categoria) || '—'}</span></td>`;
+        tbody.appendChild(tr);
+    });
+    const c = document.getElementById('containerCatalogo');
+    if (c) c.style.display = 'block';
+}
+
+function filtrarCatalogoLocal() {
+    const texto = (document.getElementById('filtroCatalogoTexto')?.value || '').toUpperCase().trim();
+    const filtrado = catalogoCache.filter(m =>
+        !texto || (m.descricao || '').toUpperCase().includes(texto) || (m.categoria || '').toUpperCase().includes(texto)
+    );
+    atualizarTabelaCatalogo(filtrado);
+    const st = document.getElementById('statusCatalogo');
+    if (st) st.textContent = texto ? `${filtrado.length} resultado(s).` : `${catalogoCache.length} modelo(s) no catálogo.`;
+}
+
+function popularSelectCatalogo() {
+    const sel = document.getElementById('eq_modelo_id');
+    if (!sel) return;
+    const valorAtual = sel.value;
+    sel.innerHTML = '<option value="">— Selecione do catálogo —</option>' +
+        catalogoCache.map(m => `<option value="${m.id}">${escHtml(m.descricao)}${m.categoria ? ' · ' + escHtml(m.categoria) : ''}</option>`).join('');
+    if (valorAtual) sel.value = valorAtual;
+
+    // Popular datalist de categorias no modal de catálogo
+    const dl = document.getElementById('cat_categorias_lista');
+    if (dl) {
+        const cats = [...new Set(catalogoCache.map(m => m.categoria).filter(Boolean))].sort();
+        dl.innerHTML = cats.map(c => `<option value="${escHtml(c)}">`).join('');
+    }
+}
+
+function onCatalogoSelectChange(sel) {
+    const id = parseInt(sel.value) || null;
+    const modelo = catalogoCache.find(m => m.id === id);
+    document.getElementById('eq_descricao').value = modelo ? modelo.descricao : '';
+}
+
+let _catalogoAbertoDoModal = false;
+
+function abrirModalNovoCatalogo(doModal = false) {
+    _catalogoAbertoDoModal = doModal;
+    document.getElementById('cat_descricao').value = '';
+    document.getElementById('cat_categoria').value = '';
+    document.getElementById('modalCatalogoTitulo').textContent = 'Novo Modelo no Catálogo';
+    document.getElementById('modalNovoCatalogo').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('cat_descricao').focus(), 100);
+}
+
+function fecharModalNovoCatalogo() {
+    document.getElementById('modalNovoCatalogo').classList.remove('open');
+    document.body.style.overflow = 'hidden';
+}
+
+async function salvarNovoCatalogo() {
+    const descricao  = (document.getElementById('cat_descricao').value || '').trim().toUpperCase();
+    const categoria  = (document.getElementById('cat_categoria').value || '').trim().toUpperCase() || null;
+    if (!descricao) { alert('Informe a descrição do modelo.'); return; }
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('modelos_estoque')
+            .insert([{ descricao, categoria }])
+            .select()
+            .single();
+        if (error) {
+            if (error.code === '23505') { alert('Já existe um modelo com esta descrição no catálogo.'); return; }
+            throw error;
+        }
+        catalogoCache.push(data);
+        catalogoCache.sort((a, b) => a.descricao.localeCompare(b.descricao));
+        atualizarTabelaCatalogo(catalogoCache);
+        popularSelectCatalogo();
+        fecharModalNovoCatalogo();
+
+        // Se foi aberto a partir do modal de estoque, seleciona o novo item
+        if (_catalogoAbertoDoModal) {
+            const sel = document.getElementById('eq_modelo_id');
+            if (sel) { sel.value = data.id; onCatalogoSelectChange(sel); }
+        }
+
+        const st = document.getElementById('statusCatalogo');
+        if (st) st.textContent = `${catalogoCache.length} modelo(s) no catálogo.`;
+    } catch (e) {
+        alert('Erro ao salvar: ' + e.message);
+    }
+}
+
+async function excluirCatalogo(id) {
+    const modelo = catalogoCache.find(m => m.id === id);
+    if (!modelo) return;
+    if (!confirm(`Excluir "${modelo.descricao}" do catálogo?\n\nItens de estoque vinculados a este modelo perderão a referência.`)) return;
+    try {
+        const { error } = await supabaseClient.from('modelos_estoque').delete().eq('id', id);
+        if (error) throw error;
+        catalogoCache = catalogoCache.filter(m => m.id !== id);
+        atualizarTabelaCatalogo(catalogoCache);
+        popularSelectCatalogo();
+        const st = document.getElementById('statusCatalogo');
+        if (st) st.textContent = `${catalogoCache.length} modelo(s) no catálogo.`;
+    } catch (e) {
+        alert('Erro ao excluir: ' + e.message);
+    }
+}
 
 async function carregarEstoque() {
     const btn    = document.getElementById('btnAtualizarEstoque');
@@ -3341,23 +3552,46 @@ function filtrarEstoqueLocal() {
 
 function abrirModalEquip(id = null) {
     estoqueIdAtual = id;
+    const isAdmin = loggedInUser?.email?.toLowerCase() === ADMIN_EMAIL;
     const titulo = document.getElementById('modalEquipTitulo');
     if (titulo) titulo.textContent = id ? 'Editar Equipamento' : 'Novo Equipamento';
+
+    // Mostra "+" somente para admin
+    const btnAdd = document.getElementById('btnAddCatalogoModal');
+    if (btnAdd) btnAdd.style.display = isAdmin ? '' : 'none';
+
+    // Popula o select do catálogo (carrega se necessário)
+    if (!catalogoCache.length) carregarCatalogo();
+    else popularSelectCatalogo();
+
+    // Limpa campos
     ['eq_descricao','eq_patrimonio','eq_numero_serie','eq_ean','eq_modelo','eq_mac']
         .forEach(elId => { const el = document.getElementById(elId); if (el) el.value = ''; });
+    const selModelo = document.getElementById('eq_modelo_id');
+    if (selModelo) selModelo.value = '';
     const qtdEl = document.getElementById('eq_quantidade');
     if (qtdEl) qtdEl.value = '1';
+
     if (id) {
         const eq = estoqueCache.find(x => x.id === id);
         if (!eq) return;
         const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
-        set('eq_descricao',    eq.descricao);
         set('eq_patrimonio',   eq.patrimonio);
         set('eq_numero_serie', eq.numero_serie);
         set('eq_ean',          eq.ean);
         set('eq_modelo',       eq.modelo);
         set('eq_mac',          eq.mac);
         if (qtdEl) qtdEl.value = eq.quantidade ?? 1;
+        // Seleciona o modelo no catálogo
+        if (eq.modelo_id && selModelo) {
+            selModelo.value = eq.modelo_id;
+            onCatalogoSelectChange(selModelo);
+        } else if (eq.descricao) {
+            // Fallback: tenta achar pelo texto da descrição
+            set('eq_descricao', eq.descricao);
+            const opt = [...(selModelo?.options || [])].find(o => o.text.startsWith(eq.descricao.toUpperCase()));
+            if (opt && selModelo) selModelo.value = opt.value;
+        }
     }
     const modal = document.getElementById('modalEquip');
     if (modal) { modal.classList.add('open'); document.body.style.overflow = 'hidden'; }
@@ -3530,11 +3764,11 @@ function abrirScannerFiltro() {
 // ── TABS ESTOQUE / BAD ────────────────────────────────────────────────────────
 
 function _ocultarTodasAbas() {
-    ['abaEstoque','abaBad','abaHistorico'].forEach(id => {
+    ['abaEstoque','abaBad','abaHistorico','abaCatalogo'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
-    ['tabBtnEstoque','tabBtnBad','tabBtnHistorico'].forEach(id => {
+    ['tabBtnEstoque','tabBtnBad','tabBtnHistorico','tabBtnCatalogo'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.remove('ativo');
     });
@@ -3558,6 +3792,13 @@ function mostrarAbaHistorico() {
     document.getElementById('abaHistorico').style.display = '';
     document.getElementById('tabBtnHistorico').classList.add('ativo');
     if (!historicoCache.length) carregarHistorico();
+}
+
+function mostrarAbaCatalogo() {
+    _ocultarTodasAbas();
+    document.getElementById('abaCatalogo').style.display = '';
+    document.getElementById('tabBtnCatalogo').classList.add('ativo');
+    if (!catalogoCache.length) carregarCatalogo();
 }
 
 // ── BAD ───────────────────────────────────────────────────────────────────────
@@ -4036,8 +4277,17 @@ document.addEventListener('click', fecharKebabs);
 
 async function salvarEquipamento() {
     const gUP = id => (document.getElementById(id)?.value || '').trim().toUpperCase();
+
+    const modeloId  = parseInt(document.getElementById('eq_modelo_id')?.value) || null;
+    const descricao = gUP('eq_descricao');
+    if (!modeloId && !descricao) {
+        alert('Selecione um modelo do catálogo.\nSe o modelo não existir, clique em "+" para adicionar.');
+        return;
+    }
+
     const payload = {
-        descricao:    gUP('eq_descricao'),
+        modelo_id:    modeloId,
+        descricao:    descricao,
         patrimonio:   gUP('eq_patrimonio'),
         numero_serie: gUP('eq_numero_serie'),
         ean:          gUP('eq_ean'),
