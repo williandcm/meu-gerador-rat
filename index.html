@@ -1790,9 +1790,10 @@ create table estoque (
         ${sec('chamados','📋','Tela de Chamados','Visualize, busque e gerencie todos os seus chamados', `
             ${step(1,'Ao entrar no sistema, você é levado automaticamente à tela <strong>Chamados</strong>.')}
             ${step(2,'Clique em <strong>🔄 Atualizar</strong> para carregar a lista de chamados do banco de dados.')}
-            ${step(3,'Use os filtros no topo da tabela para buscar por técnico, data, UF, status de assinatura, entre outros.')}
-            ${step(4,'Clique no <strong>número do chamado</strong> (em azul) para abrir a RAT no editor ou visualizar o PDF assinado.')}
-            ${step(5,'Clique no botão <strong>⋮</strong> (três pontos) na coluna Ações para ver as opções disponíveis:')}
+            ${step(3,'Use o <strong>campo de busca</strong> para localizar chamados por qualquer informação: número do chamado (INC), patrimônio, número de série, hostname, MAC, uniorg, cidade, endereço, responsável, técnico ou solução. Basta digitar e a lista filtra instantaneamente. Exemplo: digitar <strong>2408298</strong> encontra todos os chamados onde esse patrimônio aparece.')}
+            ${step(4,'Use os <strong>filtros adicionais</strong> (técnico e mês) para refinar ainda mais os resultados.')}
+            ${step(5,'Clique no <strong>número do chamado</strong> (em azul) para abrir a RAT no editor ou visualizar o PDF assinado.')}
+            ${step(6,'Clique no botão <strong>⋮</strong> (três pontos) na coluna Ações para ver as opções disponíveis:')}
             <div style="margin-left:40px;margin-top:6px;font-size:13px;color:#334155;line-height:2;">
                 ${tag('👁 Ver')} — Abre um painel com todos os dados do chamado.<br>
                 ${tag('✏️ Editar')} — Abre o chamado no editor para alterações.<br>
