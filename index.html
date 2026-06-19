@@ -1768,15 +1768,17 @@ create table estoque (
         <div class="ajuda-toc">
             <h3>📋 Índice</h3>
             <a href="#ajuda-login">1. Acesso ao sistema</a>
-            <a href="#ajuda-chamados">2. Tela de Chamados</a>
+            <a href="#ajuda-chamados">2. Tela de Chamados — busca, filtros e exportação</a>
             <a href="#ajuda-editor">3. Editor RAT — Criar novo chamado</a>
             <a href="#ajuda-editar">4. Editar um chamado existente</a>
             <a href="#ajuda-assinar">5. Assinar a RAT</a>
             <a href="#ajuda-estoque">6. Estoque de equipamentos</a>
             <a href="#ajuda-bad">7. BAD — Equipamentos com defeito</a>
             <a href="#ajuda-historico">8. Histórico de movimentações</a>
-            <a href="#ajuda-vincular">9. Vincular troca ao Estoque / BAD</a>
-            <a href="#ajuda-admin">10. Administração (somente admin)</a>
+            <a href="#ajuda-catalogo">9. Catálogo de modelos (somente admin)</a>
+            <a href="#ajuda-vincular">10. Vincular troca ao Estoque / BAD</a>
+            <a href="#ajuda-admin">11. Administração (somente admin)</a>
+            <a href="#ajuda-demo">12. Gerar acesso para demonstração</a>
         </div>
 
         ${sec('login','🔐','Acesso ao sistema','Como fazer login no RAT Pro', `
@@ -1787,25 +1789,30 @@ create table estoque (
             ${warn('Caso esqueça a senha, entre em contato com o administrador do sistema.')}
         `)}
 
-        ${sec('chamados','📋','Tela de Chamados','Visualize, busque e gerencie todos os seus chamados', `
+        ${sec('chamados','📋','Tela de Chamados — busca, filtros e exportação','Visualize, busque e gerencie todos os seus chamados', `
             ${step(1,'Ao entrar no sistema, você é levado automaticamente à tela <strong>Chamados</strong>.')}
             ${step(2,'Clique em <strong>🔄 Atualizar</strong> para carregar a lista de chamados do banco de dados.')}
-            ${step(3,'Use o <strong>campo de busca</strong> para localizar chamados por qualquer informação: número do chamado (INC), patrimônio, número de série, hostname, MAC, uniorg, cidade, endereço, responsável, técnico ou solução. Basta digitar e a lista filtra instantaneamente. Exemplo: digitar <strong>2408298</strong> encontra todos os chamados onde esse patrimônio aparece.')}
-            ${step(4,'Use os <strong>filtros adicionais</strong> (técnico e mês) para refinar ainda mais os resultados.')}
-            ${step(5,'Clique no <strong>número do chamado</strong> (em azul) para abrir a RAT no editor ou visualizar o PDF assinado.')}
-            ${step(6,'Clique no botão <strong>⋮</strong> (três pontos) na coluna Ações para ver as opções disponíveis:')}
+            ${step(3,'Use o <strong>campo de busca</strong> para localizar chamados por qualquer informação: número do chamado (INC), patrimônio retirado ou instalado, número de série, hostname, MAC, uniorg, cidade, endereço, responsável, técnico, solução ou descrição do defeito. Basta digitar — a lista filtra instantaneamente. Pressione <strong>Enter</strong> ou clique em <strong>Buscar</strong>. Exemplo: digitar <strong>2408298</strong> encontra todos os chamados onde esse patrimônio aparece em qualquer campo.')}
+            ${step(4,'Use os <strong>filtros de técnico e mês</strong> (dropdowns ao lado do campo de busca) para restringir os resultados a um técnico específico ou a um período.')}
+            ${step(5,'Clique nos <strong>cabeçalhos das colunas</strong> (▲▼) para ordenar a lista em ordem crescente ou decrescente por aquele campo.')}
+            ${step(6,'Clique em <strong>⚙️ Colunas</strong> para escolher quais colunas exibir na tabela e em qual ordem. A configuração é salva automaticamente no seu navegador.')}
+            ${step(7,'Clique em <strong>📊 CSV</strong> para exportar todos os chamados visíveis no momento para uma planilha (abre diretamente no Excel ou LibreOffice).')}
+            ${step(8,'Clique no <strong>número do chamado</strong> (em azul) para abrir a RAT no editor ou visualizar o PDF assinado.')}
+            ${step(9,'Clique no botão <strong>⋮</strong> (três pontos) na coluna Ações para ver as opções disponíveis:')}
             <div style="margin-left:40px;margin-top:6px;font-size:13px;color:#334155;line-height:2;">
-                ${tag('👁 Ver')} — Abre um painel com todos os dados do chamado.<br>
+                ${tag('👁 Ver')} — Abre um painel lateral com todos os dados do chamado.<br>
                 ${tag('✏️ Editar')} — Abre o chamado no editor para alterações.<br>
                 ${tag('🔗 Vincular Estoque','green')} — Aparece quando há troca de equipamento; permite baixar do estoque e cadastrar no BAD.<br>
                 ${tag('🗑 Excluir','red')} — Remove o chamado permanentemente (somente admin).
             </div>
-            ${tip('Os chamados com RAT assinada exibem o badge <strong>✔ assinada</strong> ao lado do número. Clique nele para visualizar o PDF.')}
+            ${tip('Os chamados com RAT assinada exibem o badge <strong>✔ assinada</strong> ao lado do número. Clique nele para visualizar o PDF sem precisar abrir o editor.')}
+            ${tip('Os filtros de busca, técnico e mês podem ser usados em conjunto. O contador no rodapé mostra quantos resultados estão visíveis.')}
         `)}
 
         ${sec('editor','✏️','Editor RAT — Criar novo chamado','Preencha e salve um novo relatório de atendimento', `
             ${step(1,'No menu lateral, clique em <strong>✏️ Editor RAT</strong>.')}
-            ${step(2,'Na seção <strong>"1. Cole o Chamado"</strong>, cole o texto completo do chamado copiado do sistema de origem (ex.: CERBERUS). O sistema preencherá automaticamente os campos como INC, UNIORG, endereço, hostname, serial e horários.')}
+            ${step(2,'Na seção <strong>"1. Cole o Chamado"</strong>, cole o texto completo do chamado copiado do sistema de origem (ex.: CERBERUS). O sistema detecta automaticamente: número INC, UNIORG, endereço completo, hostname, número de série, patrimônio (SGPI), horários e tipo de equipamento (PIN PAD, computador, imagem). Clique em <strong>📋 Extrair Dados</strong> para preencher os campos.')}
+            ${warn('Se o número do chamado (INC) já existir no banco, o sistema exibe um aviso em amarelo. Verifique antes de salvar para evitar duplicatas.')}
             ${step(3,'Revise e complete os campos na seção <strong>"2. Editor em Tempo Real"</strong>. Os principais são:')}
             <div style="margin-left:40px;font-size:13px;color:#334155;line-height:2;">
                 • <strong>Chamado</strong> — número INC extraído automaticamente.<br>
@@ -1835,24 +1842,40 @@ create table estoque (
 
         ${sec('assinar','✍️','Assinar a RAT','Como coletar a assinatura do responsável', `
             ${step(1,'Com o chamado aberto no Editor, clique no botão <strong>✍️ Assinar RAT</strong> (abaixo da pré-visualização).')}
-            ${step(2,'Uma área de assinatura será exibida. O responsável deve assinar com o dedo (celular/tablet) ou com o mouse.')}
-            ${step(3,'Clique em <strong>✅ Confirmar Assinatura</strong>. O PDF será gerado com a assinatura incorporada e salvo no chamado.')}
-            ${step(4,'Após assinar, o chamado aparecerá na lista com o badge <strong>✔ assinada</strong>. Clique nele para visualizar ou baixar o PDF.')}
+            ${step(2,'A área de assinatura será exibida sobre o PDF. Configure antes de assinar:')}
+            <div style="margin-left:40px;margin-top:6px;font-size:13px;color:#334155;line-height:2.2;">
+                <strong>Cor:</strong> ${tag('Azul escuro')} ${tag('Preto')} ${tag('Vermelho')} — escolha a cor da assinatura.<br>
+                <strong>Espessura:</strong> ${tag('Fina')} ${tag('Média')} ${tag('Grossa')} — ajuste conforme o traço do responsável.<br>
+                <strong>Modo:</strong> ${tag('✋ Dedo')} — para celular/tablet com a mão livre. ${tag('🖊 Caneta')} — para S Pen ou stylus (rejeita o toque da palma da mão).
+            </div>
+            ${step(3,'O responsável assina com o dedo, S Pen ou mouse diretamente sobre a área do PDF.')}
+            ${step(4,'Clique em <strong>✅ Confirmar Assinatura</strong>. O PDF será gerado com a assinatura incorporada e salvo no chamado.')}
+            ${step(5,'Após assinar, o chamado aparecerá na lista com o badge <strong>✔ assinada</strong>. Clique nele para visualizar ou baixar o PDF.')}
             ${tip('Para baixar o PDF assinado, abra-o pelo badge ✔ assinada e clique em <strong>⬇️ Baixar PDF</strong>.')}
+            ${tip('Use o modo <strong>🖊 Caneta</strong> ao coletar assinatura no celular sobre uma mesa — ele bloqueia toques acidentais da palma.')}
         `)}
 
         ${sec('estoque','📦','Estoque de equipamentos','Controle os equipamentos disponíveis para uso', `
             ${step(1,'No menu lateral, clique em <strong>📦 Estoque</strong>. A aba <strong>Estoque</strong> será aberta.')}
             ${step(2,'Clique em <strong>🔄 Atualizar</strong> para carregar os equipamentos cadastrados.')}
-            ${step(3,'Para <strong>cadastrar um novo equipamento</strong>, clique em <strong>+ Novo Equipamento</strong> e preencha os campos: Descrição, Patrimônio, Número de Série, EAN, Modelo, MAC e Quantidade. Clique em <strong>💾 Salvar</strong>.')}
-            ${step(4,'Use o campo de pesquisa para buscar equipamentos por qualquer campo. Clique em <strong>🔍</strong> (ícone de câmera) para usar o leitor de código de barras.')}
-            ${step(5,'Clique em <strong>⋮</strong> no item para as opções:')}
+            ${step(3,'Para <strong>cadastrar um novo equipamento</strong>, clique em <strong>+ Novo Equipamento</strong>. No modal, selecione a <strong>Descrição</strong> a partir do catálogo de modelos (padronizado pelo admin), preencha os campos opcionais: Patrimônio (SGPI), Número de Série, EAN, MAC e Quantidade. Clique em <strong>💾 Salvar</strong>.')}
+            ${step(4,'Use o <strong>campo de pesquisa</strong> para localizar equipamentos por descrição, patrimônio, série, modelo, MAC ou EAN. Combine com o <strong>filtro por modelo</strong> (dropdown) para restringir a um tipo específico de equipamento.')}
+            ${step(5,'Para buscar pelo <strong>código de barras</strong>, clique no ícone 📷 ao lado do campo de busca. O leitor de câmera será aberto:')}
+            <div style="margin-left:40px;margin-top:4px;font-size:13px;color:#334155;line-height:2;">
+                • Aponte a câmera para o código de barras ou QR Code do equipamento.<br>
+                • O sistema detecta automaticamente e lista os equipamentos correspondentes.<br>
+                • Clique em <strong>✅ Selecionar</strong> no item desejado para preencher o campo de busca.<br>
+                • Clique em <strong>❌ Cancelar</strong> para fechar sem selecionar.<br>
+                • Requer Chrome e permissão de câmera concedida.
+            </div>
+            ${step(6,'Clique em <strong>⋮</strong> no item para as opções:')}
             <div style="margin-left:40px;font-size:13px;color:#334155;line-height:2;">
                 ${tag('✏️ Editar')} — Altera os dados do equipamento.<br>
-                ${tag('📋 Detalhes')} — Exibe todas as informações.<br>
-                ${tag('🗑 Excluir','red')} — Remove o equipamento do estoque.
+                ${tag('📋 Detalhes')} — Exibe todas as informações do item.<br>
+                ${tag('🗑 Excluir','red')} — Remove o equipamento do estoque (somente admin).
             </div>
-            ${tip('O campo EAN suporta leitura por código de barras. Use o Chrome e permita o acesso à câmera.')}
+            ${tip('Para usar o leitor de código de barras, acesse pelo Chrome e permita o uso da câmera quando solicitado.')}
+            ${tip('A quantidade indica quantas unidades idênticas existem em estoque. Ao fazer uma baixa, a quantidade é decrementada automaticamente.')}
         `)}
 
         ${sec('bad','⚠️','BAD — Equipamentos com defeito','Gerencie equipamentos retirados e aguardando envio', `
@@ -1876,6 +1899,16 @@ create table estoque (
                 ${tag('NOVO EQUIPAMENTO','green')} ${tag('EDIÇÃO EQUIPAMENTO','yellow')} ${tag('EXCLUSÃO EQUIPAMENTO','red')} — estoque
             </div>
             ${step(4,'Use o campo de pesquisa para filtrar por usuário, tipo de ação ou descrição.')}
+        `)}
+
+        ${sec('catalogo','📚','Catálogo de modelos (somente admin)','Padronize as descrições dos equipamentos para evitar duplicatas no estoque', `
+            ${step(1,'Na tela <strong>📦 Estoque</strong>, a aba <strong>📚 Catálogo</strong> é visível somente para o administrador.')}
+            ${step(2,'Clique em <strong>🔄 Atualizar</strong> para carregar os modelos cadastrados.')}
+            ${step(3,'Para <strong>adicionar um novo modelo</strong>, clique em <strong>+ Novo Modelo</strong>. Preencha a <strong>Descrição</strong> (ex: <em>PINPAD INGENICO iSC250</em>) e opcionalmente a <strong>Categoria</strong> (ex: <em>PIN PAD</em>). Clique em <strong>💾 Salvar</strong>.')}
+            ${step(4,'A descrição é única — o sistema rejeita duplicatas. Isso garante que o mesmo equipamento não seja cadastrado com variações de nome (ex: "Pinpad Ingenico" e "PIN PAD INGENICO" seriam a mesma entrada).')}
+            ${step(5,'Para <strong>excluir um modelo</strong>, clique em <strong>🗑 Excluir</strong> na linha correspondente. Equipamentos já cadastrados no estoque com esse modelo não são afetados.')}
+            ${warn('Somente o administrador pode criar, editar ou excluir modelos do catálogo. Técnicos apenas consultam o catálogo ao cadastrar novos equipamentos.')}
+            ${tip('Cadastre previamente no catálogo todos os modelos de equipamentos que sua equipe utiliza. Assim, ao cadastrar um equipamento no estoque, basta selecionar a descrição correta — sem risco de variações ortográficas.')}
         `)}
 
         ${sec('vincular','🔗','Vincular troca ao Estoque / BAD','Como registrar a entrada e saída de equipamento em uma troca', `
