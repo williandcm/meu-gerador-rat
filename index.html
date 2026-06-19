@@ -173,6 +173,7 @@
         .estoque-tab { padding: 9px 22px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 700; color: #64748b; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: .15s; }
         .estoque-tab.ativo { color: var(--primary); border-bottom-color: var(--primary); }
         .estoque-tab-bad.ativo { color: #dc2626; border-bottom-color: #dc2626; }
+        .tab-somente-admin { display: none !important; }
         .bad-envio-ok { color: #16a34a; font-size: 11px; font-weight: bold; }
         /* ── MODAL VINCULAR ESTOQUE ── */
         .vincular-section { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
@@ -552,8 +553,8 @@
                 <div class="card search-box">
                     <h2 style="border:none; margin-bottom:10px; color:#0284c7;">🔍 Buscar Chamados</h2>
                     <div class="search-row">
-                        <input type="text" id="busca_inc" class="search-input" placeholder="Chamado, Uniorg, Cidade, Responsável..." oninput="filtrarListaLocal()">
-                        <button class="btn-search" onclick="buscarChamado()" id="btnBuscar">Buscar</button>
+                        <input type="text" id="busca_inc" class="search-input" placeholder="Chamado, Patrimônio, Série, Uniorg, Cidade, Hostname, MAC..." oninput="filtrarListaLocal()" onkeydown="if(event.key==='Enter') filtrarListaLocal()">
+                        <button class="btn-search" onclick="filtrarListaLocal()" id="btnBuscar">Buscar</button>
                         <button class="btn-load-all" onclick="carregarTodosChamados()" id="btnCarregarTodos">🔄 Atualizar</button>
                         <button class="btn-load-all" onclick="abrirConfigColunas()" style="background:#7c3aed;" title="Configurar colunas visíveis">⚙️ Colunas</button>
                         <button class="btn-load-all" onclick="exportarCSV()" style="background:#059669;" title="Exportar chamados visíveis para CSV">📊 CSV</button>
@@ -693,7 +694,7 @@
                     <button class="estoque-tab ativo" id="tabBtnEstoque" onclick="mostrarAbaEstoque()">📦 Estoque</button>
                     <button class="estoque-tab estoque-tab-bad" id="tabBtnBad" onclick="mostrarAbaBad()">⚠️ BAD</button>
                     <button class="estoque-tab" id="tabBtnHistorico" onclick="mostrarAbaHistorico()" style="color:#7c3aed;">📋 Histórico</button>
-                    <button class="estoque-tab" id="tabBtnCatalogo" onclick="mostrarAbaCatalogo()" style="color:#0891b2;display:none;">📚 Catálogo</button>
+                    <button class="estoque-tab tab-somente-admin" id="tabBtnCatalogo" onclick="mostrarAbaCatalogo()" style="color:#0891b2;">📚 Catálogo</button>
                 </div>
 
                 <!-- ABA ESTOQUE -->
@@ -1729,6 +1730,9 @@ create table estoque (
         if (pagina === 'admin') carregarPerfisTecnicos();
         if (pagina === 'ajuda') renderizarAjuda();
         if (pagina === 'estoque') {
+            const isAdminNav = loggedInUser?.email?.toLowerCase() === ADMIN_EMAIL;
+            const tabCat = document.getElementById('tabBtnCatalogo');
+            if (tabCat) tabCat.classList.toggle('tab-somente-admin', !isAdminNav);
             try { carregarEstoque(); }
             catch(e) {
                 const st = document.getElementById('statusEstoque');
@@ -1936,7 +1940,7 @@ create table estoque (
 
         // Aba catálogo visível apenas para admin
         const tabCat = document.getElementById('tabBtnCatalogo');
-        if (tabCat) tabCat.style.display = isAdminUser ? '' : 'none';
+        if (tabCat) tabCat.classList.toggle('tab-somente-admin', !isAdminUser);
 
         carregarDadosTecnicoLocal();
         document.getElementById('login_senha').value = '';
@@ -2770,11 +2774,13 @@ create table estoque (
                 if (p.length === 3 && `${p[1]}/${p[2]}` !== mes) return false;
             }
             if (!q) return true;
-            return (i.chamado && i.chamado.toUpperCase().includes(q)) ||
-                   (i.uniorg && i.uniorg.toUpperCase().includes(q)) ||
-                   (i.responsavel && i.responsavel.toUpperCase().includes(q)) ||
-                   (i.cidade && i.cidade.toUpperCase().includes(q)) ||
-                   (i.endereco && i.endereco.toUpperCase().includes(q));
+            return [
+                i.chamado, i.uniorg, i.responsavel, i.cidade, i.endereco,
+                i.bairro, i.uf, i.numero, i.matricula, i.data_atendimento,
+                i.patri_ret, i.sn_ret, i.modelo_ret, i.host_ret, i.mac_ret,
+                i.patri_inst, i.sn_inst, i.modelo_inst, i.host_inst, i.mac_inst,
+                i.descritivo_defeito_causa, i.solucao, i.tecnico
+            ].some(v => v && String(v).toUpperCase().includes(q));
         });
 
         if (sortColAtual) {
@@ -3397,7 +3403,7 @@ function abrirModalNovoCatalogo(doModal = false) {
 
 function fecharModalNovoCatalogo() {
     document.getElementById('modalNovoCatalogo').classList.remove('open');
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = '';
 }
 
 async function salvarNovoCatalogo() {
