@@ -731,15 +731,17 @@
                         <button class="btn-load-all" onclick="carregarEstoque()" id="btnAtualizarEstoque">🔄 Atualizar</button>
                     </div>
                     <div class="table-container" id="containerEstoque" style="display:none; margin-top:12px;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Ações</th><th>Descrição</th><th>Patrimônio</th>
-                                    <th>Número de Série</th><th>Modelo</th><th>MAC</th><th>Qtd</th>
-                                </tr>
-                            </thead>
-                            <tbody id="corpoTabelaEstoque"></tbody>
-                        </table>
+                        <div class="table-hscroll">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Ações</th><th>Descrição</th><th>Patrimônio</th>
+                                        <th>Número de Série</th><th>Modelo</th><th>MAC</th><th>Qtd</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpoTabelaEstoque"></tbody>
+                            </table>
+                        </div>
                     </div>
                     <div id="statusEstoque" style="text-align:center;color:#64748b;font-size:12px;margin-top:8px;">
                         Clique em "Atualizar" para carregar o estoque.
@@ -754,17 +756,19 @@
                         <button class="btn-load-all" style="background:#dc2626;color:#fff;border-color:#dc2626;" onclick="abrirNovoItemBad()">+ Novo Item BAD</button>
                     </div>
                     <div class="table-container" id="containerBAD" style="display:none; margin-top:12px;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Ações</th><th>Descrição</th><th>Patrimônio</th>
-                                    <th>Número de Série</th><th>Modelo</th><th>Hostname</th>
-                                    <th>MAC</th><th>Chamado</th>
-                                    <th>Entrada BAD</th><th>Data Envio</th>
-                                </tr>
-                            </thead>
-                            <tbody id="corpoTabelaBad"></tbody>
-                        </table>
+                        <div class="table-hscroll">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Ações</th><th>Descrição</th><th>Patrimônio</th>
+                                        <th>Número de Série</th><th>Modelo</th><th>Hostname</th>
+                                        <th>MAC</th><th>Chamado</th>
+                                        <th>Entrada BAD</th><th>Data Envio</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpoTabelaBad"></tbody>
+                            </table>
+                        </div>
                     </div>
                     <div id="statusBAD" style="text-align:center;color:#64748b;font-size:12px;margin-top:8px;">
                         Clique em "Atualizar" para carregar o BAD.
@@ -778,14 +782,16 @@
                         <button class="btn-load-all" onclick="carregarHistorico()" id="btnAtualizarHistorico">🔄 Atualizar</button>
                     </div>
                     <div class="table-container" id="containerHistorico" style="display:none; margin-top:12px;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Data / Hora</th><th>Usuário</th><th>Ação</th><th>Descrição</th>
-                                </tr>
-                            </thead>
-                            <tbody id="corpoTabelaHistorico"></tbody>
-                        </table>
+                        <div class="table-hscroll">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Data / Hora</th><th>Usuário</th><th>Ação</th><th>Descrição</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpoTabelaHistorico"></tbody>
+                            </table>
+                        </div>
                     </div>
                     <div id="statusHistorico" style="text-align:center;color:#64748b;font-size:12px;margin-top:8px;">
                         Clique em "Atualizar" para carregar o histórico.
@@ -1342,12 +1348,12 @@ create table estoque (
         document.body.style.userSelect = 'none';
     }
 
-    function _initStickyHeader() {
-        const c = document.getElementById('containerTabela');
+    function _initStickyHeader(containerId) {
+        const c = document.getElementById(containerId);
         if (!c || c._stickyBound) return;
         c._stickyBound = true;
         c.addEventListener('scroll', () => {
-            const thead = document.querySelector('#tabelaChamados thead');
+            const thead = c.querySelector('thead');
             if (thead) thead.style.transform = `translateY(${c.scrollTop}px)`;
         });
     }
@@ -2533,7 +2539,7 @@ create table estoque (
             atualizarStats(todosChamadosCache);
             document.getElementById('statusTabela').textContent = `${todosChamadosCache.length} chamados encontrados.`;
             document.getElementById('containerTabela').style.display = todosChamadosCache.length ? 'block' : 'none';
-            _initStickyHeader();
+            _initStickyHeader('containerTabela');
             popularFiltrosChamados(todosChamadosCache);
         } catch (e) { document.getElementById('statusTabela').textContent = "Erro ao carregar dados."; }
         finally { btn.innerHTML = "🔄 Atualizar"; btn.disabled = false; }
@@ -2856,7 +2862,7 @@ create table estoque (
             atualizarStats(todosChamadosCache);
             document.getElementById('statusTabela').textContent = `${todosChamadosCache.length} chamados encontrados.`;
             document.getElementById('containerTabela').style.display = todosChamadosCache.length ? 'block' : 'none';
-            _initStickyHeader();
+            _initStickyHeader('containerTabela');
 
             // se o chamado excluído estava aberto no editor, limpa o formulário
             if (idRegistroAtual === id) limparFormulario();
@@ -3675,7 +3681,7 @@ async function carregarEstoque() {
         atualizarStatsEstoque(estoqueCache);
         popularFiltrosEstoque(estoqueCache);
         const container = document.getElementById('containerEstoque');
-        if (container) container.style.display = estoqueCache.length ? 'block' : 'none';
+        if (container) { container.style.display = estoqueCache.length ? 'block' : 'none'; _initStickyHeader('containerEstoque'); }
         status.textContent = `${estoqueCache.length} equipamento(s) cadastrado(s).`;
     } catch (e) {
         if (status) status.textContent = 'Erro ao carregar estoque: ' + e.message;
@@ -4040,7 +4046,7 @@ function atualizarTabelaBad(lista) {
     const container = document.getElementById('containerBAD');
     if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#94a3b8;">Nenhum item no BAD.</td></tr>';
-        if (container) container.style.display = 'block';
+        if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); }
         return;
     }
     const isAdmin = loggedInUser?.email?.toLowerCase() === ADMIN_EMAIL;
@@ -4070,7 +4076,7 @@ function atualizarTabelaBad(lista) {
             <td>${dataEnvio}</td>`;
         tbody.appendChild(tr);
     });
-    if (container) container.style.display = 'block';
+    if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); }
 }
 
 function filtrarBadLocal() {
@@ -4241,7 +4247,7 @@ function atualizarTabelaHistorico(lista) {
     tbody.innerHTML = '';
     if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;">Nenhuma movimentação registrada.</td></tr>';
-        if (container) container.style.display = 'block';
+        if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); }
         return;
     }
     lista.forEach(m => {
@@ -4259,7 +4265,7 @@ function atualizarTabelaHistorico(lista) {
             <td style="font-size:13px;">${escHtml(m.descricao || '')}</td>`;
         tbody.appendChild(tr);
     });
-    if (container) container.style.display = 'block';
+    if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); }
 }
 
 function filtrarHistoricoLocal() {
