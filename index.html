@@ -573,6 +573,7 @@
                             <tbody id="corpoTabelaChamados"></tbody>
                         </table>
                     </div>
+                    <div id="paginacaoControles"></div>
                     <div id="statusTabela" style="text-align:center; color:#64748b; font-size:12px; margin-top:8px;">
                         Clique em "Atualizar" para listar os atendimentos salvos.
                     </div>
@@ -1282,6 +1283,9 @@ create table estoque (
     let renderTaskAtual = null;
     let todosChamadosCache = [];
     let idRegistroAtual = null;
+    let paginaAtual = 1;
+    const ITENS_POR_PAGINA = 50;
+    let listaFiltradaAtual = [];
     let loggedInUser = null;
     let perfisTecnicosCache = [];
     let emailTecnicoSendoEditado = null;
@@ -1987,16 +1991,20 @@ create table estoque (
         if (!loggedInUser) return false;
         const emailKey = loggedInUser.email.toLowerCase();
         if (emailKey === ADMIN_EMAIL) return true;
-        const { data } = await supabaseClient.from('chamados').select('*').eq('chamado', 'CONFIG_TECNICOS').maybeSingle();
-        if (data && data.solucao) {
-            const perfis = JSON.parse(data.solucao);
-            const perfil = perfis.find(p => p.email.toLowerCase() === emailKey);
-            if (perfil && perfil.ativo === false) {
+        try {
+            const { data } = await supabaseClient.from('tecnicos').select('ativo,expira_em').eq('email', emailKey).maybeSingle();
+            if (!data) return true;
+            if (data.ativo === false) {
                 alert("Acesso suspenso pelo administrador.");
                 realizarLogout();
                 return false;
             }
-        }
+            if (data.expira_em && new Date(data.expira_em) < new Date()) {
+                alert("Acesso de demonstração expirado.");
+                realizarLogout();
+                return false;
+            }
+        } catch(e) { console.warn('checarStatusAtivo:', e.message); }
         return true;
     }
 
@@ -2010,11 +2018,15 @@ create table estoque (
 
         btn.disabled = true; btn.textContent = "Autenticando..."; errorDiv.style.display = 'none';
         try {
-            const { data: cfg } = await supabaseClient.from('chamados').select('*').eq('chamado', 'CONFIG_TECNICOS').maybeSingle();
-            let localPerfis = (cfg && cfg.solucao) ? JSON.parse(cfg.solucao) : [];
-            const perfil = localPerfis.find(p => p.email.toLowerCase() === email);
-            if (email !== ADMIN_EMAIL && perfil && perfil.ativo === false)
-                throw new Error("Acesso negado: usuário inativado pelo administrador.");
+            if (email !== ADMIN_EMAIL) {
+                const { data: perfil } = await supabaseClient.from('tecnicos').select('ativo,expira_em').eq('email', email).maybeSingle();
+                if (perfil) {
+                    if (perfil.ativo === false)
+                        throw new Error("Acesso negado: usuário inativado pelo administrador.");
+                    if (perfil.expira_em && new Date(perfil.expira_em) < new Date())
+                        throw new Error("Acesso de demonstração expirado.");
+                }
+            }
 
             const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
             if (error) throw error;
@@ -2131,17 +2143,15 @@ create table estoque (
     // ── ADMIN ──
     async function carregarPerfisTecnicos() {
         try {
-            const { data } = await supabaseClient.from('chamados').select('*').eq('chamado', 'CONFIG_TECNICOS').maybeSingle();
-            perfisTecnicosCache = (data && data.solucao) ? JSON.parse(data.solucao) : [];
+            const { data, error } = await supabaseClient.from('tecnicos').select('*').order('nome');
+            if (error) throw error;
+            perfisTecnicosCache = data || [];
             atualizarTabelaAdminTecnicos();
         } catch (e) { console.error("Erro ao carregar perfis:", e); }
     }
 
     async function salvarPerfisTecnicosNoBanco() {
-        const payload = { chamado: 'CONFIG_TECNICOS', solucao: JSON.stringify(perfisTecnicosCache), tecnico: 'SISTEMA_ADMIN' };
-        const { data } = await supabaseClient.from('chamados').select('id').eq('chamado', 'CONFIG_TECNICOS').maybeSingle();
-        if (data) await supabaseClient.from('chamados').update(payload).eq('id', data.id);
-        else await supabaseClient.from('chamados').insert([payload]);
+        // Substituído pela tabela `tecnicos`. Mantido como no-op para compatibilidade.
     }
 
     function atualizarTabelaAdminTecnicos() {
@@ -2153,7 +2163,7 @@ create table estoque (
         }
         perfisTecnicosCache.forEach(tec => {
             if (tec.ativo === undefined) tec.ativo = true;
-            const badge = (tec.ativo ? '<span class="badge badge-ok">ATIVO</span>' : '<span class="badge badge-off">INATIVO</span>') + (tec.isDemo ? ' <span class="badge" style="background:#ede9fe;color:#7c3aed;border:1px solid #c4b5fd;">DEMO</span>' : '');
+            const badge = (tec.ativo ? '<span class="badge badge-ok">ATIVO</span>' : '<span class="badge badge-off">INATIVO</span>') + (tec.is_demo ? ' <span class="badge" style="background:#ede9fe;color:#7c3aed;border:1px solid #c4b5fd;">DEMO</span>' : '') + (tec.expira_em ? ` <span class="badge" style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-size:10px;">exp: ${new Date(tec.expira_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>` : '');
             const btnStatus = tec.ativo
                 ? `<button class="btn-danger-table" onclick="alternarStatusTecnico('${tec.email}',false)">Desativar</button>`
                 : `<button class="btn-success-table" onclick="alternarStatusTecnico('${tec.email}',true)">Reativar</button>`;
@@ -2180,13 +2190,10 @@ create table estoque (
 
     async function alternarStatusTecnico(email, novoStatus) {
         if (!confirm(`Deseja ${novoStatus ? 'reativar' : 'desativar'} este técnico?`)) return;
-        const i = perfisTecnicosCache.findIndex(t => t.email.toLowerCase() === email.toLowerCase());
-        if (i !== -1) {
-            perfisTecnicosCache[i].ativo = novoStatus;
-            await salvarPerfisTecnicosNoBanco();
-            await carregarPerfisTecnicos();
-            mostrarMsgAdmin(`Técnico (${email}) ${novoStatus ? 'ATIVADO' : 'DESATIVADO'} com sucesso!`, novoStatus ? 'ok' : 'err');
-        }
+        const { error } = await supabaseClient.from('tecnicos').update({ ativo: novoStatus }).eq('email', email.toLowerCase());
+        if (error) { mostrarMsgAdmin("❌ Erro: " + error.message, 'err'); return; }
+        await carregarPerfisTecnicos();
+        mostrarMsgAdmin(`Técnico (${email}) ${novoStatus ? 'ATIVADO' : 'DESATIVADO'} com sucesso!`, novoStatus ? 'ok' : 'err');
     }
 
     function carregarTecnicoParaEdicao(email) {
@@ -2237,9 +2244,8 @@ create table estoque (
             if (!nome || !cpf) { mostrarMsgAdmin("Preencha Nome e CPF.", 'err'); return; }
             btn.disabled = true; btn.textContent = "Atualizando...";
             try {
-                const i = perfisTecnicosCache.findIndex(t => t.email.toLowerCase() === emailTecnicoSendoEditado.toLowerCase());
-                if (i !== -1) { perfisTecnicosCache[i].nome = nome; perfisTecnicosCache[i].cpf = cpf; perfisTecnicosCache[i].permissoes = lerPermissoesForm(); }
-                await salvarPerfisTecnicosNoBanco();
+                const { error: errUpd } = await supabaseClient.from('tecnicos').update({ nome, cpf, permissoes: lerPermissoesForm() }).eq('email', emailTecnicoSendoEditado.toLowerCase());
+                if (errUpd) throw errUpd;
                 mostrarMsgAdmin(`✅ Técnico ${nome} atualizado com sucesso!`, 'ok');
                 cancelarEdicaoTecnico();
                 await carregarPerfisTecnicos();
@@ -2257,8 +2263,8 @@ create table estoque (
         try {
             const { error } = await authRegistrationClient.auth.signUp({ email, password: senha, options: { data: { full_name: nome, cpf } } });
             if (error) throw error;
-            perfisTecnicosCache.push({ email, nome, cpf, ativo: true, permissoes: lerPermissoesForm() });
-            await salvarPerfisTecnicosNoBanco();
+            const { error: errDb } = await supabaseClient.from('tecnicos').insert([{ email, nome, cpf, ativo: true, permissoes: lerPermissoesForm() }]);
+            if (errDb) throw errDb;
             mostrarMsgAdmin(`✅ Técnico ${nome} criado com sucesso!`, 'ok');
             ['admin_new_email','admin_new_senha','admin_new_nome','admin_new_cpf'].forEach(id => document.getElementById(id).value = '');
             await carregarPerfisTecnicos();
@@ -2328,9 +2334,12 @@ create table estoque (
             const { error: signUpErr } = await authRegistrationClient.auth.signUp({ email, password: senha, options: { data: { full_name: nome } } });
             if (signUpErr) throw signUpErr;
 
-            perfisTecnicosCache.push({ email, nome, cpf: '000.000.000-00', ativo: true, isDemo: true,
-                permissoes: { criar_chamado: false, editar_chamado: false, excluir_chamado: false, assinar_rat: false, baixar_pdf: true } });
-            await salvarPerfisTecnicosNoBanco();
+            const expiresAt = new Date(Date.now() + horas * 3600000).toISOString();
+            const { error: errDb } = await supabaseClient.from('tecnicos').insert([{
+                email, nome, cpf: '000.000.000-00', ativo: true, is_demo: true, expira_em: expiresAt,
+                permissoes: { criar_chamado: false, editar_chamado: false, excluir_chamado: false, assinar_rat: false, baixar_pdf: true }
+            }]);
+            if (errDb) throw errDb;
             await carregarPerfisTecnicos();
 
             const payload = { email, senha, expires_at: Date.now() + horas * 3600000 };
@@ -2488,7 +2497,16 @@ create table estoque (
             sortColAtual = colId;
             sortDirecao = 'asc';
         }
-        filtrarListaLocal();
+        if (listaFiltradaAtual.length) {
+            listaFiltradaAtual = [...listaFiltradaAtual].sort((a, b) => {
+                const va = getValorSort(a, sortColAtual).toLowerCase();
+                const vb = getValorSort(b, sortColAtual).toLowerCase();
+                return sortDirecao === 'asc' ? va.localeCompare(vb, 'pt-BR') : vb.localeCompare(va, 'pt-BR');
+            });
+            _renderTabela(listaFiltradaAtual);
+        } else {
+            filtrarListaLocal();
+        }
     }
 
     function popularFiltrosChamados(lista) {
@@ -2519,7 +2537,39 @@ create table estoque (
         selMes.style.display = meses.length > 1 ? 'block' : 'none';
     }
 
+    function _renderPaginacao() {
+        const total = listaFiltradaAtual.length;
+        const totalPaginas = Math.ceil(total / ITENS_POR_PAGINA) || 1;
+        const el = document.getElementById('paginacaoControles');
+        if (!el) return;
+        if (totalPaginas <= 1) { el.innerHTML = ''; return; }
+        const inicio = (paginaAtual - 1) * ITENS_POR_PAGINA + 1;
+        const fim = Math.min(paginaAtual * ITENS_POR_PAGINA, total);
+        el.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;justify-content:center;padding:10px 0;font-size:13px;color:#475569;">
+                <button onclick="irPagina(1)" ${paginaAtual===1?'disabled':''} style="padding:4px 10px;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;background:#f8fafc;">«</button>
+                <button onclick="irPagina(${paginaAtual-1})" ${paginaAtual===1?'disabled':''} style="padding:4px 10px;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;background:#f8fafc;">‹ Anterior</button>
+                <span>Página <strong>${paginaAtual}</strong> de <strong>${totalPaginas}</strong> (${inicio}–${fim} de ${total})</span>
+                <button onclick="irPagina(${paginaAtual+1})" ${paginaAtual===totalPaginas?'disabled':''} style="padding:4px 10px;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;background:#f8fafc;">Próxima ›</button>
+                <button onclick="irPagina(${totalPaginas})" ${paginaAtual===totalPaginas?'disabled':''} style="padding:4px 10px;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;background:#f8fafc;">»</button>
+            </div>`;
+    }
+
+    function irPagina(n) {
+        const total = listaFiltradaAtual.length;
+        const totalPaginas = Math.ceil(total / ITENS_POR_PAGINA) || 1;
+        paginaAtual = Math.max(1, Math.min(n, totalPaginas));
+        _renderTabela(listaFiltradaAtual);
+    }
+
     function atualizarInterfaceTabela(lista) {
+        listaFiltradaAtual = lista;
+        paginaAtual = 1;
+        _renderTabela(lista);
+    }
+
+    function _renderTabela(lista) {
+        const pagina = lista.slice((paginaAtual - 1) * ITENS_POR_PAGINA, paginaAtual * ITENS_POR_PAGINA);
         const visCols = colunasConfig.filter(c => c.visible);
         const totalCols = visCols.length + 1; // +1 coluna de ações
 
@@ -2537,10 +2587,11 @@ create table estoque (
         tbody.innerHTML = '';
         if (!lista.length) {
             tbody.innerHTML = `<tr><td colspan="${totalCols}" style="text-align:center;color:#94a3b8;">Nenhum chamado encontrado.</td></tr>`;
+            _renderPaginacao();
             return;
         }
 
-        lista.forEach(item => {
+        pagina.forEach(item => {
             const trMain = document.createElement('tr');
             trMain.className = 'row-main';
             trMain.dataset.id = item.id;
@@ -2569,6 +2620,7 @@ create table estoque (
             trDetail.appendChild(td);
             tbody.appendChild(trDetail);
         });
+        _renderPaginacao();
     }
 
     function toggleDetalhe(id) {
@@ -2698,6 +2750,11 @@ create table estoque (
             const { data: deletado, error } = await supabaseClient.from('chamados').delete().eq('id', id).select('id');
             if (error) throw error;
             if (!deletado || deletado.length === 0) throw new Error('Nenhum registro foi excluído. Verifique as políticas RLS da tabela no Supabase (a política DELETE pode estar ausente).');
+
+            await supabaseClient.from('historico_chamados').insert([{
+                chamado_id: id, chamado_inc: chamado.chamado, acao: 'EXCLUSÃO',
+                usuario: loggedInUser.email.toLowerCase(), dados_antes: chamado
+            }]).catch(() => {});
 
             // remove do cache local e atualiza a tabela sem nova chamada ao banco
             todosChamadosCache = todosChamadosCache.filter(x => x.id !== id);
@@ -3296,6 +3353,10 @@ create table estoque (
                 const { error } = await supabaseClient.from('chamados').update(payload).eq('id', idRegistroAtual);
                 if (error) throw error;
                 await logMovimentacao('EDIÇÃO CHAMADO', inc + (payload.uniorg ? ' | UNIORG: ' + payload.uniorg : ''));
+                await supabaseClient.from('historico_chamados').insert([{
+                    chamado_id: idRegistroAtual, chamado_inc: inc, acao: 'EDIÇÃO',
+                    usuario: loggedInUser.email.toLowerCase(), dados_depois: payload
+                }]);
                 alert("Chamado ATUALIZADO com sucesso!");
             } else {
                 const { data: existente } = await supabaseClient.from('chamados').select('id').eq('chamado', inc).maybeSingle();
@@ -3317,6 +3378,10 @@ create table estoque (
                 document.getElementById('btnSalvar').className = 'btn-update';
 
                 await logMovimentacao('NOVO CHAMADO', inc + (payload.uniorg ? ' | UNIORG: ' + payload.uniorg : '') + (payload.solucao ? ' | ' + payload.solucao : ''));
+                await supabaseClient.from('historico_chamados').insert([{
+                    chamado_id: idRegistroAtual, chamado_inc: inc, acao: 'CRIAÇÃO',
+                    usuario: loggedInUser.email.toLowerCase(), dados_depois: payload
+                }]);
                 alert("Chamado SALVO com sucesso!");
 
                 // Oferecer vinculação ao estoque apenas em cadastros novos com troca
