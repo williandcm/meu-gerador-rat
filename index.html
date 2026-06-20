@@ -3505,7 +3505,8 @@ create table estoque (
 
     function exportarCSV() {
         if (!todosChamadosCache.length) { alert('Nenhum chamado carregado. Clique em "Atualizar" primeiro.'); return; }
-        const esc = v => `"${(v || '').replace(/"/g, '""')}"`;
+        const up  = v => (v || '').toString().toUpperCase();
+        const esc = v => `"${up(v).replace(/"/g, '""')}"`;
         const cab = ['Chamado','Data','Técnico','Uniorg','Responsável','Endereço','Número','Bairro','Cidade','UF',
                      'Patri.Ret','Série Ret','Modelo Ret','Host Ret','MAC Ret',
                      'Patri.Inst','Série Inst','Modelo Inst','Host Inst','MAC Inst',
