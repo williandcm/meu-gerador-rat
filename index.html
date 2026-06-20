@@ -249,7 +249,7 @@
         .ajuda-tag.green { background:#dcfce7; color:#15803d; }
         .ajuda-tag.yellow { background:#fef9c3; color:#854d0e; }
         /* ── COLUNA ORDENÁVEL E REDIMENSIONÁVEL ── */
-        #tabelaChamados { table-layout: fixed; }
+        #tabelaChamados { table-layout: fixed; min-width: max-content; }
         th.sortable { cursor: pointer; user-select: none; white-space: nowrap; position: relative; overflow: hidden; text-overflow: ellipsis; }
         th.sortable:hover { background: rgba(59,130,246,.08); }
         th.sortable .sort-icon { font-size: 10px; color: #94a3b8; margin-left: 3px; }
@@ -2649,11 +2649,16 @@ create table estoque (
         // cabeçalho dinâmico com ordenação
         const header = document.getElementById('tHeaderRow');
         if (header) {
-            header.innerHTML = '<th style="width:46px">Ação</th>' + visCols.map(c => {
+            const defaultColW = { chamado:140, data_atendimento:100, tecnico:160, uniorg:80,
+                patri_inst:110, patri_ret:110, endereco:180, cidade:110, bairro:110,
+                uf:50, responsavel:140, matricula:90, sn_inst:130, sn_ret:130,
+                modelo_inst:130, modelo_ret:130, host_inst:120, host_ret:120,
+                mac_inst:130, mac_ret:130, chamado_cerb:110 };
+            header.innerHTML = '<th style="width:46px;min-width:46px">Ação</th>' + visCols.map(c => {
                 const ativo = sortColAtual === c.id;
                 const icone = ativo ? (sortDirecao === 'asc' ? '▲' : '▼') : '⇅';
-                const w = colWidths[c.id] ? ` style="width:${colWidths[c.id]}px"` : '';
-                return `<th class="sortable${ativo ? ' ativo' : ''}" data-col-id="${c.id}"${w} onclick="ordenarTabela('${c.id}')">${getColLabel(c.id)}<span class="sort-icon">${icone}</span><div class="col-resize-handle" onmousedown="_iniciarResize(event,this)"></div></th>`;
+                const w = colWidths[c.id] || defaultColW[c.id] || 120;
+                return `<th class="sortable${ativo ? ' ativo' : ''}" data-col-id="${c.id}" style="width:${w}px" onclick="ordenarTabela('${c.id}')">${getColLabel(c.id)}<span class="sort-icon">${icone}</span><div class="col-resize-handle" onmousedown="_iniciarResize(event,this)"></div></th>`;
             }).join('');
         }
 
