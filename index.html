@@ -1253,9 +1253,10 @@ create table estoque (
 
     const SUPABASE_URL = 'https://amqpouzfsykkahwgatmy.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_1cvN1pi45smgwKF3DkR9iw_-d7MvZ8o';
-    const URL_MODELO_PDF = 'https://amqpouzfsykkahwgatmy.supabase.co/storage/v1/object/public/rat-files/RAT%20EM%20BRANCO.pdf';
-    const CPF_FIXO = "327.190.648-31";
-    const ADMIN_EMAIL = 'williandcm@hotmail.com';
+    // Valores carregados do banco via carregarConfigSistema() no onload
+    let URL_MODELO_PDF = '';
+    let ADMIN_EMAIL    = '';
+    let _DEMO_KEY      = '';
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const authRegistrationClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
@@ -1277,7 +1278,7 @@ create table estoque (
         mac_inst: { x: 356, y: 431, s: 11 }
     };
 
-    let dados = { tecnico: 'WILLIAN DO CARMO MORAIS', cpf: CPF_FIXO };
+    let dados = { tecnico: '', cpf: '' };
     let modeloPdfBytes = null;
     let timeoutRender = null;
     let renderTaskAtual = null;
@@ -1677,7 +1678,20 @@ create table estoque (
         }
     }
 
+    async function carregarConfigSistema() {
+        try {
+            const { data } = await supabaseClient.from('system_config').select('chave,valor');
+            if (data) {
+                const m = Object.fromEntries(data.map(r => [r.chave, r.valor]));
+                ADMIN_EMAIL    = (m.admin_email     || '').toLowerCase();
+                URL_MODELO_PDF = m.url_modelo_pdf   || '';
+                _DEMO_KEY      = m.demo_secret_key  || '';
+            }
+        } catch(e) { console.error('[config] Falha ao carregar configurações do sistema:', e); }
+    }
+
     window.onload = async () => {
+        await carregarConfigSistema();
         try {
             const demoParam = new URLSearchParams(location.search).get('d');
             if (demoParam) { await _loginPorDemoUrl(demoParam); }
@@ -2052,8 +2066,8 @@ create table estoque (
             document.getElementById('f_tecnico_cpf').value = perfil.cpf;
         } else {
             const m = loggedInUser.user_metadata;
-            document.getElementById('f_tecnico_nome').value = m?.full_name || localStorage.getItem('tec_nome_' + k) || (k === ADMIN_EMAIL ? 'WILLIAN DO CARMO MORAIS' : '');
-            document.getElementById('f_tecnico_cpf').value = m?.cpf || (k === ADMIN_EMAIL ? CPF_FIXO : '');
+            document.getElementById('f_tecnico_nome').value = m?.full_name || localStorage.getItem('tec_nome_' + k) || '';
+            document.getElementById('f_tecnico_cpf').value  = m?.cpf || '';
         }
         clearTimeout(timeoutRender);
         timeoutRender = setTimeout(gerarERenderizar, 500);
@@ -2278,8 +2292,7 @@ create table estoque (
 
     // ── ACESSO DEMO ──
     let _ultimoDemoAcesso = null;
-
-    const _DEMO_KEY = 'RATProDemo2024SecretKey!@#$%^&*()';
+    // _DEMO_KEY carregado de system_config no onload via carregarConfigSistema()
 
     async function _demoCryptoKey() {
         const raw = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(_DEMO_KEY));
