@@ -163,7 +163,8 @@
         .table-container { margin-top: 12px; overflow-y: auto; max-height: 60vh; border: 1px solid #e2e8f0; border-radius: 8px; background: white; }
         .table-hscroll { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
-        th { background: #f1f5f9; color: #475569; font-weight: 700; padding: 10px; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; position: sticky; top: 0; z-index: 3; }
+        #tabelaChamados thead { position: relative; z-index: 3; will-change: transform; }
+        th { background: #f1f5f9; color: #475569; font-weight: 700; padding: 10px; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; }
         td { padding: 10px; border-bottom: 1px solid #e2e8f0; color: #334155; }
         tr:hover { background: #f8fafc; }
 
@@ -1339,6 +1340,16 @@ create table estoque (
         handle.classList.add('col-resize-active');
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
+    }
+
+    function _initStickyHeader() {
+        const c = document.getElementById('containerTabela');
+        if (!c || c._stickyBound) return;
+        c._stickyBound = true;
+        c.addEventListener('scroll', () => {
+            const thead = document.querySelector('#tabelaChamados thead');
+            if (thead) thead.style.transform = `translateY(${c.scrollTop}px)`;
+        });
     }
 
     function escHtml(v) {
@@ -2522,6 +2533,7 @@ create table estoque (
             atualizarStats(todosChamadosCache);
             document.getElementById('statusTabela').textContent = `${todosChamadosCache.length} chamados encontrados.`;
             document.getElementById('containerTabela').style.display = todosChamadosCache.length ? 'block' : 'none';
+            _initStickyHeader();
             popularFiltrosChamados(todosChamadosCache);
         } catch (e) { document.getElementById('statusTabela').textContent = "Erro ao carregar dados."; }
         finally { btn.innerHTML = "🔄 Atualizar"; btn.disabled = false; }
@@ -2844,6 +2856,7 @@ create table estoque (
             atualizarStats(todosChamadosCache);
             document.getElementById('statusTabela').textContent = `${todosChamadosCache.length} chamados encontrados.`;
             document.getElementById('containerTabela').style.display = todosChamadosCache.length ? 'block' : 'none';
+            _initStickyHeader();
 
             // se o chamado excluído estava aberto no editor, limpa o formulário
             if (idRegistroAtual === id) limparFormulario();
