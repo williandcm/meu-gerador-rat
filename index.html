@@ -161,7 +161,10 @@
 
         /* ── TABELA ── */
         .table-container { margin-top: 12px; overflow-y: auto; max-height: 60vh; border: 1px solid #e2e8f0; border-radius: 8px; background: white; }
-        .table-hscroll { overflow-x: auto; }
+        .table-hscroll { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+        .table-hscroll::-webkit-scrollbar { display: none; }
+        .sticky-hscroll { position: sticky; bottom: 0; overflow-x: scroll; overflow-y: hidden; height: 14px; background: #f8fafc; border-top: 1px solid #e2e8f0; z-index: 10; }
+        .sticky-hscroll-inner { height: 1px; }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
         #tabelaChamados thead { position: relative; z-index: 3; will-change: transform; }
         th { background: #f1f5f9; color: #475569; font-weight: 700; padding: 10px; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; }
@@ -1473,6 +1476,39 @@ create table estoque (
         });
     }
 
+    function _initStickyScrollbar(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const hscroll = container.querySelector('.table-hscroll');
+        if (!hscroll) return;
+
+        // Remove scrollbar anterior se existir (rebuild após re-render)
+        const old = container.querySelector('.sticky-hscroll');
+        if (old) old.remove();
+
+        const track = document.createElement('div');
+        track.className = 'sticky-hscroll';
+        const inner = document.createElement('div');
+        inner.className = 'sticky-hscroll-inner';
+        track.appendChild(inner);
+        container.appendChild(track);
+
+        const syncWidth = () => {
+            inner.style.width = hscroll.scrollWidth + 'px';
+            track.style.display = hscroll.scrollWidth > hscroll.clientWidth + 2 ? 'block' : 'none';
+        };
+        syncWidth();
+        new ResizeObserver(syncWidth).observe(hscroll);
+
+        let busy = false;
+        track.addEventListener('scroll', () => {
+            if (busy) return; busy = true; hscroll.scrollLeft = track.scrollLeft; busy = false;
+        });
+        hscroll.addEventListener('scroll', () => {
+            if (busy) return; busy = true; track.scrollLeft = hscroll.scrollLeft; busy = false;
+        });
+    }
+
     function escHtml(v) {
         if (v == null) return '';
         return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -2654,7 +2690,7 @@ create table estoque (
             atualizarStats(todosChamadosCache);
             document.getElementById('statusTabela').textContent = `${todosChamadosCache.length} chamados encontrados.`;
             document.getElementById('containerTabela').style.display = todosChamadosCache.length ? 'block' : 'none';
-            _initStickyHeader('containerTabela');
+            _initStickyHeader('containerTabela'); _initStickyScrollbar('containerTabela');
             popularFiltrosChamados(todosChamadosCache);
         } catch (e) { document.getElementById('statusTabela').textContent = "Erro ao carregar dados."; }
         finally { btn.innerHTML = "🔄 Atualizar"; btn.disabled = false; }
@@ -2977,7 +3013,7 @@ create table estoque (
             atualizarStats(todosChamadosCache);
             document.getElementById('statusTabela').textContent = `${todosChamadosCache.length} chamados encontrados.`;
             document.getElementById('containerTabela').style.display = todosChamadosCache.length ? 'block' : 'none';
-            _initStickyHeader('containerTabela');
+            _initStickyHeader('containerTabela'); _initStickyScrollbar('containerTabela');
 
             // se o chamado excluído estava aberto no editor, limpa o formulário
             if (idRegistroAtual === id) limparFormulario();
@@ -3796,7 +3832,7 @@ async function carregarEstoque() {
         atualizarStatsEstoque(estoqueCache);
         popularFiltrosEstoque(estoqueCache);
         const container = document.getElementById('containerEstoque');
-        if (container) { container.style.display = estoqueCache.length ? 'block' : 'none'; _initStickyHeader('containerEstoque'); _setupStaticColDrag('tabelaEstoque', true); }
+        if (container) { container.style.display = estoqueCache.length ? 'block' : 'none'; _initStickyHeader('containerEstoque'); _initStickyScrollbar('containerEstoque'); _setupStaticColDrag('tabelaEstoque', true); }
         status.textContent = `${estoqueCache.length} equipamento(s) cadastrado(s).`;
     } catch (e) {
         if (status) status.textContent = 'Erro ao carregar estoque: ' + e.message;
@@ -4161,7 +4197,7 @@ function atualizarTabelaBad(lista) {
     const container = document.getElementById('containerBAD');
     if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#94a3b8;">Nenhum item no BAD.</td></tr>';
-        if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); _setupStaticColDrag('tabelaBAD', true); }
+        if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); _initStickyScrollbar('containerBAD'); _setupStaticColDrag('tabelaBAD', true); }
         return;
     }
     const isAdmin = loggedInUser?.email?.toLowerCase() === ADMIN_EMAIL;
@@ -4191,7 +4227,7 @@ function atualizarTabelaBad(lista) {
             <td>${dataEnvio}</td>`;
         tbody.appendChild(tr);
     });
-    if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); _setupStaticColDrag('tabelaBAD', true); }
+    if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); _initStickyScrollbar('containerBAD'); _setupStaticColDrag('tabelaBAD', true); }
 }
 
 function filtrarBadLocal() {
@@ -4362,7 +4398,7 @@ function atualizarTabelaHistorico(lista) {
     tbody.innerHTML = '';
     if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;">Nenhuma movimentação registrada.</td></tr>';
-        if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); _setupStaticColDrag('tabelaHistorico', false); }
+        if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); _initStickyScrollbar('containerHistorico'); _setupStaticColDrag('tabelaHistorico', false); }
         return;
     }
     lista.forEach(m => {
@@ -4380,7 +4416,7 @@ function atualizarTabelaHistorico(lista) {
             <td style="font-size:13px;">${escHtml(m.descricao || '')}</td>`;
         tbody.appendChild(tr);
     });
-    if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); _setupStaticColDrag('tabelaHistorico', false); }
+    if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); _initStickyScrollbar('containerHistorico'); _setupStaticColDrag('tabelaHistorico', false); }
 }
 
 function filtrarHistoricoLocal() {
