@@ -267,6 +267,10 @@
         }
         .col-resize-handle:hover::after, .col-resize-active::after { background: var(--primary) !important; }
         td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        th[draggable="true"] { cursor: grab; }
+        th[draggable="true"]:active { cursor: grabbing; }
+        .col-dragging { opacity: 0.35; }
+        .col-drag-over { outline: 2px dashed var(--primary); outline-offset: -2px; background: rgba(59,130,246,.1) !important; }
 
         /* ── EDITOR ── */
         textarea { width: 100%; height: 80px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; resize: none; outline: none; }
@@ -732,7 +736,7 @@
                     </div>
                     <div class="table-container" id="containerEstoque" style="display:none; margin-top:12px;">
                         <div class="table-hscroll">
-                            <table>
+                            <table id="tabelaEstoque">
                                 <thead>
                                     <tr>
                                         <th>Ações</th><th>Descrição</th><th>Patrimônio</th>
@@ -757,7 +761,7 @@
                     </div>
                     <div class="table-container" id="containerBAD" style="display:none; margin-top:12px;">
                         <div class="table-hscroll">
-                            <table>
+                            <table id="tabelaBAD">
                                 <thead>
                                     <tr>
                                         <th>Ações</th><th>Descrição</th><th>Patrimônio</th>
@@ -783,7 +787,7 @@
                     </div>
                     <div class="table-container" id="containerHistorico" style="display:none; margin-top:12px;">
                         <div class="table-hscroll">
-                            <table>
+                            <table id="tabelaHistorico">
                                 <thead>
                                     <tr>
                                         <th>Data / Hora</th><th>Usuário</th><th>Ação</th><th>Descrição</th>
@@ -1322,6 +1326,8 @@ create table estoque (
     let sidebarCollapsed = false;
     let colWidths = JSON.parse(localStorage.getItem('col_widths') || '{}');
     let _resizeTh = null, _resizeStartX = 0, _resizeStartW = 0;
+    let _dragSrcColId = null;           // Chamados drag-to-reorder
+    let _dragSrcStaticIdx = null;       // static tables drag-to-reorder
 
     document.addEventListener('mousemove', e => {
         if (!_resizeTh) return;
@@ -1346,6 +1352,115 @@ create table estoque (
         handle.classList.add('col-resize-active');
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
+    }
+
+    /* ── Drag-to-reorder: tabela Chamados ─────────────────────── */
+    function _colDragStart(e, th) {
+        if (_resizeTh) { e.preventDefault(); return; }
+        _dragSrcColId = th.dataset.colId;
+        e.dataTransfer.effectAllowed = 'move';
+        setTimeout(() => th.classList.add('col-dragging'), 0);
+    }
+    function _colDragOver(e, th) {
+        if (!_dragSrcColId || !th.dataset.colId) return;
+        e.preventDefault();
+        document.querySelectorAll('#tHeaderRow th').forEach(t => t.classList.remove('col-drag-over'));
+        th.classList.add('col-drag-over');
+    }
+    function _colDrop(e, th) {
+        e.preventDefault();
+        document.querySelectorAll('#tHeaderRow th').forEach(t => t.classList.remove('col-drag-over', 'col-dragging'));
+        const dstId = th.dataset.colId;
+        if (!dstId || !_dragSrcColId || _dragSrcColId === dstId) { _dragSrcColId = null; return; }
+        const si = colunasConfig.findIndex(c => c.id === _dragSrcColId);
+        const di = colunasConfig.findIndex(c => c.id === dstId);
+        if (si === -1 || di === -1) { _dragSrcColId = null; return; }
+        const [moved] = colunasConfig.splice(si, 1);
+        colunasConfig.splice(di, 0, moved);
+        _dragSrcColId = null;
+        salvarConfiguracaoColunas();
+        filtrarListaLocal();
+    }
+    function _colDragEnd() {
+        document.querySelectorAll('#tHeaderRow th').forEach(t => t.classList.remove('col-drag-over', 'col-dragging'));
+        _dragSrcColId = null;
+    }
+
+    /* ── Drag-to-reorder: tabelas estáticas ────────────────────── */
+    function _moveStaticCol(table, si, di) {
+        const thead = table.querySelector('thead tr');
+        const ths = Array.from(thead.querySelectorAll('th'));
+        if (si < di) thead.insertBefore(ths[si], ths[di].nextSibling);
+        else         thead.insertBefore(ths[si], ths[di]);
+        table.querySelectorAll('tbody tr').forEach(row => {
+            const tds = Array.from(row.querySelectorAll('td'));
+            if (tds.length !== ths.length) return;
+            if (si < di) row.insertBefore(tds[si], tds[di].nextSibling);
+            else         row.insertBefore(tds[si], tds[di]);
+        });
+    }
+    function _saveStaticColOrder(table, key) {
+        const labels = Array.from(table.querySelectorAll('thead tr th')).map(t =>
+            t.textContent.replace(/[▲▼⇅]/g, '').trim());
+        localStorage.setItem(key, JSON.stringify(labels));
+    }
+    function _applyStaticColOrder(table, key) {
+        const saved = JSON.parse(localStorage.getItem(key) || 'null');
+        if (!saved) return;
+        const ths = Array.from(table.querySelectorAll('thead tr th'));
+        const labelIdx = {};
+        ths.forEach((th, i) => { labelIdx[th.textContent.replace(/[▲▼⇅]/g,'').trim()] = i; });
+        if (saved.length !== ths.length || !saved.every(l => labelIdx[l] !== undefined)) {
+            localStorage.removeItem(key); return;
+        }
+        const order = saved.map(l => labelIdx[l]);
+        const thead = table.querySelector('thead tr');
+        order.forEach(oi => thead.appendChild(ths[oi]));
+        table.querySelectorAll('tbody tr').forEach(row => {
+            const tds = Array.from(row.querySelectorAll('td'));
+            if (tds.length !== ths.length) return;
+            order.forEach(oi => row.appendChild(tds[oi]));
+        });
+    }
+    function _setupStaticColDrag(tableId, firstColFixed) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        const key = 'col_order_' + tableId;
+        _applyStaticColOrder(table, key);
+        const allThs = Array.from(table.querySelectorAll('thead tr th'));
+        const draggable = firstColFixed ? allThs.slice(1) : allThs;
+        draggable.forEach(th => {
+            th.setAttribute('draggable', 'true');
+            th.ondragstart = e => {
+                _dragSrcStaticIdx = allThs.indexOf(th);
+                e.dataTransfer.effectAllowed = 'move';
+                setTimeout(() => th.classList.add('col-dragging'), 0);
+            };
+            th.ondragover = e => {
+                if (_dragSrcStaticIdx === null) return;
+                e.preventDefault();
+                allThs.forEach(t => t.classList.remove('col-drag-over'));
+                th.classList.add('col-drag-over');
+            };
+            th.ondrop = e => {
+                e.preventDefault();
+                allThs.forEach(t => t.classList.remove('col-drag-over', 'col-dragging'));
+                if (_dragSrcStaticIdx === null) return;
+                const di = allThs.indexOf(th);
+                if (di === _dragSrcStaticIdx || (firstColFixed && di === 0)) { _dragSrcStaticIdx = null; return; }
+                // Update allThs reference before move
+                const si = _dragSrcStaticIdx;
+                _dragSrcStaticIdx = null;
+                _moveStaticCol(table, si, di);
+                _saveStaticColOrder(table, key);
+                // Rebind since DOM changed
+                _setupStaticColDrag(tableId, firstColFixed);
+            };
+            th.ondragend = () => {
+                allThs.forEach(t => t.classList.remove('col-drag-over', 'col-dragging'));
+                _dragSrcStaticIdx = null;
+            };
+        });
     }
 
     function _initStickyHeader(containerId) {
@@ -2679,7 +2794,7 @@ create table estoque (
                 const ativo = sortColAtual === c.id;
                 const icone = ativo ? (sortDirecao === 'asc' ? '▲' : '▼') : '⇅';
                 const w = colWidths[c.id] || defaultColW[c.id] || 120;
-                return `<th class="sortable${ativo ? ' ativo' : ''}" data-col-id="${c.id}" style="width:${w}px" onclick="ordenarTabela('${c.id}')">${getColLabel(c.id)}<span class="sort-icon">${icone}</span><div class="col-resize-handle" onmousedown="_iniciarResize(event,this)"></div></th>`;
+                return `<th class="sortable${ativo ? ' ativo' : ''}" data-col-id="${c.id}" style="width:${w}px" draggable="true" ondragstart="_colDragStart(event,this)" ondragover="_colDragOver(event,this)" ondrop="_colDrop(event,this)" ondragend="_colDragEnd()" onclick="ordenarTabela('${c.id}')">${getColLabel(c.id)}<span class="sort-icon">${icone}</span><div class="col-resize-handle" ondragstart="event.stopPropagation()" onmousedown="_iniciarResize(event,this)"></div></th>`;
             }).join('');
         }
 
@@ -3681,7 +3796,7 @@ async function carregarEstoque() {
         atualizarStatsEstoque(estoqueCache);
         popularFiltrosEstoque(estoqueCache);
         const container = document.getElementById('containerEstoque');
-        if (container) { container.style.display = estoqueCache.length ? 'block' : 'none'; _initStickyHeader('containerEstoque'); }
+        if (container) { container.style.display = estoqueCache.length ? 'block' : 'none'; _initStickyHeader('containerEstoque'); _setupStaticColDrag('tabelaEstoque', true); }
         status.textContent = `${estoqueCache.length} equipamento(s) cadastrado(s).`;
     } catch (e) {
         if (status) status.textContent = 'Erro ao carregar estoque: ' + e.message;
@@ -4046,7 +4161,7 @@ function atualizarTabelaBad(lista) {
     const container = document.getElementById('containerBAD');
     if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#94a3b8;">Nenhum item no BAD.</td></tr>';
-        if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); }
+        if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); _setupStaticColDrag('tabelaBAD', true); }
         return;
     }
     const isAdmin = loggedInUser?.email?.toLowerCase() === ADMIN_EMAIL;
@@ -4076,7 +4191,7 @@ function atualizarTabelaBad(lista) {
             <td>${dataEnvio}</td>`;
         tbody.appendChild(tr);
     });
-    if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); }
+    if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); _setupStaticColDrag('tabelaBAD', true); }
 }
 
 function filtrarBadLocal() {
@@ -4247,7 +4362,7 @@ function atualizarTabelaHistorico(lista) {
     tbody.innerHTML = '';
     if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;">Nenhuma movimentação registrada.</td></tr>';
-        if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); }
+        if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); _setupStaticColDrag('tabelaHistorico', false); }
         return;
     }
     lista.forEach(m => {
@@ -4265,7 +4380,7 @@ function atualizarTabelaHistorico(lista) {
             <td style="font-size:13px;">${escHtml(m.descricao || '')}</td>`;
         tbody.appendChild(tr);
     });
-    if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); }
+    if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); _setupStaticColDrag('tabelaHistorico', false); }
 }
 
 function filtrarHistoricoLocal() {
