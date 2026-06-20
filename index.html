@@ -73,8 +73,13 @@
         }
         .sidebar-header:hover { background: #334155; }
         .sidebar-logo { font-size: 20px; min-width: 32px; text-align: center; }
-        .sidebar-brand { font-size: 16px; font-weight: bold; white-space: nowrap; transition: opacity .2s; }
-        .sidebar.collapsed .sidebar-brand { opacity: 0; pointer-events: none; }
+        .sidebar-brand { font-size: 16px; font-weight: bold; white-space: nowrap; transition: opacity .2s; flex: 1; }
+        .sidebar.collapsed .sidebar-brand { opacity: 0; pointer-events: none; width: 0; }
+        .sidebar-toggle-btn {
+            margin-left: auto; font-size: 14px; color: #94a3b8;
+            transition: transform .25s, opacity .2s; flex-shrink: 0;
+        }
+        .sidebar.collapsed .sidebar-toggle-btn { transform: rotate(180deg); }
 
         .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
 
@@ -483,9 +488,10 @@
 
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header" onclick="toggleSidebar()">
+        <div class="sidebar-header" onclick="toggleSidebar()" title="Recolher/expandir menu">
             <span class="sidebar-logo">📄</span>
             <span class="sidebar-brand">RAT Pro</span>
+            <span class="sidebar-toggle-btn">◀</span>
         </div>
         <nav class="sidebar-nav">
             <div class="nav-item active" id="nav-chamados" onclick="ir('chamados')">
@@ -1691,6 +1697,7 @@ create table estoque (
     }
 
     window.onload = async () => {
+        restaurarEstadoSidebar();
         await carregarConfigSistema();
         try {
             const demoParam = new URLSearchParams(location.search).get('d');
@@ -1730,6 +1737,12 @@ create table estoque (
     function toggleSidebar() {
         sidebarCollapsed = !sidebarCollapsed;
         document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
+        localStorage.setItem('sidebar_collapsed', sidebarCollapsed ? '1' : '0');
+    }
+
+    function restaurarEstadoSidebar() {
+        sidebarCollapsed = localStorage.getItem('sidebar_collapsed') === '1';
+        if (sidebarCollapsed) document.getElementById('sidebar').classList.add('collapsed');
     }
     function abrirMobile() {
         document.getElementById('sidebar').classList.add('mob-open');
