@@ -270,6 +270,9 @@
         }
         .col-resize-handle:hover::after, .col-resize-active::after { background: var(--primary) !important; }
         td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        tbody tr[data-selectable] { cursor: pointer; }
+        tbody tr[data-selectable]:hover:not(.row-selected) { background: rgba(59,130,246,.05) !important; }
+        tbody tr.row-selected { background: rgba(59,130,246,.14) !important; box-shadow: inset 3px 0 0 var(--primary); }
         th[draggable="true"] { cursor: grab; }
         th[draggable="true"]:active { cursor: grabbing; }
         .col-dragging { opacity: 0.35; }
@@ -1463,6 +1466,37 @@ create table estoque (
                 allThs.forEach(t => t.classList.remove('col-drag-over', 'col-dragging'));
                 _dragSrcStaticIdx = null;
             };
+        });
+    }
+
+    function _initRowSelection(containerId, tbodyId) {
+        const container = document.getElementById(containerId);
+        if (!container || container._rowSelBound) return;
+        container._rowSelBound = true;
+        container.setAttribute('tabindex', '-1');
+
+        container.addEventListener('click', e => {
+            const tbody = document.getElementById(tbodyId);
+            if (!tbody) return;
+            const tr = e.target.closest('tr[data-selectable]');
+            if (!tr || !tbody.contains(tr)) return;
+            document.querySelectorAll('tr.row-selected').forEach(r => r.classList.remove('row-selected'));
+            tr.classList.add('row-selected');
+            container.focus();
+        });
+
+        container.addEventListener('keydown', e => {
+            if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+            const tbody = document.getElementById(tbodyId);
+            if (!tbody) return;
+            const rows = Array.from(tbody.querySelectorAll('tr[data-selectable]'));
+            if (!rows.length) return;
+            e.preventDefault();
+            const selected = tbody.querySelector('tr.row-selected');
+            if (!selected) { rows[0].classList.add('row-selected'); rows[0].scrollIntoView({ block: 'nearest' }); return; }
+            const idx = rows.indexOf(selected);
+            const next = e.key === 'ArrowDown' ? rows[idx + 1] : rows[idx - 1];
+            if (next) { selected.classList.remove('row-selected'); next.classList.add('row-selected'); next.scrollIntoView({ block: 'nearest' }); }
         });
     }
 
@@ -2690,7 +2724,7 @@ create table estoque (
             atualizarStats(todosChamadosCache);
             document.getElementById('statusTabela').textContent = `${todosChamadosCache.length} chamados encontrados.`;
             document.getElementById('containerTabela').style.display = todosChamadosCache.length ? 'block' : 'none';
-            _initStickyHeader('containerTabela'); _initStickyScrollbar('containerTabela');
+            _initStickyHeader('containerTabela'); _initStickyScrollbar('containerTabela'); _initRowSelection('containerTabela','corpoTabelaChamados');
             popularFiltrosChamados(todosChamadosCache);
         } catch (e) { document.getElementById('statusTabela').textContent = "Erro ao carregar dados."; }
         finally { btn.innerHTML = "🔄 Atualizar"; btn.disabled = false; }
@@ -2846,6 +2880,7 @@ create table estoque (
             const trMain = document.createElement('tr');
             trMain.className = 'row-main';
             trMain.dataset.id = item.id;
+            trMain.dataset.selectable = '1';
             trMain.innerHTML = `
                 <td onclick="event.stopPropagation()" style="width:40px;">
                     <div class="kebab-wrap">
@@ -3013,7 +3048,7 @@ create table estoque (
             atualizarStats(todosChamadosCache);
             document.getElementById('statusTabela').textContent = `${todosChamadosCache.length} chamados encontrados.`;
             document.getElementById('containerTabela').style.display = todosChamadosCache.length ? 'block' : 'none';
-            _initStickyHeader('containerTabela'); _initStickyScrollbar('containerTabela');
+            _initStickyHeader('containerTabela'); _initStickyScrollbar('containerTabela'); _initRowSelection('containerTabela','corpoTabelaChamados');
 
             // se o chamado excluído estava aberto no editor, limpa o formulário
             if (idRegistroAtual === id) limparFormulario();
@@ -3837,7 +3872,7 @@ async function carregarEstoque() {
         atualizarStatsEstoque(estoqueCache);
         popularFiltrosEstoque(estoqueCache);
         const container = document.getElementById('containerEstoque');
-        if (container) { container.style.display = estoqueCache.length ? 'block' : 'none'; _initStickyHeader('containerEstoque'); _initStickyScrollbar('containerEstoque'); _setupStaticColDrag('tabelaEstoque', true); }
+        if (container) { container.style.display = estoqueCache.length ? 'block' : 'none'; _initStickyHeader('containerEstoque'); _initStickyScrollbar('containerEstoque'); _initRowSelection('containerEstoque','corpoTabelaEstoque'); _setupStaticColDrag('tabelaEstoque', true); }
         status.textContent = `${estoqueCache.length} equipamento(s) cadastrado(s).`;
     } catch (e) {
         if (status) status.textContent = 'Erro ao carregar estoque: ' + e.message;
@@ -3870,7 +3905,7 @@ function atualizarTabelaEstoque(lista) {
     }
     lista.forEach(eq => {
         const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
+        tr.dataset.selectable = '1';
         tr.innerHTML = `
             <td onclick="event.stopPropagation()">
                 <div style="display:flex;gap:5px;">
@@ -4202,12 +4237,13 @@ function atualizarTabelaBad(lista) {
     const container = document.getElementById('containerBAD');
     if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#94a3b8;">Nenhum item no BAD.</td></tr>';
-        if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); _initStickyScrollbar('containerBAD'); _setupStaticColDrag('tabelaBAD', true); }
+        if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); _initStickyScrollbar('containerBAD'); _initRowSelection('containerBAD','corpoTabelaBad'); _setupStaticColDrag('tabelaBAD', true); }
         return;
     }
     const isAdmin = loggedInUser?.email?.toLowerCase() === ADMIN_EMAIL;
     lista.forEach(eq => {
         const tr = document.createElement('tr');
+        tr.dataset.selectable = '1';
         const dataEntrada = eq.data_entrada_bad ? new Date(eq.data_entrada_bad + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
         const dataEnvio   = eq.data_envio       ? `<span class="bad-envio-ok">✅ ${new Date(eq.data_envio + 'T12:00:00').toLocaleDateString('pt-BR')}</span>` : '<span style="color:#f59e0b;font-size:11px;font-weight:bold;">Pendente</span>';
         tr.innerHTML = `
@@ -4232,7 +4268,7 @@ function atualizarTabelaBad(lista) {
             <td>${dataEnvio}</td>`;
         tbody.appendChild(tr);
     });
-    if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); _initStickyScrollbar('containerBAD'); _setupStaticColDrag('tabelaBAD', true); }
+    if (container) { container.style.display = 'block'; _initStickyHeader('containerBAD'); _initStickyScrollbar('containerBAD'); _initRowSelection('containerBAD','corpoTabelaBad'); _setupStaticColDrag('tabelaBAD', true); }
 }
 
 function filtrarBadLocal() {
@@ -4403,7 +4439,7 @@ function atualizarTabelaHistorico(lista) {
     tbody.innerHTML = '';
     if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;">Nenhuma movimentação registrada.</td></tr>';
-        if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); _initStickyScrollbar('containerHistorico'); _setupStaticColDrag('tabelaHistorico', false); }
+        if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); _initStickyScrollbar('containerHistorico'); _initRowSelection('containerHistorico','corpoTabelaHistorico'); _setupStaticColDrag('tabelaHistorico', false); }
         return;
     }
     lista.forEach(m => {
@@ -4414,6 +4450,7 @@ function atualizarTabelaHistorico(lista) {
         const cor = _ACAO_CORES[m.acao] || '#475569';
         const badge = `<span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${cor}18;color:${cor};white-space:nowrap;">${escHtml(m.acao || '')}</span>`;
         const tr = document.createElement('tr');
+        tr.dataset.selectable = '1';
         tr.innerHTML = `
             <td style="white-space:nowrap;font-size:12px;color:#64748b;">${dataHora}</td>
             <td style="font-size:12px;">${escHtml((m.usuario || '').toLowerCase())}</td>
@@ -4421,7 +4458,7 @@ function atualizarTabelaHistorico(lista) {
             <td style="font-size:13px;">${escHtml(m.descricao || '')}</td>`;
         tbody.appendChild(tr);
     });
-    if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); _initStickyScrollbar('containerHistorico'); _setupStaticColDrag('tabelaHistorico', false); }
+    if (container) { container.style.display = 'block'; _initStickyHeader('containerHistorico'); _initStickyScrollbar('containerHistorico'); _initRowSelection('containerHistorico','corpoTabelaHistorico'); _setupStaticColDrag('tabelaHistorico', false); }
 }
 
 function filtrarHistoricoLocal() {
