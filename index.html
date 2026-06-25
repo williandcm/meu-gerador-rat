@@ -1044,10 +1044,7 @@ create table estoque (
             <button onclick="fecharScanner()">✕</button>
         </div>
         <div class="scanner-video-wrap">
-            <video id="scannerVideo" autoplay playsinline muted></video>
-            <div class="scanner-mira">
-                <div class="scanner-linha"></div>
-            </div>
+            <div id="scannerReader" style="width:100%;min-height:250px;overflow:hidden;border-radius:8px;background:#000;"></div>
         </div>
         <div class="scanner-bottom">
             <div class="scanner-status" id="scannerStatus">Aponte a câmera para o código de barras</div>
@@ -4079,153 +4076,64 @@ function fecharModalEquipFora(e) {
 
 // ── SCANNER DE CÓDIGO DE BARRAS ──────────────────────────────────────────────
 
-let scannerStream      = null;
-let scannerAnimFrame   = null;
 let scannerCampoAlvo   = null;
-let scannerVarrerFn    = null;
-let scannerCodigos     = [];
-let scannerColetados   = new Set();
-let scannerTimerColeta = null;
 let scannerCallback    = null;
+let _scanner           = null;
 
-async function abrirScanner(campoId, campoLabel, callback = null) {
+function abrirScanner(campoId, campoLabel, callback = null) {
     scannerCampoAlvo = campoId;
     scannerCallback  = callback;
 
-    if (!('BarcodeDetector' in window)) {
-        alert('Seu navegador não suporta leitura de código de barras.\n\nUse o Chrome (versão recente) no Android ou Desktop.');
-        return;
-    }
-
-    document.getElementById('scannerCampoLabel').textContent = 'Campo: ' + campoLabel;
+    document.getElementById('scannerCampoLabel').textContent = 'Campo: ' + (campoLabel || campoId);
     document.getElementById('scannerStatus').textContent = 'Iniciando câmera…';
+    document.getElementById('scannerSelecao').innerHTML = '';
+    document.getElementById('scannerReader').innerHTML = '';
     document.getElementById('modalScanner').classList.add('open');
     document.body.style.overflow = 'hidden';
 
-    try {
-        scannerStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-        });
-        const video = document.getElementById('scannerVideo');
-        video.srcObject = scannerStream;
-        await video.play();
+    _scanner = new Html5Qrcode('scannerReader');
+    const cfg = {
+        fps: 15,
+        qrbox: (w, h) => ({ width: Math.min(w * 0.85, 300), height: Math.min(h * 0.5, 160) }),
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+    };
 
-        document.getElementById('scannerStatus').textContent = 'Aponte a câmera para o código de barras';
-
-        const formatos = ['code_128','code_39','code_93','ean_13','ean_8','itf','upc_a','upc_e',
-                          'pdf417','codabar','data_matrix','qr_code','aztec'];
-        const formatosSuportados = await BarcodeDetector.getSupportedFormats().catch(() => formatos);
-        const detector = new BarcodeDetector({
-            formats: formatos.filter(f => formatosSuportados.includes(f))
-        });
-
-        const snapCanvas = document.createElement('canvas');
-        const snapCtx    = snapCanvas.getContext('2d', { willReadFrequently: true });
-
-        async function varrer() {
-            if (!scannerStream) return;
-            try {
-                const video = document.getElementById('scannerVideo');
-                if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
-                    snapCanvas.width  = video.videoWidth;
-                    snapCanvas.height = video.videoHeight;
-                    snapCtx.drawImage(video, 0, 0);
-                    const codigos = await detector.detect(snapCanvas);
-                    if (codigos.length > 0) {
-                        codigos
-                            .map(c => c.rawValue.trim())
-                            .filter(Boolean)
-                            .forEach(v => scannerColetados.add(v));
-
-                        const lista = [...scannerColetados];
-                        const statusEl = document.getElementById('scannerStatus');
-                        if (lista.length === 1) {
-                            statusEl.textContent = 'Detectado: ' + lista[0] + ' — aguardando...';
-                        } else {
-                            statusEl.textContent = lista.length + ' códigos detectados — aguardando...';
-                        }
-
-                        clearTimeout(scannerTimerColeta);
-                        scannerTimerColeta = setTimeout(finalizarColeta, 1200);
-                    }
-                }
-            } catch (_) {}
-            setTimeout(() => { scannerAnimFrame = requestAnimationFrame(varrer); }, 150);
+    const onSuccess = (raw) => {
+        const isMac = (scannerCampoAlvo || '').toLowerCase().includes('mac');
+        let val = raw.trim();
+        if (isMac) {
+            const hex = val.replace(/[^A-Fa-f0-9]/g, '');
+            val = hex.length === 12 ? hex.match(/.{2}/g).join(':').toUpperCase() : val.toUpperCase();
+        } else {
+            val = val.toUpperCase();
         }
+        const el = document.getElementById(scannerCampoAlvo);
+        if (el) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); }
+        document.getElementById('scannerStatus').textContent = '✅ Lido: ' + val;
+        const cb = scannerCallback;
+        setTimeout(() => { fecharScanner(); if (cb) cb(val); }, 400);
+    };
 
-        scannerVarrerFn = varrer;
-        scannerAnimFrame = requestAnimationFrame(varrer);
-
-    } catch (e) {
-        document.getElementById('scannerStatus').textContent = '⚠️ Câmera indisponível: ' + e.message;
-    }
+    _scanner.start({ facingMode: 'environment' }, cfg, onSuccess, () => {})
+        .catch(() => _scanner.start({ facingMode: 'user' }, cfg, onSuccess, () => {})
+            .catch(() => {
+                document.getElementById('scannerStatus').textContent = '⚠️ Câmera indisponível — verifique as permissões';
+            }));
 }
 
 function fecharScanner() {
-    clearTimeout(scannerTimerColeta); scannerTimerColeta = null;
-    if (scannerAnimFrame) { cancelAnimationFrame(scannerAnimFrame); scannerAnimFrame = null; }
-    if (scannerStream)    { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
-    const video = document.getElementById('scannerVideo');
-    if (video) video.srcObject = null;
-    document.getElementById('scannerSelecao').innerHTML = '';
-    document.getElementById('scannerStatus').textContent = 'Aponte a câmera para o código de barras';
     document.getElementById('modalScanner').classList.remove('open');
     document.body.style.overflow = '';
-    scannerVarrerFn  = null;
-    scannerCodigos   = [];
-    scannerColetados.clear();
-    scannerCallback  = null;
-}
-
-function finalizarColeta() {
-    scannerTimerColeta = null;
-    if (scannerAnimFrame) { cancelAnimationFrame(scannerAnimFrame); scannerAnimFrame = null; }
-
-    const lista = [...scannerColetados];
-    scannerColetados.clear();
-
-    if (lista.length === 0) return;
-
-    if (lista.length === 1) {
-        document.getElementById(scannerCampoAlvo).value = lista[0].toUpperCase();
-        document.getElementById('scannerStatus').textContent = '✅ Código lido: ' + lista[0];
-        const cb = scannerCallback;
-        setTimeout(() => { fecharScanner(); if (cb) cb(lista[0].toUpperCase()); }, 500);
-    } else {
-        mostrarSelecaoScanner(lista);
-    }
-}
-
-function mostrarSelecaoScanner(valores) {
-    scannerCodigos = valores;
-    document.getElementById('scannerStatus').textContent = '';
-    const sel = document.getElementById('scannerSelecao');
-    sel.innerHTML =
-        `<div class="scanner-sel-titulo">⚠️ ${valores.length} códigos detectados — toque no correto:</div>` +
-        valores.map((v, i) => `<button class="scanner-sel-item" onclick="selecionarCodigoScanner(${i})">${escHtml(v)}</button>`).join('') +
-        `<button class="scanner-sel-retry" onclick="reiniciarScanner()">🔄 Tentar novamente</button>`;
-}
-
-function selecionarCodigoScanner(idx) {
-    const valor = scannerCodigos[idx];
-    if (valor == null) return;
-    document.getElementById(scannerCampoAlvo).value = valor.toUpperCase();
-    document.getElementById('scannerStatus').textContent = '✅ Selecionado: ' + valor;
-    document.getElementById('scannerSelecao').innerHTML = '';
-    const cb = scannerCallback;
-    setTimeout(() => { fecharScanner(); if (cb) cb(valor.toUpperCase()); }, 500);
-}
-
-function reiniciarScanner() {
-    clearTimeout(scannerTimerColeta); scannerTimerColeta = null;
-    scannerColetados.clear();
-    scannerCodigos = [];
     document.getElementById('scannerSelecao').innerHTML = '';
     document.getElementById('scannerStatus').textContent = 'Aponte a câmera para o código de barras';
-    if (scannerVarrerFn && scannerStream) {
-        setTimeout(() => { scannerAnimFrame = requestAnimationFrame(scannerVarrerFn); }, 200);
+    scannerCampoAlvo = null;
+    scannerCallback  = null;
+    if (_scanner) {
+        _scanner.stop().catch(() => {}).finally(() => { _scanner.clear(); _scanner = null; });
     }
 }
+
 
 function abrirScannerFiltro() {
     abrirScanner('filtroEstoqueTexto', 'Pesquisa de Estoque', () => filtrarEstoqueLocal());
@@ -4869,80 +4777,11 @@ function _preencherEnderecoAgencia(d, agNum) {
     _showToastUniorg(`Agência <span>${agNum}</span> · ${d.bairro}, ${d.cidade}/${d.uf}`);
     if (typeof gerarERenderizar === 'function') gerarERenderizar();
 }
-// ── Scanner QR / Código de Barras ──────────────────────────────────────────
-let _scanner = null;
-let _scanTarget = null;
-
-function abrirScanner(targetId, labelText) {
-    _scanTarget = targetId;
-    document.getElementById('scannerFieldLabel').textContent = labelText || targetId;
-    document.getElementById('scannerReader').innerHTML = '';
-    document.getElementById('modalScanner').classList.add('aberto');
-
-    _scanner = new Html5Qrcode('scannerReader');
-    const config = {
-        fps: 15,
-        qrbox: (w, h) => ({ width: Math.min(w * 0.8, 280), height: Math.min(h * 0.5, 160) }),
-        rememberLastUsedCamera: true,
-        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
-    };
-    _scanner.start(
-        { facingMode: 'environment' },
-        config,
-        (text) => _onScanSuccess(text),
-        () => {}
-    ).catch(() => {
-        // Câmera traseira indisponível — tenta câmera padrão
-        _scanner.start({ facingMode: 'user' }, config, (text) => _onScanSuccess(text), () => {})
-            .catch(err => {
-                fecharScanner();
-                alert('Não foi possível acessar a câmera.\n' + err);
-            });
-    });
-}
-
-function _onScanSuccess(raw) {
-    const el = document.getElementById(_scanTarget);
-    if (!el) { fecharScanner(); return; }
-    const isMac = _scanTarget.includes('mac');
-    let val = raw.trim();
-    if (isMac) {
-        const hex = val.replace(/[^A-Fa-f0-9]/g, '');
-        if (hex.length === 12) val = hex.match(/.{2}/g).join(':').toUpperCase();
-        else val = val.toUpperCase();
-    } else {
-        val = val.toUpperCase();
-    }
-    el.value = val;
-    // Dispara oninput para máscaras e sincronizações existentes
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    fecharScanner();
-}
-
-function fecharScanner() {
-    document.getElementById('modalScanner').classList.remove('aberto');
-    if (_scanner) {
-        _scanner.stop().catch(() => {}).finally(() => {
-            _scanner.clear();
-            _scanner = null;
-        });
-    }
-    _scanTarget = null;
-}
 </script>
 
 <!-- ── Toast UNIORG ── -->
 <div id="toastUniorg"></div>
 
-<!-- ── Modal Scanner QR / Código de Barras ── -->
-<div id="modalScanner" onclick="if(event.target===this)fecharScanner()">
-    <div id="modalScannerBox">
-        <h3>Escanear código</h3>
-        <p>Campo: <span id="scannerFieldLabel">—</span></p>
-        <div id="scannerReader"></div>
-        <button id="btnFecharScanner" onclick="fecharScanner()">Cancelar</button>
-    </div>
-</div>
 </body>
 </html>
 
