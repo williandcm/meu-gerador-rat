@@ -3514,19 +3514,22 @@ create table estoque (
             if (!el) return;
             const texto = String(el.value || '').trim().toUpperCase();
             if (!texto || texto === '---') return;
-            const palavras = texto.split(' ');
             const linhas = [];
-            let linhaAtual = '';
-            for (const palavra of palavras) {
-                const teste = linhaAtual ? linhaAtual + ' ' + palavra : palavra;
-                if (font.widthOfTextAtSize(teste, cfg.s || 11) > larguraMax && linhaAtual) {
-                    linhas.push(linhaAtual);
-                    linhaAtual = palavra;
-                } else {
-                    linhaAtual = teste;
+            for (const paragrafo of texto.split(/\r?\n/)) {
+                const palavras = paragrafo.split(' ');
+                let linhaAtual = '';
+                for (const palavra of palavras) {
+                    if (!palavra) continue;
+                    const teste = linhaAtual ? linhaAtual + ' ' + palavra : palavra;
+                    if (font.widthOfTextAtSize(teste, cfg.s || 11) > larguraMax && linhaAtual) {
+                        linhas.push(linhaAtual);
+                        linhaAtual = palavra;
+                    } else {
+                        linhaAtual = teste;
+                    }
                 }
+                if (linhaAtual) linhas.push(linhaAtual);
             }
-            if (linhaAtual) linhas.push(linhaAtual);
             linhas.forEach((linha, i) => {
                 page.drawText(linha, { x: cfg.x, y: cfg.y - (i * espacoLinha), size: cfg.s || 11, color: cor, font });
             });
