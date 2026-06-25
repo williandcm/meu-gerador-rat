@@ -4111,6 +4111,7 @@ function abrirScanner(campoId, campoLabel, callback = null) {
             osc.start(ctx.currentTime);
             osc.stop(ctx.currentTime + 0.12);
         } catch (_) {}
+        if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
         const isMac = (scannerCampoAlvo || '').toLowerCase().includes('mac');
         let val = raw.trim();
         if (isMac) {
