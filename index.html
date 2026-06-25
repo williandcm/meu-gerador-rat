@@ -4835,11 +4835,16 @@ function _showToastUniorg(msg) {
 
 function buscarEnderecoUniorg(raw) {
     if (!raw) return;
-    const key = String(raw).trim();
-    // Tenta com e sem zeros à esquerda
-    const ag = AGENCIAS_SANTANDER[key] ||
-               AGENCIAS_SANTANDER[key.padStart(4,'0')] ||
-               AGENCIAS_SANTANDER[String(parseInt(key,10))];
+    const key = String(raw).trim().replace(/\D/g, ''); // só dígitos
+    if (!key) return;
+
+    // UNIORG tem 7 dígitos; número da agência = últimos 4 dígitos
+    // Ex: "0001297" → "1297" | "0000001" → "0001" | "1297" → "1297"
+    const agNum = key.length >= 5 ? key.slice(-4) : key.padStart(4, '0');
+
+    const ag = AGENCIAS_SANTANDER[agNum]                      // "1297"
+            || AGENCIAS_SANTANDER[agNum.replace(/^0+/, '') || '0'] // "1297" sem zeros
+            || AGENCIAS_SANTANDER[String(parseInt(agNum, 10))];    // fallback numérico
     if (!ag) return;
 
     // Preenche apenas campos vazios (endereço do chamado tem prioridade)
@@ -4853,9 +4858,8 @@ function buscarEnderecoUniorg(raw) {
     setIfEmpty('f_cid', ag.c);
     setIfEmpty('f_uf',  ag.u);
 
-    _showToastUniorg(`Agência <span>${key.padStart(4,'0')}</span> · ${ag.b}, ${ag.c}/${ag.u}`);
+    _showToastUniorg(`Agência <span>${agNum}</span> · ${ag.b}, ${ag.c}/${ag.u}`);
 
-    // Re-renderiza o PDF se o visualizador estiver ativo
     if (typeof gerarERenderizar === 'function') gerarERenderizar();
 }
 // ── Scanner QR / Código de Barras ──────────────────────────────────────────
