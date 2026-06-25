@@ -739,6 +739,7 @@
                         </div>
                         <select id="filtroEstoqueModelo" onchange="filtrarEstoqueLocal()" style="text-transform:none;"><option value="">Todos os modelos</option></select>
                         <button class="btn-load-all" onclick="carregarEstoque()" id="btnAtualizarEstoque">🔄 Atualizar</button>
+                        <button class="btn-load-all" style="background:#f1f5f9;color:#64748b;border-color:#cbd5e1;" onclick="resetarOrdemColunasEstaticas('tabelaEstoque')" title="Restaurar ordem padrão das colunas">↩ Ordem padrão</button>
                     </div>
                     <div class="table-container" id="containerEstoque" style="display:none; margin-top:12px;">
                         <div class="table-hscroll">
@@ -763,6 +764,7 @@
                     <div class="estoque-filter-row">
                         <input type="text" id="filtroBADTexto" placeholder="Pesquisar no BAD..." style="flex:1;" oninput="filtrarBadLocal()">
                         <button class="btn-load-all" onclick="carregarBad()" id="btnAtualizarBad">🔄 Atualizar</button>
+                        <button class="btn-load-all" style="background:#f1f5f9;color:#64748b;border-color:#cbd5e1;" onclick="resetarOrdemColunasEstaticas('tabelaBAD')" title="Restaurar ordem padrão das colunas">↩ Ordem padrão</button>
                         <button class="btn-load-all" style="background:#dc2626;color:#fff;border-color:#dc2626;" onclick="abrirNovoItemBad()">+ Novo Item BAD</button>
                     </div>
                     <div class="table-container" id="containerBAD" style="display:none; margin-top:12px;">
@@ -790,6 +792,7 @@
                     <div class="estoque-filter-row">
                         <input type="text" id="filtroHistoricoTexto" placeholder="Pesquisar no histórico..." style="flex:1;" oninput="filtrarHistoricoLocal()">
                         <button class="btn-load-all" onclick="carregarHistorico()" id="btnAtualizarHistorico">🔄 Atualizar</button>
+                        <button class="btn-load-all" style="background:#f1f5f9;color:#64748b;border-color:#cbd5e1;" onclick="resetarOrdemColunasEstaticas('tabelaHistorico')" title="Restaurar ordem padrão das colunas">↩ Ordem padrão</button>
                     </div>
                     <div class="table-container" id="containerHistorico" style="display:none; margin-top:12px;">
                         <div class="table-hscroll">
@@ -1334,6 +1337,7 @@ create table estoque (
     let _resizeTh = null, _resizeStartX = 0, _resizeStartW = 0;
     let _dragSrcColId = null;           // Chamados drag-to-reorder
     let _dragSrcStaticIdx = null;       // static tables drag-to-reorder
+    const _colDefaultOrders = {};       // ordem padrão (HTML) por tableId — nunca muda
 
     document.addEventListener('mousemove', e => {
         if (!_resizeTh) return;
@@ -1410,29 +1414,32 @@ create table estoque (
             t.textContent.replace(/[▲▼⇅]/g, '').trim());
         localStorage.setItem(key, JSON.stringify(labels));
     }
-    function _applyStaticColOrder(table, key) {
+    // defaultLabels = ordem original do HTML (âncora fixa, nunca muda após salva)
+    // tbody recém-renderizado está sempre em defaultLabels order
+    // thead pode estar em ordem diferente (salva de sessão anterior)
+    function _applyStaticColOrder(table, key, defaultLabels) {
         const saved = JSON.parse(localStorage.getItem(key) || 'null');
-        if (!saved) return;
-        const ths = Array.from(table.querySelectorAll('thead tr th'));
-        const labelIdx = {};
-        ths.forEach((th, i) => { labelIdx[th.textContent.replace(/[▲▼⇅]/g,'').trim()] = i; });
-        if (saved.length !== ths.length || !saved.every(l => labelIdx[l] !== undefined)) {
-            localStorage.removeItem(key); return;
+        if (!saved || saved.length !== defaultLabels.length || !saved.every(l => defaultLabels.includes(l))) {
+            if (saved) localStorage.removeItem(key); return;
         }
-        const order = saved.map(l => labelIdx[l]);
+        // Reordena thead: monta mapa label→elemento e appenda na ordem salva
+        const thByLabel = {};
+        Array.from(table.querySelectorAll('thead tr th')).forEach(th => {
+            thByLabel[th.textContent.replace(/[▲▼⇅]/g,'').trim()] = th;
+        });
         const thead = table.querySelector('thead tr');
-        order.forEach(oi => thead.appendChild(ths[oi]));
+        saved.forEach(label => { if (thByLabel[label]) thead.appendChild(thByLabel[label]); });
+        // Reordena tbody: usa defaultLabels como índice (tbody está sempre em ordem padrão)
+        const defIdx = {};
+        defaultLabels.forEach((l, i) => { defIdx[l] = i; });
+        const tdOrder = saved.map(l => defIdx[l]);
         table.querySelectorAll('tbody tr').forEach(row => {
             const tds = Array.from(row.querySelectorAll('td'));
-            if (tds.length !== ths.length) return;
-            order.forEach(oi => row.appendChild(tds[oi]));
+            if (tds.length !== defaultLabels.length) return;
+            tdOrder.forEach(oi => row.appendChild(tds[oi]));
         });
     }
-    function _setupStaticColDrag(tableId, firstColFixed) {
-        const table = document.getElementById(tableId);
-        if (!table) return;
-        const key = 'col_order_' + tableId;
-        _applyStaticColOrder(table, key);
+    function _bindStaticColDragEvents(table, tableId, key, firstColFixed, defaultLabels) {
         const allThs = Array.from(table.querySelectorAll('thead tr th'));
         const draggable = firstColFixed ? allThs.slice(1) : allThs;
         draggable.forEach(th => {
@@ -1454,19 +1461,36 @@ create table estoque (
                 if (_dragSrcStaticIdx === null) return;
                 const di = allThs.indexOf(th);
                 if (di === _dragSrcStaticIdx || (firstColFixed && di === 0)) { _dragSrcStaticIdx = null; return; }
-                // Update allThs reference before move
-                const si = _dragSrcStaticIdx;
-                _dragSrcStaticIdx = null;
+                const si = _dragSrcStaticIdx; _dragSrcStaticIdx = null;
                 _moveStaticCol(table, si, di);
                 _saveStaticColOrder(table, key);
-                // Rebind since DOM changed
-                _setupStaticColDrag(tableId, firstColFixed);
+                // Re-bind apenas eventos (sem re-aplicar ordem — DOM já correto)
+                _bindStaticColDragEvents(table, tableId, key, firstColFixed, defaultLabels);
             };
             th.ondragend = () => {
                 allThs.forEach(t => t.classList.remove('col-drag-over', 'col-dragging'));
                 _dragSrcStaticIdx = null;
             };
         });
+    }
+    function _setupStaticColDrag(tableId, firstColFixed) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        const key = 'col_order_' + tableId;
+        // Captura ordem padrão apenas na 1ª chamada (thead está no HTML nesse ponto)
+        if (!_colDefaultOrders[tableId]) {
+            _colDefaultOrders[tableId] = Array.from(table.querySelectorAll('thead tr th'))
+                .map(th => th.textContent.replace(/[▲▼⇅]/g,'').trim());
+        }
+        const defaultLabels = _colDefaultOrders[tableId];
+        _applyStaticColOrder(table, key, defaultLabels);
+        _bindStaticColDragEvents(table, tableId, key, firstColFixed, defaultLabels);
+    }
+    function resetarOrdemColunasEstaticas(tableId) {
+        localStorage.removeItem('col_order_' + tableId);
+        delete _colDefaultOrders[tableId]; // força re-captura da ordem padrão
+        const reload = { tabelaEstoque: carregarEstoque, tabelaBAD: carregarBad, tabelaHistorico: carregarHistorico };
+        if (reload[tableId]) reload[tableId]();
     }
 
     function _initRowSelection(containerId, tbodyId) {
