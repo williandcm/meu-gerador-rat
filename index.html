@@ -4088,7 +4088,7 @@ function abrirScanner(campoId, campoLabel, callback = null) {
     document.getElementById('scannerStatus').textContent = 'Iniciando câmera…';
     document.getElementById('scannerSelecao').innerHTML = '';
     document.getElementById('scannerReader').innerHTML = '';
-    document.getElementById('modalScanner').classList.add('open');
+    document.getElementById('modalScanner').classList.add('aberto');
     document.body.style.overflow = 'hidden';
 
     _scanner = new Html5Qrcode('scannerReader');
@@ -4123,7 +4123,7 @@ function abrirScanner(campoId, campoLabel, callback = null) {
 }
 
 function fecharScanner() {
-    document.getElementById('modalScanner').classList.remove('open');
+    document.getElementById('modalScanner').classList.remove('aberto');
     document.body.style.overflow = '';
     document.getElementById('scannerSelecao').innerHTML = '';
     document.getElementById('scannerStatus').textContent = 'Aponte a câmera para o código de barras';
