@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.2/dist/umd/supabase.min.js" integrity="sha384-JWEyvHh+lRf0sN/WWY+QTQwX+CyWqmNg4tkc8GQzAMEtR2wGNrCJlvnu1lHD1kDm" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js" integrity="sha384-lrb5efVIYR2lZw+OsuztHZzP9wpGNrhui+0VlpiHb/iPcZSCDT3CeETsL9EMQ8ih" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <!-- Módulo estoque em arquivo separado — falha isolada não afeta o sistema -->
     <link rel="stylesheet" href="estoque.css" onerror="console.warn('[estoque] CSS não carregado')">
     <style>
@@ -477,6 +478,41 @@
             .main-content { margin-left: 0 !important; padding: 15px; padding-top: 60px; }
             .mobile-btn { display: flex; align-items: center; }
         }
+        /* ── scanner ── */
+        .scan-input-wrap { display:flex; gap:4px; align-items:center; }
+        .scan-input-wrap input { flex:1; min-width:0; }
+        .btn-scan {
+            flex-shrink:0; width:32px; height:32px; padding:0;
+            background:#e0f2fe; border:1px solid #7dd3fc; border-radius:6px;
+            color:#0369a1; cursor:pointer; display:flex; align-items:center; justify-content:center;
+            transition:background .15s;
+        }
+        .btn-scan:hover { background:#bae6fd; }
+        .btn-scan svg { width:16px; height:16px; pointer-events:none; }
+        #modalScanner {
+            display:none; position:fixed; inset:0; z-index:9999;
+            background:rgba(0,0,0,.65); align-items:center; justify-content:center;
+        }
+        #modalScanner.aberto { display:flex; }
+        #modalScannerBox {
+            background:#fff; border-radius:14px; padding:20px 20px 16px;
+            width:min(380px,94vw); box-shadow:0 8px 32px rgba(0,0,0,.35);
+        }
+        #modalScannerBox h3 {
+            margin:0 0 4px; font-size:15px; color:var(--dark);
+        }
+        #modalScannerBox p {
+            margin:0 0 12px; font-size:12px; color:#64748b;
+        }
+        #scannerReader { width:100%; border-radius:8px; overflow:hidden; }
+        #scannerReader video { border-radius:8px; }
+        #btnFecharScanner {
+            margin-top:12px; width:100%; padding:9px;
+            background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px;
+            color:#374151; font-size:13px; cursor:pointer; font-weight:600;
+        }
+        #btnFecharScanner:hover { background:#e2e8f0; }
+        #scannerFieldLabel { font-weight:700; color:var(--primary); }
     </style>
 </head>
 <body>
@@ -656,21 +692,21 @@
                                     <div style="font-weight:bold; font-size:14px; color:var(--dark); text-transform:uppercase; margin-bottom:12px; text-align:center; min-height:55px; display:flex; flex-direction:column; justify-content:flex-end;">
                                         <span>Atual Reconfigurado<br>ou Retirado</span>
                                     </div>
-                                    <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_ret"></div>
-                                    <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_ret"></div>
-                                    <div class="field"><label>Modelo</label><input type="text" id="f_modelo_ret"></div>
-                                    <div class="field"><label>Hostname</label><input type="text" id="f_host_ret"></div>
-                                    <div class="field"><label>MAC</label><input type="text" id="f_mac_ret" maxlength="17" placeholder="00:00:00:00:00:00" oninput="mascaraMAC(this);sincronizarMac()"></div>
+                                    <div class="field"><label>Patrimônio (SGPI)</label><div class="scan-input-wrap"><input type="text" id="f_patri_ret"><button class="btn-scan" type="button" onclick="abrirScanner('f_patri_ret','Patrimônio Retirado')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
+                                    <div class="field"><label>Série (SN)</label><div class="scan-input-wrap"><input type="text" id="f_sn_ret"><button class="btn-scan" type="button" onclick="abrirScanner('f_sn_ret','Série Retirado')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
+                                    <div class="field"><label>Modelo</label><div class="scan-input-wrap"><input type="text" id="f_modelo_ret"><button class="btn-scan" type="button" onclick="abrirScanner('f_modelo_ret','Modelo Retirado')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
+                                    <div class="field"><label>Hostname</label><div class="scan-input-wrap"><input type="text" id="f_host_ret"><button class="btn-scan" type="button" onclick="abrirScanner('f_host_ret','Hostname Retirado')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
+                                    <div class="field"><label>MAC</label><div class="scan-input-wrap"><input type="text" id="f_mac_ret" maxlength="17" placeholder="00:00:00:00:00:00" oninput="mascaraMAC(this);sincronizarMac()"><button class="btn-scan" type="button" onclick="abrirScanner('f_mac_ret','MAC Retirado')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
                                 </div>
                                 <div>
                                     <div style="font-weight:bold; font-size:14px; color:var(--dark); text-transform:uppercase; margin-bottom:12px; text-align:center; min-height:55px; display:flex; flex-direction:column; justify-content:flex-end;">
                                         <span>Equipamento Novo<br>(em caso de troca)</span>
                                     </div>
-                                    <div class="field"><label>Patrimônio (SGPI)</label><input type="text" id="f_patri_inst"></div>
-                                    <div class="field"><label>Série (SN)</label><input type="text" id="f_sn_inst"></div>
-                                    <div class="field"><label>Modelo</label><input type="text" id="f_modelo_inst"></div>
-                                    <div class="field"><label>Hostname</label><input type="text" id="f_host_inst"></div>
-                                    <div class="field"><label>MAC</label><input type="text" id="f_mac_inst" maxlength="17" placeholder="00:00:00:00:00:00" oninput="mascaraMAC(this)"></div>
+                                    <div class="field"><label>Patrimônio (SGPI)</label><div class="scan-input-wrap"><input type="text" id="f_patri_inst"><button class="btn-scan" type="button" onclick="abrirScanner('f_patri_inst','Patrimônio Novo')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
+                                    <div class="field"><label>Série (SN)</label><div class="scan-input-wrap"><input type="text" id="f_sn_inst"><button class="btn-scan" type="button" onclick="abrirScanner('f_sn_inst','Série Novo')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
+                                    <div class="field"><label>Modelo</label><div class="scan-input-wrap"><input type="text" id="f_modelo_inst"><button class="btn-scan" type="button" onclick="abrirScanner('f_modelo_inst','Modelo Novo')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
+                                    <div class="field"><label>Hostname</label><div class="scan-input-wrap"><input type="text" id="f_host_inst"><button class="btn-scan" type="button" onclick="abrirScanner('f_host_inst','Hostname Novo')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
+                                    <div class="field"><label>MAC</label><div class="scan-input-wrap"><input type="text" id="f_mac_inst" maxlength="17" placeholder="00:00:00:00:00:00" oninput="mascaraMAC(this)"><button class="btn-scan" type="button" onclick="abrirScanner('f_mac_inst','MAC Novo')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
                                 </div>
                             </div>
                             <div class="field full-width"><label>Solução</label><textarea id="f_solucao" oninput="sincronizarMac()"></textarea></div>
@@ -4769,6 +4805,77 @@ function verDetalheEquip(id) {
     ].filter(([, val]) => val && String(val).trim());
     alert(`📦 Equipamento\n${'─'.repeat(40)}\n${linhas.map(([l, val]) => `${l}: ${val}`).join('\n')}`);
 }
+
+// ── Scanner QR / Código de Barras ──────────────────────────────────────────
+let _scanner = null;
+let _scanTarget = null;
+
+function abrirScanner(targetId, labelText) {
+    _scanTarget = targetId;
+    document.getElementById('scannerFieldLabel').textContent = labelText || targetId;
+    document.getElementById('scannerReader').innerHTML = '';
+    document.getElementById('modalScanner').classList.add('aberto');
+
+    _scanner = new Html5Qrcode('scannerReader');
+    const config = {
+        fps: 15,
+        qrbox: (w, h) => ({ width: Math.min(w * 0.8, 280), height: Math.min(h * 0.5, 160) }),
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+    };
+    _scanner.start(
+        { facingMode: 'environment' },
+        config,
+        (text) => _onScanSuccess(text),
+        () => {}
+    ).catch(() => {
+        // Câmera traseira indisponível — tenta câmera padrão
+        _scanner.start({ facingMode: 'user' }, config, (text) => _onScanSuccess(text), () => {})
+            .catch(err => {
+                fecharScanner();
+                alert('Não foi possível acessar a câmera.\n' + err);
+            });
+    });
+}
+
+function _onScanSuccess(raw) {
+    const el = document.getElementById(_scanTarget);
+    if (!el) { fecharScanner(); return; }
+    const isMac = _scanTarget.includes('mac');
+    let val = raw.trim();
+    if (isMac) {
+        const hex = val.replace(/[^A-Fa-f0-9]/g, '');
+        if (hex.length === 12) val = hex.match(/.{2}/g).join(':').toUpperCase();
+        else val = val.toUpperCase();
+    } else {
+        val = val.toUpperCase();
+    }
+    el.value = val;
+    // Dispara oninput para máscaras e sincronizações existentes
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    fecharScanner();
+}
+
+function fecharScanner() {
+    document.getElementById('modalScanner').classList.remove('aberto');
+    if (_scanner) {
+        _scanner.stop().catch(() => {}).finally(() => {
+            _scanner.clear();
+            _scanner = null;
+        });
+    }
+    _scanTarget = null;
+}
 </script>
+
+<!-- ── Modal Scanner QR / Código de Barras ── -->
+<div id="modalScanner" onclick="if(event.target===this)fecharScanner()">
+    <div id="modalScannerBox">
+        <h3>Escanear código</h3>
+        <p>Campo: <span id="scannerFieldLabel">—</span></p>
+        <div id="scannerReader"></div>
+        <button id="btnFecharScanner" onclick="fecharScanner()">Cancelar</button>
+    </div>
+</div>
 </body>
 </html>
