@@ -4833,33 +4833,52 @@ function _showToastUniorg(msg) {
     _toastUniorgTimer = setTimeout(() => el.classList.remove('show'), 4000);
 }
 
-function buscarEnderecoUniorg(raw) {
+async function buscarEnderecoUniorg(raw) {
     if (!raw) return;
     const key = String(raw).trim().replace(/\D/g, ''); // só dígitos
     if (!key) return;
 
     // UNIORG tem 7 dígitos; número da agência = últimos 4 dígitos
-    // Ex: "0001297" → "1297" | "0000001" → "0001" | "1297" → "1297"
+    // Ex: "0010168" → "0168" | "0001297" → "1297" | "1297" → "1297"
     const agNum = key.length >= 5 ? key.slice(-4) : key.padStart(4, '0');
 
-    const ag = AGENCIAS_SANTANDER[agNum]                      // "1297"
-            || AGENCIAS_SANTANDER[agNum.replace(/^0+/, '') || '0'] // "1297" sem zeros
-            || AGENCIAS_SANTANDER[String(parseInt(agNum, 10))];    // fallback numérico
-    if (!ag) return;
+    // 1) Tenta no mapa local (SP/São Paulo — resposta instantânea)
+    const local = AGENCIAS_SANTANDER[agNum]
+               || AGENCIAS_SANTANDER[agNum.replace(/^0+/, '') || '0']
+               || AGENCIAS_SANTANDER[String(parseInt(agNum, 10))];
 
-    // Preenche apenas campos vazios (endereço do chamado tem prioridade)
+    if (local) {
+        _preencherEnderecoAgencia({ endereco: local.e, numero: local.n, bairro: local.b, cidade: local.c, uf: local.u }, agNum);
+        return;
+    }
+
+    // 2) Agência não encontrada localmente → busca via Edge Function (qualquer cidade/estado)
+    _showToastUniorg(`Buscando agência <span>${agNum}</span>…`);
+    try {
+        const resp = await fetch(
+            `https://amqpouzfsykkahwgatmy.supabase.co/functions/v1/agencia-lookup?agencia=${agNum}`,
+            { headers: { 'apikey': document.querySelector('script[src*="supabase"]') ? '' : '' } }
+        );
+        if (!resp.ok) { _showToastUniorg(`Agência <span>${agNum}</span> não encontrada`); return; }
+        const d = await resp.json();
+        if (d.error) { _showToastUniorg(`Agência <span>${agNum}</span> não encontrada`); return; }
+        _preencherEnderecoAgencia(d, agNum);
+    } catch {
+        _showToastUniorg(`Agência <span>${agNum}</span> — sem conexão`);
+    }
+}
+
+function _preencherEnderecoAgencia(d, agNum) {
     const setIfEmpty = (id, val) => {
         const el = document.getElementById(id);
         if (el && !el.value.trim() && val) el.value = val;
     };
-    setIfEmpty('f_rua', ag.e);
-    setIfEmpty('f_num', ag.n);
-    setIfEmpty('f_bai', ag.b);
-    setIfEmpty('f_cid', ag.c);
-    setIfEmpty('f_uf',  ag.u);
-
-    _showToastUniorg(`Agência <span>${agNum}</span> · ${ag.b}, ${ag.c}/${ag.u}`);
-
+    setIfEmpty('f_rua', d.endereco);
+    setIfEmpty('f_num', d.numero);
+    setIfEmpty('f_bai', d.bairro);
+    setIfEmpty('f_cid', d.cidade);
+    setIfEmpty('f_uf',  d.uf);
+    _showToastUniorg(`Agência <span>${agNum}</span> · ${d.bairro}, ${d.cidade}/${d.uf}`);
     if (typeof gerarERenderizar === 'function') gerarERenderizar();
 }
 // ── Scanner QR / Código de Barras ──────────────────────────────────────────
