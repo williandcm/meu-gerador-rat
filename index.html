@@ -3613,17 +3613,25 @@ create table estoque (
 
         const temRet  = patriRet  || snRet  || modeloRet  || hostRet;
         const temInst = patriInst || snInst || modeloInst || hostInst;
+        const eSubstituicao = temInst;
 
         let c1 = solucao;
-        if (temRet) {
+        if (temRet && eSubstituicao) {
             c1 += '\n\nRetirado\n\n' +
                   `Patrimonio: ${patriRet}\n` +
                   `SN: ${snRet}\n` +
                   `Modelo: ${modeloRet}\n` +
                   `Host: ${hostRet}\n` +
                   `MAC: ${macRet}`;
+        } else if (temRet) {
+            c1 += '\n\n' +
+                  `Patrimonio: ${patriRet}\n` +
+                  `SN: ${snRet}\n` +
+                  `Modelo: ${modeloRet}\n` +
+                  `Host: ${hostRet}\n` +
+                  `MAC: ${macRet}`;
         }
-        if (temInst) {
+        if (eSubstituicao) {
             c1 += '\n\nInstalado\n\n' +
                   `Patrimonio: ${patriInst}\n` +
                   `SN: ${snInst}\n` +
