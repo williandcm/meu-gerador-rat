@@ -701,7 +701,7 @@
                                     <div style="font-weight:bold; font-size:14px; color:var(--dark); text-transform:uppercase; margin-bottom:12px; text-align:center; min-height:55px; display:flex; flex-direction:column; justify-content:flex-end;">
                                         <span>Atual Reconfigurado<br>ou Retirado</span>
                                     </div>
-                                    <div class="field"><label>Patrimônio (SGPI)</label><div class="scan-input-wrap"><input type="text" id="f_patri_ret"><button class="btn-scan" type="button" onclick="abrirScanner('f_patri_ret','Patrimônio Retirado')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
+                                    <div class="field"><label>Patrimônio (SGPI)</label><div class="scan-input-wrap"><input type="text" id="f_patri_ret" oninput="buscarEquipPorPatrimonio(this.value,'ret')" autocomplete="off"><button class="btn-scan" type="button" onclick="abrirScanner('f_patri_ret','Patrimônio Retirado')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
                                     <div class="field"><label>Série (SN)</label><div class="scan-input-wrap"><input type="text" id="f_sn_ret"><button class="btn-scan" type="button" onclick="abrirScanner('f_sn_ret','Série Retirado')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
                                     <div class="field"><label>Modelo</label><div class="scan-input-wrap"><input type="text" id="f_modelo_ret"><button class="btn-scan" type="button" onclick="abrirScanner('f_modelo_ret','Modelo Retirado')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
                                     <div class="field"><label>Hostname</label><div class="scan-input-wrap"><input type="text" id="f_host_ret"><button class="btn-scan" type="button" onclick="abrirScanner('f_host_ret','Hostname Retirado')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
@@ -711,7 +711,7 @@
                                     <div style="font-weight:bold; font-size:14px; color:var(--dark); text-transform:uppercase; margin-bottom:12px; text-align:center; min-height:55px; display:flex; flex-direction:column; justify-content:flex-end;">
                                         <span>Equipamento Novo<br>(em caso de troca)</span>
                                     </div>
-                                    <div class="field"><label>Patrimônio (SGPI)</label><div class="scan-input-wrap"><input type="text" id="f_patri_inst"><button class="btn-scan" type="button" onclick="abrirScanner('f_patri_inst','Patrimônio Novo')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
+                                    <div class="field"><label>Patrimônio (SGPI)</label><div class="scan-input-wrap"><input type="text" id="f_patri_inst" oninput="buscarEquipPorPatrimonio(this.value,'inst')" autocomplete="off"><button class="btn-scan" type="button" onclick="abrirScanner('f_patri_inst','Patrimônio Novo')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
                                     <div class="field"><label>Série (SN)</label><div class="scan-input-wrap"><input type="text" id="f_sn_inst"><button class="btn-scan" type="button" onclick="abrirScanner('f_sn_inst','Série Novo')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
                                     <div class="field"><label>Modelo</label><div class="scan-input-wrap"><input type="text" id="f_modelo_inst"><button class="btn-scan" type="button" onclick="abrirScanner('f_modelo_inst','Modelo Novo')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
                                     <div class="field"><label>Hostname</label><div class="scan-input-wrap"><input type="text" id="f_host_inst"><button class="btn-scan" type="button" onclick="abrirScanner('f_host_inst','Hostname Novo')" title="Escanear QR/código de barras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="3" height="10" rx="1"/><rect x="14" y="7" width="3" height="10" rx="1"/></svg></button></div></div>
@@ -4791,6 +4791,66 @@ function _preencherEnderecoAgencia(d, agNum) {
     setIfEmpty('f_uf',  d.uf);
     _showToastUniorg(`Agência <span>${agNum}</span> · ${d.bairro}, ${d.cidade}/${d.uf}`);
     if (typeof gerarERenderizar === 'function') gerarERenderizar();
+}
+
+// ── Auto-preenchimento de equipamento por Patrimônio ─────────────────────────
+let _buscarEquipTimer = null;
+async function buscarEquipPorPatrimonio(val, lado) {
+    clearTimeout(_buscarEquipTimer);
+    const patri = val.trim().toUpperCase();
+    if (patri.length < 4) return;
+
+    _buscarEquipTimer = setTimeout(async () => {
+        const setIfEmpty = (id, v) => {
+            if (!v) return;
+            const el = document.getElementById(id);
+            if (el && !el.value.trim()) el.value = v;
+        };
+
+        let sn, modelo, host, mac;
+
+        // 1) Busca no Estoque
+        try {
+            const { data: est } = await supabaseClient
+                .from('estoque')
+                .select('numero_serie,modelo,mac')
+                .ilike('patrimonio', patri)
+                .limit(1);
+            if (est && est[0]) {
+                sn     = est[0].numero_serie;
+                modelo = est[0].modelo;
+                mac    = est[0].mac;
+            }
+        } catch (_) {}
+
+        // 2) Busca no histórico de chamados (registro mais recente com esse patrimônio)
+        try {
+            const { data: hist } = await supabaseClient
+                .from('chamados')
+                .select('sn_inst,modelo_inst,host_inst,mac_inst,sn_ret,modelo_ret,host_ret,mac_ret,patri_inst,patri_ret')
+                .or(`patri_inst.ilike.${patri},patri_ret.ilike.${patri}`)
+                .order('id', { ascending: false })
+                .limit(1);
+            if (hist && hist[0]) {
+                const h = hist[0];
+                const isInst = (h.patri_inst || '').toUpperCase() === patri;
+                if (!sn)     sn     = isInst ? h.sn_inst     : h.sn_ret;
+                if (!modelo) modelo = isInst ? h.modelo_inst  : h.modelo_ret;
+                if (!host)   host   = isInst ? h.host_inst    : h.host_ret;
+                if (!mac)    mac    = isInst ? h.mac_inst     : h.mac_ret;
+            }
+        } catch (_) {}
+
+        if (!sn && !modelo && !host && !mac) return;
+
+        setIfEmpty(`f_sn_${lado}`,     sn);
+        setIfEmpty(`f_modelo_${lado}`, modelo);
+        setIfEmpty(`f_host_${lado}`,   host);
+        setIfEmpty(`f_mac_${lado}`,    mac);
+
+        _showToastUniorg(`Equipamento encontrado: <span>${modelo || sn || patri}</span>`);
+        if (typeof gerarERenderizar === 'function') gerarERenderizar();
+    }, 700);
 }
 </script>
 
