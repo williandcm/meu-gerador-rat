@@ -720,6 +720,37 @@
                             </div>
                             <div class="field full-width"><label>Solução</label><textarea id="f_solucao" oninput="sincronizarMac()"></textarea></div>
                             <div class="field full-width"><label>Observações <span style="font-size:10px;color:#94a3b8;font-weight:normal;">(uso interno — não aparece na RAT)</span></label><textarea id="f_observacoes" placeholder="Registre aqui qualquer intercorrência, dificuldade de acesso, contato adicional ou informação relevante..."></textarea></div>
+
+                            <!-- ── Comentários para o Sistema ── -->
+                            <div class="field full-width" style="margin-top:8px;">
+                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;" onclick="toggleComentarios()">
+                                    <span style="font-size:13px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;">📋 Comentários para o Sistema</span>
+                                    <span id="comentariosChevron" style="font-size:11px;color:#94a3b8;transition:.2s;">▼</span>
+                                </div>
+                                <div id="comentariosBox" style="display:none;flex-direction:column;gap:10px;">
+                                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;">
+                                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                                            <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;">Comentário 1</label>
+                                            <button onclick="copiarComentario('comentario1')" style="font-size:11px;padding:3px 10px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc;border-radius:5px;cursor:pointer;">📋 Copiar</button>
+                                        </div>
+                                        <textarea id="comentario1" readonly rows="10" style="width:100%;box-sizing:border-box;font-size:12px;font-family:monospace;resize:vertical;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;color:#1e293b;"></textarea>
+                                    </div>
+                                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;">
+                                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                                            <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;">Comentário 2</label>
+                                            <button onclick="copiarComentario('comentario2')" style="font-size:11px;padding:3px 10px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc;border-radius:5px;cursor:pointer;">📋 Copiar</button>
+                                        </div>
+                                        <textarea id="comentario2" readonly rows="3" style="width:100%;box-sizing:border-box;font-size:12px;font-family:monospace;resize:vertical;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;color:#1e293b;"></textarea>
+                                    </div>
+                                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;">
+                                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                                            <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;">Comentário 3 <span style="font-weight:400;color:#94a3b8;">(código do sistema)</span></label>
+                                            <button onclick="copiarComentario('comentario3')" style="font-size:11px;padding:3px 10px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc;border-radius:5px;cursor:pointer;">📋 Copiar</button>
+                                        </div>
+                                        <textarea id="comentario3" rows="2" placeholder="Cole aqui o código do sistema da empresa..." style="width:100%;box-sizing:border-box;font-size:12px;font-family:monospace;resize:vertical;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;color:#1e293b;"></textarea>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="field"><label>Responsável</label><input type="text" id="f_resp"></div>
                             <div class="field"><label>Matrícula</label><input type="text" id="f_matricula"></div>
                             <div class="field"><label>Nome do Técnico (RAT)</label><input type="text" id="f_tecnico_nome" placeholder="NOME DO TÉCNICO" oninput="salvarDadosTecnicoLocal()"></div>
@@ -3574,7 +3605,41 @@ create table estoque (
         return pdfDoc;
     }
 
+    function gerarComentarios() {
+        const g = id => (document.getElementById(id)?.value || '').trim();
+        const solucao   = g('f_solucao');
+        const patriRet  = g('f_patri_ret'),  snRet    = g('f_sn_ret'),    modeloRet = g('f_modelo_ret'), hostRet  = g('f_host_ret'), macRet  = g('f_mac_ret');
+        const patriInst = g('f_patri_inst'), snInst   = g('f_sn_inst'),   modeloInst= g('f_modelo_inst'),hostInst = g('f_host_inst'),macInst = g('f_mac_inst');
+
+        const temRet  = patriRet  || snRet  || modeloRet  || hostRet;
+        const temInst = patriInst || snInst || modeloInst || hostInst;
+
+        let c1 = solucao;
+        if (temRet) {
+            c1 += '\n\nRetirado\n\n' +
+                  `Patrimonio: ${patriRet}\n` +
+                  `SN: ${snRet}\n` +
+                  `Modelo: ${modeloRet}\n` +
+                  `Host: ${hostRet}\n` +
+                  `MAC: ${macRet}`;
+        }
+        if (temInst) {
+            c1 += '\n\nInstalado\n\n' +
+                  `Patrimonio: ${patriInst}\n` +
+                  `SN: ${snInst}\n` +
+                  `Modelo: ${modeloInst}\n` +
+                  `Host: ${hostInst}\n` +
+                  `MAC: ${macInst}`;
+        }
+
+        const el1 = document.getElementById('comentario1');
+        const el2 = document.getElementById('comentario2');
+        if (el1) el1.value = c1;
+        if (el2) el2.value = solucao;
+    }
+
     async function gerarERenderizar() {
+        gerarComentarios();
         // Cancela render anterior para evitar sobreposição de transformações no canvas
         if (renderTaskAtual) {
             renderTaskAtual.cancel();
@@ -4791,6 +4856,28 @@ function _preencherEnderecoAgencia(d, agNum) {
     setIfEmpty('f_uf',  d.uf);
     _showToastUniorg(`Agência <span>${agNum}</span> · ${d.bairro}, ${d.cidade}/${d.uf}`);
     if (typeof gerarERenderizar === 'function') gerarERenderizar();
+}
+
+// ── Comentários para o Sistema ───────────────────────────────────────────────
+function toggleComentarios() {
+    const box = document.getElementById('comentariosBox');
+    const chev = document.getElementById('comentariosChevron');
+    if (!box) return;
+    const aberto = box.style.display !== 'none';
+    box.style.display = aberto ? 'none' : 'flex';
+    if (chev) chev.textContent = aberto ? '▼' : '▲';
+}
+
+function copiarComentario(id) {
+    const el = document.getElementById(id);
+    if (!el || !el.value.trim()) return;
+    navigator.clipboard.writeText(el.value).then(() => {
+        _showToastUniorg('Comentário copiado! <span>✓</span>');
+    }).catch(() => {
+        el.select();
+        document.execCommand('copy');
+        _showToastUniorg('Comentário copiado! <span>✓</span>');
+    });
 }
 
 // ── Auto-preenchimento de equipamento por Patrimônio ─────────────────────────
