@@ -693,7 +693,7 @@
                             <div class="field full-width"><label>Endereço</label><input type="text" id="f_rua"></div>
                             <div class="field"><label>Número</label><input type="text" id="f_num"></div>
                             <div class="field"><label>Bairro</label><input type="text" id="f_bai"></div>
-                            <div class="field"><label>Cidade</label><input type="text" id="f_cid"></div>
+                            <div class="field"><label>Cidade</label><input type="text" id="f_cid" oninput="const l=document.getElementById('f_local_data_cidade');if(l)l.value=this.value;"></div>
                             <div class="field"><label>UF</label><input type="text" id="f_uf"></div>
                             <div class="field full-width"><label>Descritivo Defeito / Solução</label><input type="text" id="f_descritivo_defeito" value="EQUIPAMENTO INOPERANTE"></div>
                             <div class="equip-container">
@@ -3350,7 +3350,7 @@ create table estoque (
          'f_uniorg','f_rua','f_num','f_bai','f_cid','f_uf',
          'f_patri_ret','f_sn_ret','f_modelo_ret','f_host_ret','f_mac_ret',
          'f_patri_inst','f_sn_inst','f_modelo_inst','f_host_inst','f_mac_inst',
-         'f_solucao','f_observacoes','f_resp','f_matricula'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+         'f_solucao','f_observacoes','f_resp','f_matricula','f_local_data_cidade'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         document.getElementById('f_descritivo_defeito').value = 'EQUIPAMENTO INOPERANTE';
         limparAssinaturaOverlay();
         carregarDadosTecnicoLocal();
