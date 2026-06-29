@@ -4862,6 +4862,7 @@ function _preencherEnderecoAgencia(d, agNum) {
     setIfEmpty('f_bai', d.bairro);
     setIfEmpty('f_cid', d.cidade);
     setIfEmpty('f_uf',  d.uf);
+    setIfEmpty('f_local_data_cidade', d.cidade);
     _showToastUniorg(`Agência <span>${agNum}</span> · ${d.bairro}, ${d.cidade}/${d.uf}`);
     if (typeof gerarERenderizar === 'function') gerarERenderizar();
 }
