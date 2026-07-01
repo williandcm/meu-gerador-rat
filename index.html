@@ -848,7 +848,7 @@
                             <table id="tabelaBAD">
                                 <thead>
                                     <tr>
-                                        <th>Ações</th><th>Descrição</th><th>Patrimônio</th>
+                                        <th>Ações</th><th>Descrição</th><th>Motivo / Observação</th><th>Patrimônio</th>
                                         <th>Número de Série</th><th>Modelo</th><th>Hostname</th>
                                         <th>MAC</th><th>Chamado</th>
                                         <th>Entrada BAD</th><th>Data Envio</th>
@@ -1218,6 +1218,7 @@ create table estoque (
                 <div class="field"><label>Modelo</label><input type="text" id="bad_modelo"></div>
                 <div class="field"><label>Hostname</label><input type="text" id="bad_hostname"></div>
                 <div class="field"><label>MAC</label><input type="text" id="bad_mac" placeholder="00:00:00:00:00:00" maxlength="17" oninput="mascaraMAC(this)"></div>
+                <div class="field full-width"><label>Observação / Motivo do Defeito</label><textarea id="bad_observacao" rows="3" placeholder="Ex: Display quebrado, não liga, leitor com falha..." style="resize:vertical;"></textarea></div>
             </div>
         </div>
         <div class="modal-footer">
@@ -4328,6 +4329,7 @@ function atualizarTabelaBad(lista) {
                 </div>
             </td>
             <td>${_v(eq.descricao)}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#92400e;" title="${escHtml(eq.observacao||'')}">${_v(eq.observacao)}</td>
             <td style="font-weight:bold;">${_v(eq.patrimonio)}</td>
             <td>${_v(eq.numero_serie)}</td>
             <td>${_v(eq.modelo)}</td>
@@ -4344,7 +4346,7 @@ function atualizarTabelaBad(lista) {
 function filtrarBadLocal() {
     const texto = (document.getElementById('filtroBADTexto')?.value || '').toUpperCase().trim();
     const filtrado = badCache.filter(eq =>
-        !texto || [eq.descricao, eq.patrimonio, eq.numero_serie, eq.modelo, eq.hostname, eq.mac, eq.chamado_ref]
+        !texto || [eq.descricao, eq.observacao, eq.patrimonio, eq.numero_serie, eq.modelo, eq.hostname, eq.mac, eq.chamado_ref]
             .some(c => c && c.toUpperCase().includes(texto))
     );
     atualizarTabelaBad(filtrado);
@@ -4355,33 +4357,37 @@ function filtrarBadLocal() {
 let badIdAtual = null;
 let badModoNovo = false;
 
-async function moverItemParaBad(id) {
+function moverItemParaBad(id) {
     const eq = estoqueCache.find(x => x.id === id);
     if (!eq) return;
-    const label = [eq.descricao, eq.patrimonio ? 'Pat: ' + eq.patrimonio : '', eq.numero_serie ? 'SN: ' + eq.numero_serie : ''].filter(Boolean).join(' | ');
-    if (!confirm(`Mover para BAD:\n\n${label}\n\nO item sairá do Estoque e entrará no BAD. Confirma?`)) return;
-    const hoje = new Date().toISOString().slice(0, 10);
-    try {
-        const { error } = await supabaseClient.from('estoque').update({ categoria: 'bad', data_entrada_bad: hoje }).eq('id', id);
-        if (error) throw error;
-        await logMovimentacao('ENTRADA BAD', label + ' (movido do estoque)');
-        await carregarEstoque();
-        await carregarBad();
-        mostrarAbaBad();
-        alert('Item movido para o BAD com sucesso.');
-    } catch (e) {
-        alert('Erro ao mover: ' + e.message);
-    }
+    badIdAtual = null;
+    badModoNovo = false;
+    _badMoverOrigemId = id;
+    _abrirModalBadComDados('⚠️ Mover para BAD', { ...eq, observacao: '' });
+}
+
+let _badMoverOrigemId = null;
+
+function _abrirModalBadComDados(titulo, dados) {
+    const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
+    set('bad_descricao',    dados.descricao);
+    set('bad_chamado_ref',  dados.chamado_ref);
+    set('bad_patrimonio',   dados.patrimonio);
+    set('bad_numero_serie', dados.numero_serie);
+    set('bad_modelo',       dados.modelo);
+    set('bad_hostname',     dados.hostname);
+    set('bad_mac',          dados.mac);
+    set('bad_observacao',   dados.observacao);
+    document.querySelector('#modalEditarBad h2').textContent = titulo;
+    document.getElementById('modalEditarBad').classList.add('open');
+    document.body.style.overflow = 'hidden';
 }
 
 function abrirNovoItemBad() {
     badIdAtual = null;
     badModoNovo = true;
-    ['bad_descricao','bad_chamado_ref','bad_patrimonio','bad_numero_serie','bad_modelo','bad_hostname','bad_mac']
-        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    document.querySelector('#modalEditarBad h2').textContent = 'Novo Item BAD';
-    document.getElementById('modalEditarBad').classList.add('open');
-    document.body.style.overflow = 'hidden';
+    _badMoverOrigemId = null;
+    _abrirModalBadComDados('Novo Item BAD', {});
 }
 
 function abrirModalEditarBad(id) {
@@ -4389,17 +4395,8 @@ function abrirModalEditarBad(id) {
     if (!eq) return;
     badIdAtual = id;
     badModoNovo = false;
-    const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
-    set('bad_descricao',    eq.descricao);
-    set('bad_chamado_ref',  eq.chamado_ref);
-    set('bad_patrimonio',   eq.patrimonio);
-    set('bad_numero_serie', eq.numero_serie);
-    set('bad_modelo',       eq.modelo);
-    set('bad_hostname',     eq.hostname);
-    set('bad_mac',          eq.mac);
-    document.querySelector('#modalEditarBad h2').textContent = 'Editar Item BAD';
-    document.getElementById('modalEditarBad').classList.add('open');
-    document.body.style.overflow = 'hidden';
+    _badMoverOrigemId = null;
+    _abrirModalBadComDados('Editar Item BAD', eq);
 }
 
 function fecharModalEditarBad() {
@@ -4407,10 +4404,12 @@ function fecharModalEditarBad() {
     document.body.style.overflow = '';
     badIdAtual = null;
     badModoNovo = false;
+    _badMoverOrigemId = null;
 }
 
 async function salvarEdicaoBad() {
     const gUP = id => (document.getElementById(id)?.value || '').trim().toUpperCase() || null;
+    const gRaw = id => (document.getElementById(id)?.value || '').trim() || null;
     const descricao = gUP('bad_descricao');
     if (!descricao) { alert('Informe ao menos a Descrição do equipamento.'); return; }
     const payload = {
@@ -4421,22 +4420,34 @@ async function salvarEdicaoBad() {
         modelo:       gUP('bad_modelo'),
         hostname:     gUP('bad_hostname'),
         mac:          gUP('bad_mac') || null,
+        observacao:   gRaw('bad_observacao'),
     };
     const desc = [descricao, payload.chamado_ref ? 'INC: ' + payload.chamado_ref : '', payload.patrimonio ? 'Pat: ' + payload.patrimonio : '', payload.numero_serie ? 'SN: ' + payload.numero_serie : ''].filter(Boolean).join(' | ');
     try {
-        if (badModoNovo) {
+        if (_badMoverOrigemId) {
+            const hoje = new Date().toISOString().slice(0, 10);
+            const { error } = await supabaseClient.from('estoque').update({ ...payload, categoria: 'bad', data_entrada_bad: hoje }).eq('id', _badMoverOrigemId);
+            if (error) throw error;
+            await logMovimentacao('ENTRADA BAD', desc + ' (movido do estoque)');
+            fecharModalEditarBad();
+            await carregarEstoque();
+            await carregarBad();
+            mostrarAbaBad();
+        } else if (badModoNovo) {
             const hoje = new Date().toISOString().slice(0, 10);
             const { error } = await supabaseClient.from('estoque').insert([{ ...payload, categoria: 'bad', data_entrada_bad: hoje, criado_por: loggedInUser?.email || null }]);
             if (error) throw error;
             await logMovimentacao('ENTRADA BAD', desc + ' (manual)');
+            fecharModalEditarBad();
+            await carregarBad();
         } else {
             if (!badIdAtual) return;
             const { error } = await supabaseClient.from('estoque').update(payload).eq('id', badIdAtual);
             if (error) throw error;
             await logMovimentacao('EDIÇÃO BAD', desc);
+            fecharModalEditarBad();
+            await carregarBad();
         }
-        fecharModalEditarBad();
-        await carregarBad();
     } catch (e) {
         alert('Erro ao salvar: ' + e.message);
     }
