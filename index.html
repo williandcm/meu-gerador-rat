@@ -4060,6 +4060,7 @@ function atualizarTabelaEstoque(lista) {
                         <div class="kebab-menu" id="ke-${eq.id}">
                             <button onclick="verDetalheEquip(${eq.id});fecharKebabs()">👁 Ver</button>
                             ${isAdmin ? `<button onclick="abrirModalEquip(${eq.id});fecharKebabs()">✏️ Editar</button>` : ''}
+                            <button style="color:#b45309;" onclick="moverItemParaBad(${eq.id});fecharKebabs()">⚠️ Mover para BAD</button>
                             ${isAdmin ? `<button class="km-danger" onclick="excluirEquipamento(${eq.id});fecharKebabs()">🗑 Excluir</button>` : ''}
                         </div>
                     </div>
@@ -4353,6 +4354,25 @@ function filtrarBadLocal() {
 
 let badIdAtual = null;
 let badModoNovo = false;
+
+async function moverItemParaBad(id) {
+    const eq = estoqueCache.find(x => x.id === id);
+    if (!eq) return;
+    const label = [eq.descricao, eq.patrimonio ? 'Pat: ' + eq.patrimonio : '', eq.numero_serie ? 'SN: ' + eq.numero_serie : ''].filter(Boolean).join(' | ');
+    if (!confirm(`Mover para BAD:\n\n${label}\n\nO item sairá do Estoque e entrará no BAD. Confirma?`)) return;
+    const hoje = new Date().toISOString().slice(0, 10);
+    try {
+        const { error } = await supabaseClient.from('estoque').update({ categoria: 'bad', data_entrada_bad: hoje }).eq('id', id);
+        if (error) throw error;
+        await logMovimentacao('ENTRADA BAD', label + ' (movido do estoque)');
+        await carregarEstoque();
+        await carregarBad();
+        mostrarAbaBad();
+        alert('Item movido para o BAD com sucesso.');
+    } catch (e) {
+        alert('Erro ao mover: ' + e.message);
+    }
+}
 
 function abrirNovoItemBad() {
     badIdAtual = null;
