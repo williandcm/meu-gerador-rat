@@ -1228,6 +1228,33 @@ create table estoque (
     </div>
 </div>
 
+<!-- MODAL SAÍDA ESTOQUE -->
+<div class="modal-overlay" id="modalSaidaEstoque" onclick="if(event.target===this)fecharModalSaidaEstoque()">
+    <div class="modal-box" style="max-width:480px;">
+        <div class="modal-header">
+            <div><h2>📤 Registrar Saída do Estoque</h2></div>
+            <button class="modal-close" onclick="fecharModalSaidaEstoque()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div id="saidaEstoqueInfo" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;white-space:pre-wrap;color:#0369a1;"></div>
+            <div class="form-grid">
+                <div class="field full-width">
+                    <label>Número do Chamado / INC <span style="color:#ef4444;">*</span></label>
+                    <input type="text" id="saidaChamadoRef" placeholder="Ex: INC000123456789" style="text-transform:uppercase;">
+                </div>
+                <div class="field full-width">
+                    <label>Observação (opcional)</label>
+                    <input type="text" id="saidaObservacao" placeholder="Ex: Instalado em agência 0208">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-close" onclick="fecharModalSaidaEstoque()">Cancelar</button>
+            <button class="btn-modal-edit" style="background:#0369a1;" onclick="confirmarSaidaEstoque()">📤 Confirmar Saída</button>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL VISUALIZADOR PDF ASSINADO -->
 <div class="modal-overlay" id="modalPdfViewer" onclick="fecharPdfViewerFora(event)">
     <div class="modal-box" style="max-width:680px;">
@@ -4061,6 +4088,7 @@ function atualizarTabelaEstoque(lista) {
                         <div class="kebab-menu" id="ke-${eq.id}">
                             <button onclick="verDetalheEquip(${eq.id});fecharKebabs()">👁 Ver</button>
                             ${isAdmin ? `<button onclick="abrirModalEquip(${eq.id});fecharKebabs()">✏️ Editar</button>` : ''}
+                            <button style="color:#0369a1;" onclick="abrirModalSaidaEstoque(${eq.id});fecharKebabs()">📤 Registrar Saída</button>
                             <button style="color:#b45309;" onclick="moverItemParaBad(${eq.id});fecharKebabs()">⚠️ Mover para BAD</button>
                             ${isAdmin ? `<button class="km-danger" onclick="excluirEquipamento(${eq.id});fecharKebabs()">🗑 Excluir</button>` : ''}
                         </div>
@@ -4367,6 +4395,56 @@ function moverItemParaBad(id) {
 }
 
 let _badMoverOrigemId = null;
+
+let _saidaEstoqueId = null;
+
+function abrirModalSaidaEstoque(id) {
+    const eq = estoqueCache.find(x => x.id === id);
+    if (!eq) return;
+    _saidaEstoqueId = id;
+    const info = [
+        eq.descricao  ? 'Descrição:  ' + eq.descricao  : '',
+        eq.patrimonio ? 'Patrimônio: ' + eq.patrimonio  : '',
+        eq.numero_serie?'Série:      ' + eq.numero_serie: '',
+        eq.modelo     ? 'Modelo:     ' + eq.modelo      : '',
+    ].filter(Boolean).join('\n');
+    document.getElementById('saidaEstoqueInfo').textContent = info || '(sem detalhes)';
+    document.getElementById('saidaChamadoRef').value = '';
+    document.getElementById('saidaObservacao').value = '';
+    document.getElementById('modalSaidaEstoque').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharModalSaidaEstoque() {
+    document.getElementById('modalSaidaEstoque').classList.remove('open');
+    document.body.style.overflow = '';
+    _saidaEstoqueId = null;
+}
+
+async function confirmarSaidaEstoque() {
+    if (!_saidaEstoqueId) return;
+    const chamado = (document.getElementById('saidaChamadoRef')?.value || '').trim().toUpperCase();
+    if (!chamado) { alert('Informe o número do chamado.'); document.getElementById('saidaChamadoRef').focus(); return; }
+    const obs = (document.getElementById('saidaObservacao')?.value || '').trim() || null;
+    const hoje = new Date().toISOString().slice(0, 10);
+    try {
+        const { error } = await supabaseClient.from('estoque').update({
+            categoria:   'baixado',
+            chamado_ref: chamado,
+            data_saida:  hoje,
+            observacao:  obs,
+        }).eq('id', _saidaEstoqueId);
+        if (error) throw error;
+        const eq = estoqueCache.find(x => x.id === _saidaEstoqueId);
+        const desc = [eq?.descricao, eq?.patrimonio ? 'Pat: ' + eq.patrimonio : '', eq?.numero_serie ? 'SN: ' + eq.numero_serie : '', 'INC: ' + chamado].filter(Boolean).join(' | ');
+        await logMovimentacao('BAIXA ESTOQUE', desc);
+        fecharModalSaidaEstoque();
+        await carregarEstoque();
+        alert('Saída registrada com sucesso.');
+    } catch (e) {
+        alert('Erro ao registrar saída: ' + e.message);
+    }
+}
 
 function _abrirModalBadComDados(titulo, dados) {
     const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val || ''; };
