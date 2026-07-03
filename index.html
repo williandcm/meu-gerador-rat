@@ -981,18 +981,18 @@ create table estoque (
                         <table id="tabelaReembolso" style="min-width:1500px;">
                             <thead>
                                 <tr>
-                                    <th>Data</th>
-                                    <th>Nº Chamado</th>
-                                    <th>Horários</th>
-                                    <th>Tipo Atividade</th>
-                                    <th>Serviço</th>
-                                    <th>Cliente</th>
-                                    <th style="min-width:70px;">KM</th>
-                                    <th style="min-width:80px;">Pedágio R$</th>
-                                    <th style="min-width:80px;">Estacion. R$</th>
-                                    <th style="min-width:80px;">Outras R$</th>
+                                    <th onclick="reembSortBy('data')" style="cursor:pointer;user-select:none;" title="Ordenar por data">Data <span id="rsort-data">▲</span></th>
+                                    <th onclick="reembSortBy('chamado')" style="cursor:pointer;user-select:none;" title="Ordenar por chamado">Nº Chamado <span id="rsort-chamado"></span></th>
+                                    <th onclick="reembSortBy('hini')" style="cursor:pointer;user-select:none;" title="Ordenar por horário">Horários <span id="rsort-hini"></span></th>
+                                    <th onclick="reembSortBy('tipo_atividade')" style="cursor:pointer;user-select:none;">Tipo Atividade <span id="rsort-tipo_atividade"></span></th>
+                                    <th onclick="reembSortBy('servico')" style="cursor:pointer;user-select:none;">Serviço <span id="rsort-servico"></span></th>
+                                    <th onclick="reembSortBy('cliente')" style="cursor:pointer;user-select:none;">Cliente <span id="rsort-cliente"></span></th>
+                                    <th onclick="reembSortBy('km')" style="cursor:pointer;user-select:none;min-width:70px;">KM <span id="rsort-km"></span></th>
+                                    <th onclick="reembSortBy('pedagio')" style="cursor:pointer;user-select:none;min-width:80px;">Pedágio R$ <span id="rsort-pedagio"></span></th>
+                                    <th onclick="reembSortBy('estacionamento')" style="cursor:pointer;user-select:none;min-width:80px;">Estacion. R$ <span id="rsort-estacionamento"></span></th>
+                                    <th onclick="reembSortBy('outras_despesas')" style="cursor:pointer;user-select:none;min-width:80px;">Outras R$ <span id="rsort-outras_despesas"></span></th>
                                     <th style="min-width:150px;">Obs. Despesas</th>
-                                    <th>End. Chegada</th>
+                                    <th onclick="reembSortBy('end_chegada')" style="cursor:pointer;user-select:none;">End. Chegada <span id="rsort-end_chegada"></span></th>
                                 </tr>
                             </thead>
                             <tbody id="corpoReembolso"></tbody>
@@ -5271,6 +5271,9 @@ async function carregarSemanaReembolso() {
             if (!y) return false;
             const dt = new Date(`${y}-${m}-${d}T12:00:00`);
             return dt >= iniDate && dt <= fimDate;
+        }).sort((a, b) => {
+            const toISO = s => { const [d,m,y] = (s||'').split('/'); return y ? `${y}${m}${d}` : ''; };
+            return toISO(a.data_atendimento).localeCompare(toISO(b.data_atendimento));
         });
 
         renderizarTabelaReembolso(filtrados, ini, fim);
@@ -5338,12 +5341,61 @@ function renderizarTabelaReembolso(chamados, ini, fim) {
     }
 
     atualizarTotaisReembolso();
+    _setupStaticColDrag('tabelaReembolso', false);
+    _initStickyScrollbar('reembolsoTableContainer');
 
     const lbl = document.getElementById('reembSemanaLabel');
     if (lbl) {
         const fmt = iso => new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR');
         lbl.textContent = `Semana: ${fmt(ini)} a ${fmt(fim)}`;
     }
+}
+
+let _reembSortState = { col: 'data', dir: 'asc' };
+
+function reembSortBy(col) {
+    const tbody = document.getElementById('corpoReembolso');
+    if (!tbody) return;
+
+    if (_reembSortState.col === col) {
+        _reembSortState.dir = _reembSortState.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+        _reembSortState.col = col;
+        _reembSortState.dir = 'asc';
+    }
+
+    document.querySelectorAll('[id^="rsort-"]').forEach(el => el.textContent = '');
+    const ind = document.getElementById('rsort-' + col);
+    if (ind) ind.textContent = _reembSortState.dir === 'asc' ? ' ▲' : ' ▼';
+
+    const rows = Array.from(tbody.querySelectorAll('tr[data-cid]'));
+    const dir  = _reembSortState.dir === 'asc' ? 1 : -1;
+
+    const getVal = (tr, c) => {
+        const fieldEl = tr.querySelector(`[data-field="${c}"]`);
+        if (fieldEl) return (fieldEl.value || '').toLowerCase();
+        if (c === 'data') {
+            const [d,m,y] = (tr.dataset.data||'').split('/');
+            return y ? `${y}${m}${d}` : '';
+        }
+        if (c === 'chamado')     return (tr.dataset.chamado || '').toLowerCase();
+        if (c === 'hini')        return tr.dataset.hini || '';
+        if (c === 'end_chegada') return (tr.dataset.end_chegada || '').toLowerCase();
+        return '';
+    };
+
+    const numericCols = ['km','pedagio','estacionamento','outras_despesas'];
+    rows.sort((a, b) => {
+        const va = getVal(a, col);
+        const vb = getVal(b, col);
+        if (numericCols.includes(col)) {
+            return (parseFloat(va)||0) > (parseFloat(vb)||0) ? dir : -dir;
+        }
+        return va > vb ? dir : va < vb ? -dir : 0;
+    });
+
+    rows.forEach(tr => tbody.appendChild(tr));
+    atualizarTotaisReembolso();
 }
 
 function reembOnChange(el) {
