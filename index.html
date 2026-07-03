@@ -5318,6 +5318,8 @@ function renderizarTabelaReembolso(chamados, ini, fim) {
         ? ' readonly title="Calculado pelo odômetro" style="width:72px;font-size:12px;padding:4px 5px;text-align:right;background:#f0f9ff;"'
         : ' style="width:72px;font-size:12px;padding:4px 5px;text-align:right;"';
 
+    const ep = (document.getElementById('reemb_end_partida')?.value || '').trim();
+
     // Uma linha chamado + uma linha VOLTA logo após (por chamado, não por dia)
     chamados.forEach(c => {
         const s = _reembGetEntry(c.id);
