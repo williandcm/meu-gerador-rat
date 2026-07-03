@@ -984,8 +984,8 @@ create table estoque (
                                     <th>Nº Chamado</th>
                                     <th>Horários</th>
                                     <th>Tipo Atividade</th>
-                                    <th>Cliente</th>
                                     <th>Serviço</th>
+                                    <th>Cliente</th>
                                     <th style="min-width:70px;">KM</th>
                                     <th style="min-width:80px;">Pedágio R$</th>
                                     <th style="min-width:80px;">Estacion. R$</th>
@@ -5153,24 +5153,30 @@ async function buscarEquipPorPatrimonio(val, lado) {
 const _REEMB_KEY    = 'reemb_dados_v1';
 const _REEMB_CFG    = 'reemb_config_v1';
 
-const _TIPO_ATIVIDADE_OPTS = [
-    'TROCA DE PEÇA',
-    'BAIXA DE IMAGEM',
-    'BAIXA DE IMAGEM + TROCA DE PEÇA',
-    'INSTALAÇÃO DE PERIFÉRICOS',
-    'INSTALAÇÃO|ATUALIZAÇÃO|CONFIGURAÇÃO DE SOFTWARE',
-    'INSTALAÇÃO|ATUALIZAÇÃO|CONFIGURAÇÃO DE HARDWARE',
-    'LIMPEZA|MANUTENÇÃO PREVENTIVA',
-    'RECOLHIMENTO DE EQUIPAMENTO',
-    'TREINAMENTO|ORIENTAÇÃO AO USUÁRIO',
-    'ROLLOUT',
-    'INVENTÁRIO',
-    'CORREIOS | RETIRADA DE PEÇAS | REVERSA',
-    'VOLTA PARA CASA',
-    'MATRIZ | REUNIÃO | ENTREGA DE DOCUMENTOS | RETIRADA DE MATERIAIS | VISITA OPERACIONAL',
-    'COMPRA DE INSUMO | FERRAMENTA',
-    'OUTROS',
-];
+const _TIPO_ATIVIDADE_OPTS = ['ATENDIMENTO', 'ATIVIDADE_ADM'];
+
+const _SERVICO_OPTS = {
+    'ATENDIMENTO': [
+        'BAIXA DE IMAGEM',
+        'TROCA DE PEÇA',
+        'BAIXA DE IMAGEM + TROCA DE PEÇA',
+        'INVENTÁRIO',
+        'ROLLOUT',
+        'INSTALAÇÃO DE PERIFÉRICOS',
+        'INSTALAÇÃO|ATUALIZAÇÃO|CONFIGURAÇÃO DE SOFTWARE',
+        'INSTALAÇÃO|ATUALIZAÇÃO|CONFIGURAÇÃO DE HARDWARE',
+        'LIMPEZA|MANUTENÇÃO PREVENTIVA',
+        'RECOLHIMENTO DE EQUIPAMENTO',
+        'TREINAMENTO|ORIENTAÇÃO AO USUÁRIO',
+        'OUTROS',
+    ],
+    'ATIVIDADE_ADM': [
+        'CORREIOS | RETIRADA DE PEÇAS | REVERSA',
+        'COMPRA DE INSUMO | FERRAMENTA',
+        'MATRIZ | REUNIÃO | ENTREGA DE DOCUMENTOS | RETIRADA DE MATERIAIS | VISITA OPERACIONAL',
+        'VOLTA PARA CASA',
+    ],
+};
 
 const _CLIENTE_OPTS = [
     '11.02.1-SANTANDER: INCIDENTE',
@@ -5282,8 +5288,8 @@ function renderizarTabelaReembolso(chamados, ini, fim) {
 
     const ep = document.getElementById('reemb_end_partida')?.value || '';
 
-    const selOpts = (field, opts, val) =>
-        `<select data-field="${field}" data-ep="${escHtml(ep)}" onchange="reembOnChange(this)" style="min-width:170px;font-size:11px;padding:3px 5px;max-width:200px;"><option value="">— selecionar —</option>` +
+    const selOpts = (field, opts, val, extra='') =>
+        `<select data-field="${field}" onchange="reembOnChange(this)" style="min-width:150px;font-size:11px;padding:3px 5px;" ${extra}><option value="">— selecionar —</option>` +
         opts.map(o => `<option value="${escHtml(o)}"${o === val ? ' selected' : ''}>${escHtml(o)}</option>`).join('') +
         `</select>`;
 
@@ -5292,6 +5298,11 @@ function renderizarTabelaReembolso(chamados, ini, fim) {
 
     const txtInp = (field, val, w) =>
         `<input type="text" data-field="${field}" value="${escHtml(val ?? '')}" onchange="reembOnChange(this)" style="width:${w || 140}px;font-size:12px;padding:4px 5px;">`;
+
+    const servicoSelect = (tipoAtiv, savedServico) => {
+        const opts = _SERVICO_OPTS[tipoAtiv] || [];
+        return selOpts('servico', opts, savedServico || '');
+    };
 
     chamados.forEach(c => {
         const s = _reembGetEntry(c.id);
@@ -5309,9 +5320,9 @@ function renderizarTabelaReembolso(chamados, ini, fim) {
             <td style="white-space:nowrap;font-weight:600;">${escHtml(c.data_atendimento || '')}</td>
             <td style="font-family:monospace;font-size:12px;white-space:nowrap;">${escHtml(c.chamado || c.chamado_cerb || '—')}</td>
             <td style="white-space:nowrap;font-size:12px;">${escHtml(hIni)}${hIni && hFim ? ' → ' : ''}${escHtml(hFim)}</td>
-            <td>${selOpts('tipo_atividade', _TIPO_ATIVIDADE_OPTS, s.tipo_atividade || '')}</td>
+            <td>${selOpts('tipo_atividade', _TIPO_ATIVIDADE_OPTS, s.tipo_atividade || '', `data-cid="${c.id}"`)}</td>
+            <td class="td-servico-${c.id}">${servicoSelect(s.tipo_atividade || '', s.servico || '')}</td>
             <td>${selOpts('cliente', _CLIENTE_OPTS, s.cliente || '')}</td>
-            <td>${txtInp('servico', s.servico || '', 140)}</td>
             <td>${numInp('km', s.km)}</td>
             <td>${numInp('pedagio', s.pedagio)}</td>
             <td>${numInp('estacionamento', s.estacionamento)}</td>
@@ -5337,7 +5348,22 @@ function renderizarTabelaReembolso(chamados, ini, fim) {
 function reembOnChange(el) {
     const tr = el.closest('tr');
     if (!tr) return;
-    _reembSetEntry(tr.dataset.cid, { [el.dataset.field]: el.value });
+    const cid = tr.dataset.cid;
+    _reembSetEntry(cid, { [el.dataset.field]: el.value });
+
+    // Quando muda TIPO_ATIVIDADE, reconstrói o dropdown de Serviço
+    if (el.dataset.field === 'tipo_atividade') {
+        const tdServico = tr.querySelector('.td-servico-' + cid);
+        if (tdServico) {
+            const opts = _SERVICO_OPTS[el.value] || [];
+            tdServico.innerHTML =
+                `<select data-field="servico" onchange="reembOnChange(this)" style="min-width:150px;font-size:11px;padding:3px 5px;"><option value="">— selecionar —</option>` +
+                opts.map(o => `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('') +
+                `</select>`;
+            _reembSetEntry(cid, { servico: '' });
+        }
+    }
+
     atualizarTotaisReembolso();
 }
 
