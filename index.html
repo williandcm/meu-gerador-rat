@@ -992,6 +992,7 @@ create table estoque (
                                     <th onclick="reembSortBy('km')" style="cursor:pointer;user-select:none;min-width:70px;">KM <span id="rsort-km"></span></th>
                                     <th onclick="reembSortBy('pedagio')" style="cursor:pointer;user-select:none;min-width:80px;">Pedágio R$ <span id="rsort-pedagio"></span></th>
                                     <th onclick="reembSortBy('estacionamento')" style="cursor:pointer;user-select:none;min-width:80px;">Estacion. R$ <span id="rsort-estacionamento"></span></th>
+                                    <th style="min-width:80px;">Comp.Peças</th>
                                     <th onclick="reembSortBy('outras_despesas')" style="cursor:pointer;user-select:none;min-width:80px;">Outras R$ <span id="rsort-outras_despesas"></span></th>
                                     <th style="min-width:150px;">Obs. Despesas</th>
                                     <th onclick="reembSortBy('end_chegada')" style="cursor:pointer;user-select:none;">End. Chegada <span id="rsort-end_chegada"></span></th>
@@ -1004,6 +1005,7 @@ create table estoque (
                                     <td id="reemb_tot_km" style="font-family:monospace;color:#2563eb;"></td>
                                     <td id="reemb_tot_ped" style="font-family:monospace;color:#dc2626;"></td>
                                     <td id="reemb_tot_est" style="font-family:monospace;color:#dc2626;"></td>
+                                    <td id="reemb_tot_comp" style="font-family:monospace;color:#dc2626;"></td>
                                     <td id="reemb_tot_out" style="font-family:monospace;color:#dc2626;"></td>
                                     <td colspan="2"></td>
                                 </tr>
@@ -5312,76 +5314,73 @@ function renderizarTabelaReembolso(chamados, ini, fim) {
 
     const servicoSelect = (tipoAtiv, savedServico) => selOpts('servico', _SERVICO_OPTS[tipoAtiv] || [], savedServico || '');
 
-    const kmCalcAttr = (s) => (s.km_ini != null && s.km_fim != null) ? ' readonly title="Calculado pelo odômetro" style="width:72px;font-size:12px;padding:4px 5px;text-align:right;background:#f0f9ff;"' : ' style="width:72px;font-size:12px;padding:4px 5px;text-align:right;"';
+    const kmCalcAttr = (s) => (s.km_ini != null && s.km_fim != null)
+        ? ' readonly title="Calculado pelo odômetro" style="width:72px;font-size:12px;padding:4px 5px;text-align:right;background:#f0f9ff;"'
+        : ' style="width:72px;font-size:12px;padding:4px 5px;text-align:right;"';
 
-    // Agrupar por data (preserva ordem de carregamento)
-    const byDate = {}, datesOrder = [];
+    // Uma linha chamado + uma linha VOLTA logo após (por chamado, não por dia)
     chamados.forEach(c => {
-        const d = c.data_atendimento || '';
-        if (!byDate[d]) { byDate[d] = []; datesOrder.push(d); }
-        byDate[d].push(c);
-    });
+        const s = _reembGetEntry(c.id);
+        const endChegada = [c.endereco, c.numero, c.bairro, c.cidade].filter(Boolean).join(', ');
+        const hIni = c.hora_partida || '';
+        const hFim = c.hora_termino_ate || '';
+        const tr = document.createElement('tr');
+        tr.dataset.cid         = c.id;
+        tr.dataset.data        = c.data_atendimento || '';
+        tr.dataset.chamado     = c.chamado || c.chamado_cerb || '';
+        tr.dataset.hini        = hIni;
+        tr.dataset.hfim        = hFim;
+        tr.dataset.end_partida = ep;
+        tr.dataset.end_chegada = endChegada;
+        tr.innerHTML = `
+            <td style="white-space:nowrap;font-weight:600;">${escHtml(c.data_atendimento || '')}</td>
+            <td style="font-family:monospace;font-size:12px;white-space:nowrap;">${escHtml(c.chamado || c.chamado_cerb || '—')}</td>
+            <td style="white-space:nowrap;font-size:12px;">${escHtml(hIni)}${hIni && hFim ? ' → ' : ''}${escHtml(hFim)}</td>
+            <td>${selOpts('tipo_atividade', _TIPO_ATIVIDADE_OPTS, s.tipo_atividade || '', `data-cid="${c.id}"`)}</td>
+            <td class="td-servico-${c.id}">${servicoSelect(s.tipo_atividade || '', s.servico || '')}</td>
+            <td>${selOpts('cliente', _CLIENTE_OPTS, s.cliente || '')}</td>
+            <td>${odomInp('km_ini', s.km_ini)}</td>
+            <td>${odomInp('km_fim', s.km_fim)}</td>
+            <td><input type="number" data-field="km" value="${s.km ?? ''}" min="0" step="0.1" onchange="reembOnChange(this)"${kmCalcAttr(s)}></td>
+            <td>${numInp('pedagio', s.pedagio)}</td>
+            <td>${numInp('estacionamento', s.estacionamento)}</td>
+            <td>${numInp('compra_pecas', s.compra_pecas)}</td>
+            <td>${numInp('outras_despesas', s.outras_despesas)}</td>
+            <td>${txtInp('obs_despesas', s.obs_despesas || '', 160)}</td>
+            <td style="font-size:11px;color:#475569;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(endChegada)}">${escHtml(endChegada)}</td>`;
+        tbody.appendChild(tr);
 
-    datesOrder.forEach(dateStr => {
-        // Linhas dos chamados do dia
-        byDate[dateStr].forEach(c => {
-            const s = _reembGetEntry(c.id);
-            const endChegada = [c.endereco, c.numero, c.bairro, c.cidade].filter(Boolean).join(', ');
-            const hIni = c.hora_partida || '';
-            const hFim = c.hora_termino_ate || '';
-            const tr = document.createElement('tr');
-            tr.dataset.cid        = c.id;
-            tr.dataset.data       = c.data_atendimento || '';
-            tr.dataset.chamado    = c.chamado || c.chamado_cerb || '';
-            tr.dataset.hini       = hIni;
-            tr.dataset.hfim       = hFim;
-            tr.dataset.end_chegada = endChegada;
-            tr.innerHTML = `
-                <td style="white-space:nowrap;font-weight:600;">${escHtml(c.data_atendimento || '')}</td>
-                <td style="font-family:monospace;font-size:12px;white-space:nowrap;">${escHtml(c.chamado || c.chamado_cerb || '—')}</td>
-                <td style="white-space:nowrap;font-size:12px;">${escHtml(hIni)}${hIni && hFim ? ' → ' : ''}${escHtml(hFim)}</td>
-                <td>${selOpts('tipo_atividade', _TIPO_ATIVIDADE_OPTS, s.tipo_atividade || '', `data-cid="${c.id}"`)}</td>
-                <td class="td-servico-${c.id}">${servicoSelect(s.tipo_atividade || '', s.servico || '')}</td>
-                <td>${selOpts('cliente', _CLIENTE_OPTS, s.cliente || '')}</td>
-                <td>${odomInp('km_ini', s.km_ini)}</td>
-                <td>${odomInp('km_fim', s.km_fim)}</td>
-                <td><input type="number" data-field="km" value="${s.km ?? ''}" min="0" step="0.1" onchange="reembOnChange(this)"${kmCalcAttr(s)}></td>
-                <td>${numInp('pedagio', s.pedagio)}</td>
-                <td>${numInp('estacionamento', s.estacionamento)}</td>
-                <td>${numInp('outras_despesas', s.outras_despesas)}</td>
-                <td>${txtInp('obs_despesas', s.obs_despesas || '', 160)}</td>
-                <td style="font-size:11px;color:#475569;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(endChegada)}">${escHtml(endChegada)}</td>`;
-            tbody.appendChild(tr);
-        });
-
-        // Linha VOLTA PARA CASA ao final do dia
-        const sv = _voltaGetDay(dateStr);
-        const clienteOpts = _CLIENTE_OPTS.map(o =>
-            `<option value="${escHtml(o)}"${o===(sv.cliente||'')?' selected':''}>${escHtml(o)}</option>`).join('');
+        // Linha VOLTA PARA CASA imediatamente após o chamado
+        const sv = _voltaGetCid(c.id);
         const voltaTr = document.createElement('tr');
-        voltaTr.dataset.volta = dateStr;
-        voltaTr.dataset.data  = dateStr;
+        voltaTr.dataset.volta       = String(c.id);
+        voltaTr.dataset.data        = c.data_atendimento || '';
+        voltaTr.dataset.hini        = hFim;               // = hora_termino_ate do chamado
+        voltaTr.dataset.hfim        = sv.hfim || '';
+        voltaTr.dataset.end_partida = endChegada;         // local do chamado → partida da volta
+        voltaTr.dataset.end_chegada = ep;                 // casa → chegada da volta
         voltaTr.style.background = '#faf5ff';
         voltaTr.innerHTML = `
-            <td style="white-space:nowrap;font-weight:600;color:#7c3aed;">${escHtml(dateStr)}</td>
+            <td style="white-space:nowrap;font-weight:600;color:#7c3aed;">${escHtml(c.data_atendimento || '')}</td>
             <td style="font-size:11px;color:#7c3aed;white-space:nowrap;">🏠 Volta p/ casa</td>
-            <td></td>
+            <td style="white-space:nowrap;font-size:12px;color:#7c3aed;">${escHtml(hFim)} → <input type="time" data-field="hfim" value="${escHtml(sv.hfim||'')}" onchange="reembVoltaTimeChange(this)" style="font-size:11px;padding:2px 4px;border:1px solid #c4b5fd;border-radius:4px;width:85px;"></td>
             <td><select data-field="tipo_atividade" onchange="reembOnChange(this)" style="min-width:120px;font-size:11px;padding:3px 5px;"><option value="ATIVIDADE_ADM" selected>ATIVIDADE_ADM</option></select></td>
             <td><select data-field="servico" onchange="reembOnChange(this)" style="min-width:150px;font-size:11px;padding:3px 5px;"><option value="VOLTA PARA CASA" selected>VOLTA PARA CASA</option></select></td>
-            <td><select data-field="cliente" onchange="reembOnChange(this)" style="min-width:150px;font-size:11px;padding:3px 5px;"><option value="">— selecionar —</option>${clienteOpts}</select></td>
+            <td><input type="text" data-field="cliente" value="CERB" readonly style="min-width:60px;font-size:11px;padding:3px 5px;background:#f5f3ff;border:1px solid #e9d5ff;border-radius:4px;color:#7c3aed;font-weight:600;"></td>
             <td>${odomInp('km_ini', sv.km_ini)}</td>
             <td>${odomInp('km_fim', sv.km_fim)}</td>
             <td><input type="number" data-field="km" value="${sv.km ?? ''}" min="0" step="0.1" onchange="reembOnChange(this)"${kmCalcAttr(sv)}></td>
             <td>${numInp('pedagio', sv.pedagio)}</td>
             <td>${numInp('estacionamento', sv.estacionamento)}</td>
+            <td>${numInp('compra_pecas', sv.compra_pecas)}</td>
             <td>${numInp('outras_despesas', sv.outras_despesas)}</td>
             <td>${txtInp('obs_despesas', sv.obs_despesas || '', 160)}</td>
-            <td style="font-size:11px;color:#7c3aed;">🏠 Casa</td>`;
+            <td style="font-size:11px;color:#7c3aed;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(ep)}">${escHtml(ep)}</td>`;
         tbody.appendChild(voltaTr);
     });
 
     if (!chamados.length) {
-        tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:20px;">Nenhum chamado encontrado no período.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;color:#94a3b8;padding:20px;">Nenhum chamado encontrado no período.</td></tr>';
     }
 
     atualizarTotaisReembolso();
@@ -5454,15 +5453,22 @@ function _odomSetDay(d, patch) {
         localStorage.setItem(_REEMB_ODOM_KEY, JSON.stringify(all));
     } catch {}
 }
-function _voltaGetDay(d) {
-    try { return (JSON.parse(localStorage.getItem(_REEMB_VOLTA_KEY)||'{}'))[d] || {}; } catch { return {}; }
+function _voltaGetCid(cid) {
+    try { return (JSON.parse(localStorage.getItem(_REEMB_VOLTA_KEY)||'{}'))[String(cid)] || {}; } catch { return {}; }
 }
-function _voltaSetDay(d, patch) {
+function _voltaSetCid(cid, patch) {
     try {
         const all = JSON.parse(localStorage.getItem(_REEMB_VOLTA_KEY)||'{}');
-        all[d] = { ...(all[d]||{}), ...patch };
+        all[String(cid)] = { ...(all[String(cid)]||{}), ...patch };
         localStorage.setItem(_REEMB_VOLTA_KEY, JSON.stringify(all));
     } catch {}
+}
+
+function reembVoltaTimeChange(input) {
+    const tr = input.closest('tr');
+    if (!tr || !tr.dataset.volta) return;
+    tr.dataset.hfim = input.value;
+    _voltaSetCid(tr.dataset.volta, { hfim: input.value });
 }
 
 function reembKmCalc(input) {
@@ -5474,7 +5480,7 @@ function reembKmCalc(input) {
 
     // Salva o campo de odômetro alterado
     if (cid)   _reembSetEntry(cid, { [input.dataset.field]: val });
-    if (volta) _voltaSetDay(volta, { [input.dataset.field]: val });
+    if (volta) _voltaSetCid(volta, { [input.dataset.field]: val });
 
     // Recalcula KM desta linha
     const iniEl = tr.querySelector('[data-field="km_ini"]');
@@ -5487,7 +5493,7 @@ function reembKmCalc(input) {
         const delta = fim - ini;
         if (kmEl) { kmEl.value = delta; kmEl.readOnly = true; kmEl.style.background = '#f0f9ff'; kmEl.title = 'Calculado pelo odômetro'; }
         if (cid)   _reembSetEntry(cid, { km: String(delta) });
-        if (volta) _voltaSetDay(volta, { km: String(delta) });
+        if (volta) _voltaSetCid(volta, { km: String(delta) });
     } else if (ini === null && fim === null) {
         if (kmEl) { kmEl.readOnly = false; kmEl.style.background = ''; kmEl.title = ''; }
     }
@@ -5505,7 +5511,7 @@ function reembKmCalc(input) {
                 const nextCid   = nextTr.dataset.cid;
                 const nextVolta = nextTr.dataset.volta;
                 if (nextCid)   _reembSetEntry(nextCid, { km_ini: val });
-                if (nextVolta) _voltaSetDay(nextVolta, { km_ini: val });
+                if (nextVolta) _voltaSetCid(nextVolta, { km_ini: val });
                 // Recalcula KM da próxima se já tiver odôm.chegada
                 const nextFim = nextTr.querySelector('[data-field="km_fim"]');
                 const nextKm  = nextTr.querySelector('[data-field="km"]');
@@ -5514,7 +5520,7 @@ function reembKmCalc(input) {
                     if (d >= 0) {
                         nextKm.value = d; nextKm.readOnly = true; nextKm.style.background = '#f0f9ff';
                         if (nextCid)   _reembSetEntry(nextCid, { km: String(d) });
-                        if (nextVolta) _voltaSetDay(nextVolta, { km: String(d) });
+                        if (nextVolta) _voltaSetCid(nextVolta, { km: String(d) });
                     }
                 }
             }
@@ -5529,7 +5535,7 @@ function reembOnChange(el) {
     if (!tr) return;
 
     if (tr.dataset.volta) {
-        _voltaSetDay(tr.dataset.volta, { [el.dataset.field]: el.value });
+        _voltaSetCid(tr.dataset.volta, { [el.dataset.field]: el.value });
         atualizarTotaisReembolso();
         return;
     }
@@ -5554,20 +5560,22 @@ function reembOnChange(el) {
 }
 
 function atualizarTotaisReembolso() {
-    let totKm = 0, totPed = 0, totEst = 0, totOut = 0;
+    let totKm = 0, totPed = 0, totEst = 0, totComp = 0, totOut = 0;
     document.querySelectorAll('#corpoReembolso tr').forEach(tr => {
         const n = f => parseFloat(tr.querySelector(`[data-field="${f}"]`)?.value || 0) || 0;
-        totKm  += n('km');
-        totPed += n('pedagio');
-        totEst += n('estacionamento');
-        totOut += n('outras_despesas');
+        totKm   += n('km');
+        totPed  += n('pedagio');
+        totEst  += n('estacionamento');
+        totComp += n('compra_pecas');
+        totOut  += n('outras_despesas');
     });
     const fmt = (v, dec = 1) => v.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
     const set = (id, v, dec) => { const el = document.getElementById(id); if (el) el.textContent = fmt(v, dec); };
-    set('reemb_tot_km',  totKm,  1);
-    set('reemb_tot_ped', totPed, 2);
-    set('reemb_tot_est', totEst, 2);
-    set('reemb_tot_out', totOut, 2);
+    set('reemb_tot_km',   totKm,   1);
+    set('reemb_tot_ped',  totPed,  2);
+    set('reemb_tot_est',  totEst,  2);
+    set('reemb_tot_comp', totComp, 2);
+    set('reemb_tot_out',  totOut,  2);
 }
 
 function exportarReembolsoCSV() {
@@ -5575,11 +5583,22 @@ function exportarReembolsoCSV() {
     if (!tbody) return;
     const ep = (document.getElementById('reemb_end_partida')?.value || '').trim();
 
+    // 21 colunas (D-X). Colunas M, S, T, U são fórmulas no template — exportamos vazio.
+    // D  TIPO_ATIVIDADE   E  CLIENTE         F  SERVICO
+    // G  TIPO_VEICULO     H  ADIANTAMENTO    I  Nº_CHAMADO
+    // J  DATA_CHAMADO     K  HORARIO_INICIO  L  HORARIO_FIM
+    // M  (fórmula)        N  PEDAGIO         O  ESTACIONAMENTO
+    // P  COMPRA_PECAS     Q  OUTRA_DESPESAS  R  KM_RODADO_TEC
+    // S  (fórmula)        T  (fórmula)       U  (fórmula)
+    // V  OBS_DESPESAS     W  END_PARTIDA     X  END_CHEGADA
     const header = [
         'TIPO_ATIVIDADE','CLIENTE','SERVICO','TIPO_VEICULO','ADIANTAMENTO',
         'Nº_CHAMADO','DATA_CHAMADO','HORARIO_INICIO_AT','HORARIO_FIM_AT',
+        '',
         'PEDAGIO','ESTACIONAMENTO','COMPRA_PECAS','OUTRA_DESPESAS_(EXCECAO)',
-        'KM_RODADO_TEC','OBS_DESPESAS_EXTRAS','ENDERECO_PARTIDA','ENDERECO_CHEGADA'
+        'KM_RODADO_TEC',
+        '','','',
+        'OBS_DESPESAS_EXTRAS','ENDERECO_PARTIDA','ENDERECO_CHEGADA'
     ];
 
     const linhas = [header];
@@ -5587,24 +5606,34 @@ function exportarReembolsoCSV() {
     tbody.querySelectorAll('tr[data-cid], tr[data-volta]').forEach(tr => {
         const g = f => (tr.querySelector(`[data-field="${f}"]`)?.value || '').trim();
         const isVolta = !!tr.dataset.volta;
+
+        // Horário de fim da VOLTA: input time ou dataset
+        const voltaHfim = isVolta
+            ? (tr.querySelector('[data-field="hfim"]')?.value || tr.dataset.hfim || '')
+            : '';
+
         linhas.push([
-            g('tipo_atividade'),
-            g('cliente'),
-            g('servico'),
-            'CARRO',
-            '0',
-            isVolta ? '' : (tr.dataset.chamado || ''),
-            isVolta ? tr.dataset.volta : (tr.dataset.data || ''),
-            isVolta ? '' : (tr.dataset.hini || ''),
-            isVolta ? '' : (tr.dataset.hfim || ''),
-            g('pedagio')           || '0',
-            g('estacionamento')    || '0',
-            '0',
-            g('outras_despesas')   || '0',
-            g('km')                || '0',
-            g('obs_despesas'),
-            ep,
-            isVolta ? ep : (tr.dataset.end_chegada || ''),
+            /* D  TIPO_ATIVIDADE    */ isVolta ? 'ATIVIDADE_ADM' : g('tipo_atividade'),
+            /* E  CLIENTE           */ isVolta ? 'CERB'          : g('cliente'),
+            /* F  SERVICO           */ isVolta ? 'VOLTA PARA CASA' : g('servico'),
+            /* G  TIPO_VEICULO      */ 'CARRO',
+            /* H  ADIANTAMENTO      */ '0',
+            /* I  Nº_CHAMADO        */ isVolta ? '' : (tr.dataset.chamado || ''),
+            /* J  DATA_CHAMADO      */ tr.dataset.data || '',
+            /* K  HORARIO_INICIO_AT */ isVolta ? (tr.dataset.hini || '') : (tr.dataset.hini || ''),
+            /* L  HORARIO_FIM_AT    */ isVolta ? voltaHfim : (tr.dataset.hfim || ''),
+            /* M  (fórmula)         */ '',
+            /* N  PEDAGIO           */ g('pedagio')        || '0',
+            /* O  ESTACIONAMENTO    */ g('estacionamento') || '0',
+            /* P  COMPRA_PECAS      */ g('compra_pecas')   || '0',
+            /* Q  OUTRA_DESPESAS    */ g('outras_despesas')|| '0',
+            /* R  KM_RODADO_TEC     */ g('km')             || '0',
+            /* S  (fórmula)         */ '',
+            /* T  (fórmula)         */ '',
+            /* U  (fórmula)         */ '',
+            /* V  OBS_DESPESAS      */ g('obs_despesas'),
+            /* W  ENDERECO_PARTIDA  */ isVolta ? (tr.dataset.end_partida || '') : (tr.dataset.end_partida || ep),
+            /* X  ENDERECO_CHEGADA  */ isVolta ? (tr.dataset.end_chegada || ep) : (tr.dataset.end_chegada || ''),
         ]);
     });
 
