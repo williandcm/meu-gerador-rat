@@ -971,18 +971,6 @@ create table estoque (
                     <div id="reemb_status" style="font-size:12px;color:#64748b;margin-top:8px;min-height:16px;"></div>
                 </div>
 
-                <!-- Calculadora de KM por odômetro -->
-                <div class="card" id="reembolsoOdomCard" style="display:none;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <span style="font-size:20px;">🚗</span>
-                            <strong style="font-size:14px;color:#1e293b;">Calculadora de KM — Odômetro por dia</strong>
-                        </div>
-                        <button onclick="toggleOdomCalc()" id="btnOdomToggle" style="background:none;border:1px solid #cbd5e1;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;color:#64748b;">▼ Esconder</button>
-                    </div>
-                    <div id="odomCalcBody" style="margin-top:14px;"></div>
-                </div>
-
                 <!-- Tabela de chamados -->
                 <div class="card" id="reembolsoCard" style="display:none;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
@@ -999,6 +987,8 @@ create table estoque (
                                     <th onclick="reembSortBy('tipo_atividade')" style="cursor:pointer;user-select:none;">Tipo Atividade <span id="rsort-tipo_atividade"></span></th>
                                     <th onclick="reembSortBy('servico')" style="cursor:pointer;user-select:none;">Serviço <span id="rsort-servico"></span></th>
                                     <th onclick="reembSortBy('cliente')" style="cursor:pointer;user-select:none;">Cliente <span id="rsort-cliente"></span></th>
+                                    <th style="min-width:85px;color:#64748b;font-size:11px;">Odôm.Saída</th>
+                                    <th style="min-width:95px;color:#64748b;font-size:11px;">Odôm.Chegada</th>
                                     <th onclick="reembSortBy('km')" style="cursor:pointer;user-select:none;min-width:70px;">KM <span id="rsort-km"></span></th>
                                     <th onclick="reembSortBy('pedagio')" style="cursor:pointer;user-select:none;min-width:80px;">Pedágio R$ <span id="rsort-pedagio"></span></th>
                                     <th onclick="reembSortBy('estacionamento')" style="cursor:pointer;user-select:none;min-width:80px;">Estacion. R$ <span id="rsort-estacionamento"></span></th>
@@ -1010,7 +1000,7 @@ create table estoque (
                             <tbody id="corpoReembolso"></tbody>
                             <tfoot>
                                 <tr style="background:#f8fafc;font-weight:700;font-size:13px;">
-                                    <td colspan="6" style="text-align:right;color:#64748b;padding-right:12px;">TOTAIS DA SEMANA</td>
+                                    <td colspan="8" style="text-align:right;color:#64748b;padding-right:12px;">TOTAIS DA SEMANA</td>
                                     <td id="reemb_tot_km" style="font-family:monospace;color:#2563eb;"></td>
                                     <td id="reemb_tot_ped" style="font-family:monospace;color:#dc2626;"></td>
                                     <td id="reemb_tot_est" style="font-family:monospace;color:#dc2626;"></td>
@@ -5306,8 +5296,6 @@ function renderizarTabelaReembolso(chamados, ini, fim) {
     card.style.display = '';
     tbody.innerHTML = '';
 
-    const ep = document.getElementById('reemb_end_partida')?.value || '';
-
     const selOpts = (field, opts, val, extra='') =>
         `<select data-field="${field}" onchange="reembOnChange(this)" style="min-width:150px;font-size:11px;padding:3px 5px;" ${extra}><option value="">— selecionar —</option>` +
         opts.map(o => `<option value="${escHtml(o)}"${o === val ? ' selected' : ''}>${escHtml(o)}</option>`).join('') +
@@ -5316,50 +5304,89 @@ function renderizarTabelaReembolso(chamados, ini, fim) {
     const numInp = (field, val) =>
         `<input type="number" data-field="${field}" value="${escHtml(String(val ?? ''))}" min="0" step="0.01" onchange="reembOnChange(this)" style="width:72px;font-size:12px;padding:4px 5px;text-align:right;">`;
 
+    const odomInp = (field, val) =>
+        `<input type="number" data-field="${field}" value="${val != null ? val : ''}" min="0" step="1" onchange="reembKmCalc(this)" style="width:82px;font-size:12px;padding:4px 5px;text-align:right;" placeholder="km">`;
+
     const txtInp = (field, val, w) =>
         `<input type="text" data-field="${field}" value="${escHtml(val ?? '')}" onchange="reembOnChange(this)" style="width:${w || 140}px;font-size:12px;padding:4px 5px;">`;
 
-    const servicoSelect = (tipoAtiv, savedServico) => {
-        const opts = _SERVICO_OPTS[tipoAtiv] || [];
-        return selOpts('servico', opts, savedServico || '');
-    };
+    const servicoSelect = (tipoAtiv, savedServico) => selOpts('servico', _SERVICO_OPTS[tipoAtiv] || [], savedServico || '');
 
+    const kmCalcAttr = (s) => (s.km_ini != null && s.km_fim != null) ? ' readonly title="Calculado pelo odômetro" style="width:72px;font-size:12px;padding:4px 5px;text-align:right;background:#f0f9ff;"' : ' style="width:72px;font-size:12px;padding:4px 5px;text-align:right;"';
+
+    // Agrupar por data (preserva ordem de carregamento)
+    const byDate = {}, datesOrder = [];
     chamados.forEach(c => {
-        const s = _reembGetEntry(c.id);
-        const endChegada = [c.endereco, c.numero, c.bairro, c.cidade].filter(Boolean).join(', ');
-        const hIni = c.hora_partida || '';
-        const hFim = c.hora_termino_ate || '';
-        const tr = document.createElement('tr');
-        tr.dataset.cid = c.id;
-        tr.dataset.data = c.data_atendimento || '';
-        tr.dataset.chamado = c.chamado || c.chamado_cerb || '';
-        tr.dataset.hini = hIni;
-        tr.dataset.hfim = hFim;
-        tr.dataset.end_chegada = endChegada;
-        tr.innerHTML = `
-            <td style="white-space:nowrap;font-weight:600;">${escHtml(c.data_atendimento || '')}</td>
-            <td style="font-family:monospace;font-size:12px;white-space:nowrap;">${escHtml(c.chamado || c.chamado_cerb || '—')}</td>
-            <td style="white-space:nowrap;font-size:12px;">${escHtml(hIni)}${hIni && hFim ? ' → ' : ''}${escHtml(hFim)}</td>
-            <td>${selOpts('tipo_atividade', _TIPO_ATIVIDADE_OPTS, s.tipo_atividade || '', `data-cid="${c.id}"`)}</td>
-            <td class="td-servico-${c.id}">${servicoSelect(s.tipo_atividade || '', s.servico || '')}</td>
-            <td>${selOpts('cliente', _CLIENTE_OPTS, s.cliente || '')}</td>
-            <td>${numInp('km', s.km)}</td>
-            <td>${numInp('pedagio', s.pedagio)}</td>
-            <td>${numInp('estacionamento', s.estacionamento)}</td>
-            <td>${numInp('outras_despesas', s.outras_despesas)}</td>
-            <td>${txtInp('obs_despesas', s.obs_despesas || '', 160)}</td>
-            <td style="font-size:11px;color:#475569;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(endChegada)}">${escHtml(endChegada)}</td>`;
-        tbody.appendChild(tr);
+        const d = c.data_atendimento || '';
+        if (!byDate[d]) { byDate[d] = []; datesOrder.push(d); }
+        byDate[d].push(c);
+    });
+
+    datesOrder.forEach(dateStr => {
+        // Linhas dos chamados do dia
+        byDate[dateStr].forEach(c => {
+            const s = _reembGetEntry(c.id);
+            const endChegada = [c.endereco, c.numero, c.bairro, c.cidade].filter(Boolean).join(', ');
+            const hIni = c.hora_partida || '';
+            const hFim = c.hora_termino_ate || '';
+            const tr = document.createElement('tr');
+            tr.dataset.cid        = c.id;
+            tr.dataset.data       = c.data_atendimento || '';
+            tr.dataset.chamado    = c.chamado || c.chamado_cerb || '';
+            tr.dataset.hini       = hIni;
+            tr.dataset.hfim       = hFim;
+            tr.dataset.end_chegada = endChegada;
+            tr.innerHTML = `
+                <td style="white-space:nowrap;font-weight:600;">${escHtml(c.data_atendimento || '')}</td>
+                <td style="font-family:monospace;font-size:12px;white-space:nowrap;">${escHtml(c.chamado || c.chamado_cerb || '—')}</td>
+                <td style="white-space:nowrap;font-size:12px;">${escHtml(hIni)}${hIni && hFim ? ' → ' : ''}${escHtml(hFim)}</td>
+                <td>${selOpts('tipo_atividade', _TIPO_ATIVIDADE_OPTS, s.tipo_atividade || '', `data-cid="${c.id}"`)}</td>
+                <td class="td-servico-${c.id}">${servicoSelect(s.tipo_atividade || '', s.servico || '')}</td>
+                <td>${selOpts('cliente', _CLIENTE_OPTS, s.cliente || '')}</td>
+                <td>${odomInp('km_ini', s.km_ini)}</td>
+                <td>${odomInp('km_fim', s.km_fim)}</td>
+                <td><input type="number" data-field="km" value="${s.km ?? ''}" min="0" step="0.1" onchange="reembOnChange(this)"${kmCalcAttr(s)}></td>
+                <td>${numInp('pedagio', s.pedagio)}</td>
+                <td>${numInp('estacionamento', s.estacionamento)}</td>
+                <td>${numInp('outras_despesas', s.outras_despesas)}</td>
+                <td>${txtInp('obs_despesas', s.obs_despesas || '', 160)}</td>
+                <td style="font-size:11px;color:#475569;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(endChegada)}">${escHtml(endChegada)}</td>`;
+            tbody.appendChild(tr);
+        });
+
+        // Linha VOLTA PARA CASA ao final do dia
+        const sv = _voltaGetDay(dateStr);
+        const clienteOpts = _CLIENTE_OPTS.map(o =>
+            `<option value="${escHtml(o)}"${o===(sv.cliente||'')?' selected':''}>${escHtml(o)}</option>`).join('');
+        const voltaTr = document.createElement('tr');
+        voltaTr.dataset.volta = dateStr;
+        voltaTr.dataset.data  = dateStr;
+        voltaTr.style.background = '#faf5ff';
+        voltaTr.innerHTML = `
+            <td style="white-space:nowrap;font-weight:600;color:#7c3aed;">${escHtml(dateStr)}</td>
+            <td style="font-size:11px;color:#7c3aed;white-space:nowrap;">🏠 Volta p/ casa</td>
+            <td></td>
+            <td><select data-field="tipo_atividade" onchange="reembOnChange(this)" style="min-width:120px;font-size:11px;padding:3px 5px;"><option value="ATIVIDADE_ADM" selected>ATIVIDADE_ADM</option></select></td>
+            <td><select data-field="servico" onchange="reembOnChange(this)" style="min-width:150px;font-size:11px;padding:3px 5px;"><option value="VOLTA PARA CASA" selected>VOLTA PARA CASA</option></select></td>
+            <td><select data-field="cliente" onchange="reembOnChange(this)" style="min-width:150px;font-size:11px;padding:3px 5px;"><option value="">— selecionar —</option>${clienteOpts}</select></td>
+            <td>${odomInp('km_ini', sv.km_ini)}</td>
+            <td>${odomInp('km_fim', sv.km_fim)}</td>
+            <td><input type="number" data-field="km" value="${sv.km ?? ''}" min="0" step="0.1" onchange="reembOnChange(this)"${kmCalcAttr(sv)}></td>
+            <td>${numInp('pedagio', sv.pedagio)}</td>
+            <td>${numInp('estacionamento', sv.estacionamento)}</td>
+            <td>${numInp('outras_despesas', sv.outras_despesas)}</td>
+            <td>${txtInp('obs_despesas', sv.obs_despesas || '', 160)}</td>
+            <td style="font-size:11px;color:#7c3aed;">🏠 Casa</td>`;
+        tbody.appendChild(voltaTr);
     });
 
     if (!chamados.length) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#94a3b8;padding:20px;">Nenhum chamado encontrado no período.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;color:#94a3b8;padding:20px;">Nenhum chamado encontrado no período.</td></tr>';
     }
 
     atualizarTotaisReembolso();
     _setupStaticColDrag('tabelaReembolso', false);
     _initStickyScrollbar('reembolsoTableContainer');
-    renderizarCalculadoraKM(chamados);
 
     const lbl = document.getElementById('reembSemanaLabel');
     if (lbl) {
@@ -5438,190 +5465,63 @@ function _voltaSetDay(d, patch) {
     } catch {}
 }
 
-function toggleOdomCalc() {
-    const body = document.getElementById('odomCalcBody');
-    const btn  = document.getElementById('btnOdomToggle');
-    if (!body) return;
-    const hidden = body.style.display === 'none';
-    body.style.display = hidden ? '' : 'none';
-    if (btn) btn.textContent = hidden ? '▼ Esconder' : '▶ Mostrar';
-}
+function reembKmCalc(input) {
+    const tr    = input.closest('tr');
+    if (!tr) return;
+    const cid   = tr.dataset.cid;
+    const volta = tr.dataset.volta;
+    const val   = input.value !== '' ? parseFloat(input.value) : null;
 
-function renderizarCalculadoraKM(chamados) {
-    const card = document.getElementById('reembolsoOdomCard');
-    const body = document.getElementById('odomCalcBody');
-    if (!card || !body) return;
-    if (!chamados.length) { card.style.display = 'none'; return; }
-    card.style.display = '';
+    // Salva o campo de odômetro alterado
+    if (cid)   _reembSetEntry(cid, { [input.dataset.field]: val });
+    if (volta) _voltaSetDay(volta, { [input.dataset.field]: val });
 
-    // Agrupar por data (ordem preservada = já vem ordenada por data)
-    const byDate = {};
-    const datesOrder = [];
-    chamados.forEach(c => {
-        const d = c.data_atendimento || '';
-        if (!byDate[d]) { byDate[d] = []; datesOrder.push(d); }
-        byDate[d].push(c);
-    });
+    // Recalcula KM desta linha
+    const iniEl = tr.querySelector('[data-field="km_ini"]');
+    const fimEl = tr.querySelector('[data-field="km_fim"]');
+    const kmEl  = tr.querySelector('[data-field="km"]');
+    const ini   = iniEl && iniEl.value !== '' ? parseFloat(iniEl.value) : null;
+    const fim   = fimEl && fimEl.value !== '' ? parseFloat(fimEl.value) : null;
 
-    const rowSt  = 'display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f1f5f9;flex-wrap:wrap;';
-    const inpSt  = 'width:115px;font-size:13px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;text-align:right;';
-    const lblSt  = 'font-size:13px;color:#334155;flex:1;min-width:200px;';
-    const deltaSt = 'font-size:13px;font-weight:700;color:#2563eb;min-width:80px;';
-
-    body.innerHTML = datesOrder.map(dateStr => {
-        const odom = _odomGetDay(dateStr);
-        const chs  = byDate[dateStr];
-        const [dd, mm, yyyy] = dateStr.split('/');
-        const wd = new Date(`${yyyy}-${mm}-${dd}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long' });
-
-        const chamadoRows = chs.map(c => {
-            const chegVal = (odom.chegadas||{})[c.id] ?? '';
-            const cham  = c.chamado || c.chamado_cerb || '—';
-            const local = [c.bairro, c.cidade].filter(Boolean).join(', ');
-            return `<div style="${rowSt}">
-                <span style="${lblSt}">📍 <strong>${escHtml(cham)}</strong>${local ? ` <span style="color:#94a3b8;font-size:12px;">· ${escHtml(local)}</span>` : ''}</span>
-                <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#64748b;">
-                    Odômetro: <input type="number" min="0" step="1" style="${inpSt}" data-dtype="chegada" data-date="${escHtml(dateStr)}" data-cid="${c.id}" value="${chegVal}" onchange="odomChange(this)" placeholder="km">
-                </label>
-                <span style="${deltaSt}" id="odom-delta-${c.id}">—</span>
-            </div>`;
-        }).join('');
-
-        const voltaKey = dateStr.replace(/\//g, '_');
-        return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:12px;">
-            <div style="font-weight:700;font-size:13px;color:#1e293b;margin-bottom:8px;text-transform:capitalize;">📅 ${escHtml(wd)}, ${escHtml(dateStr)}</div>
-            <div style="${rowSt}">
-                <span style="${lblSt}">🏠 Partida de casa</span>
-                <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#64748b;">
-                    Odômetro: <input type="number" min="0" step="1" style="${inpSt}" data-dtype="partida" data-date="${escHtml(dateStr)}" value="${odom.partida??''}" onchange="odomChange(this)" placeholder="km">
-                </label>
-                <span style="${deltaSt}"></span>
-            </div>
-            ${chamadoRows}
-            <div style="${rowSt}background:#faf5ff;">
-                <span style="${lblSt};color:#7c3aed;">🏠 Retorno para casa <span style="font-size:11px;font-weight:400;">(→ cria linha VOLTA PARA CASA)</span></span>
-                <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#64748b;">
-                    Odômetro: <input type="number" min="0" step="1" style="${inpSt}" data-dtype="retorno" data-date="${escHtml(dateStr)}" value="${odom.retorno??''}" onchange="odomChange(this)" placeholder="km">
-                </label>
-                <span style="${deltaSt};color:#7c3aed;" id="odom-delta-volta-${voltaKey}">—</span>
-            </div>
-        </div>`;
-    }).join('');
-
-    // Recalcula todos os dias com dados já salvos
-    datesOrder.forEach(d => _odomRecalcDay(d));
-}
-
-function odomChange(input) {
-    const dateStr = input.dataset.date;
-    const dtype   = input.dataset.dtype;
-    const val     = input.value !== '' ? parseFloat(input.value) : null;
-
-    if (dtype === 'partida') {
-        _odomSetDay(dateStr, { partida: val });
-    } else if (dtype === 'retorno') {
-        _odomSetDay(dateStr, { retorno: val });
-    } else if (dtype === 'chegada') {
-        const odom = _odomGetDay(dateStr);
-        const chegadas = { ...(odom.chegadas||{}) };
-        chegadas[input.dataset.cid] = val;
-        _odomSetDay(dateStr, { chegadas });
+    if (ini !== null && fim !== null && fim >= ini) {
+        const delta = fim - ini;
+        if (kmEl) { kmEl.value = delta; kmEl.readOnly = true; kmEl.style.background = '#f0f9ff'; kmEl.title = 'Calculado pelo odômetro'; }
+        if (cid)   _reembSetEntry(cid, { km: String(delta) });
+        if (volta) _voltaSetDay(volta, { km: String(delta) });
+    } else if (ini === null && fim === null) {
+        if (kmEl) { kmEl.readOnly = false; kmEl.style.background = ''; kmEl.title = ''; }
     }
 
-    _odomRecalcDay(dateStr);
-}
-
-function _odomRecalcDay(dateStr) {
-    const odom    = _odomGetDay(dateStr);
-    const chegadas = odom.chegadas || {};
-    const partida  = odom.partida  != null ? parseFloat(odom.partida)  : null;
-    const retorno  = odom.retorno  != null ? parseFloat(odom.retorno)  : null;
-
-    // Pega TRs da tabela na ordem atual (respeita sort)
-    const tbody = document.getElementById('corpoReembolso');
-    const trs   = tbody
-        ? Array.from(tbody.querySelectorAll('tr[data-cid]')).filter(tr => tr.dataset.data === dateStr)
-        : [];
-
-    let prev = partida;
-    trs.forEach(tr => {
-        const cid   = tr.dataset.cid;
-        const chVal = chegadas[cid] != null ? parseFloat(chegadas[cid]) : null;
-        const delta = (chVal !== null && prev !== null && chVal >= prev) ? chVal - prev : null;
-
-        const deltaEl = document.getElementById('odom-delta-' + cid);
-        if (deltaEl) deltaEl.textContent = delta !== null ? delta + ' km' : '—';
-
-        const kmInp = tr.querySelector('[data-field="km"]');
-        if (kmInp && delta !== null) {
-            kmInp.value = delta;
-            _reembSetEntry(cid, { km: String(delta) });
+    // Cadeia: ao preencher Odôm.Chegada, auto-preenche Odôm.Saída da próxima linha
+    if (input.dataset.field === 'km_fim' && input.value !== '') {
+        const tbody  = document.getElementById('corpoReembolso');
+        const allTrs = tbody ? Array.from(tbody.querySelectorAll('tr[data-cid], tr[data-volta]')) : [];
+        const idx    = allTrs.indexOf(tr);
+        if (idx >= 0 && idx < allTrs.length - 1) {
+            const nextTr  = allTrs[idx + 1];
+            const nextIni = nextTr.querySelector('[data-field="km_ini"]');
+            if (nextIni && nextIni.value === '') {
+                nextIni.value = input.value;
+                const nextCid   = nextTr.dataset.cid;
+                const nextVolta = nextTr.dataset.volta;
+                if (nextCid)   _reembSetEntry(nextCid, { km_ini: val });
+                if (nextVolta) _voltaSetDay(nextVolta, { km_ini: val });
+                // Recalcula KM da próxima se já tiver odôm.chegada
+                const nextFim = nextTr.querySelector('[data-field="km_fim"]');
+                const nextKm  = nextTr.querySelector('[data-field="km"]');
+                if (nextFim && nextFim.value !== '' && nextKm && val !== null) {
+                    const d = parseFloat(nextFim.value) - val;
+                    if (d >= 0) {
+                        nextKm.value = d; nextKm.readOnly = true; nextKm.style.background = '#f0f9ff';
+                        if (nextCid)   _reembSetEntry(nextCid, { km: String(d) });
+                        if (nextVolta) _voltaSetDay(nextVolta, { km: String(d) });
+                    }
+                }
+            }
         }
-
-        if (chVal !== null) prev = chVal;
-    });
-
-    // Retorno para casa
-    const voltaDelta   = (retorno !== null && prev !== null && retorno >= prev) ? retorno - prev : null;
-    const voltaKey     = dateStr.replace(/\//g, '_');
-    const voltaDeltaEl = document.getElementById('odom-delta-volta-' + voltaKey);
-    if (voltaDeltaEl) voltaDeltaEl.textContent = voltaDelta !== null ? voltaDelta + ' km' : '—';
-
-    _atualizarVoltaRow(dateStr, voltaDelta);
-    atualizarTotaisReembolso();
-}
-
-function _atualizarVoltaRow(dateStr, kmVolta) {
-    const tbody = document.getElementById('corpoReembolso');
-    if (!tbody) return;
-
-    let voltaTr = null;
-    tbody.querySelectorAll('tr[data-volta]').forEach(tr => {
-        if (tr.dataset.volta === dateStr) voltaTr = tr;
-    });
-
-    if (voltaTr && (kmVolta === null || kmVolta <= 0)) { voltaTr.remove(); return; }
-    if (kmVolta === null || kmVolta <= 0) return;
-
-    const stored = _voltaGetDay(dateStr);
-    const clienteOpts = _CLIENTE_OPTS.map(o =>
-        `<option value="${escHtml(o)}"${o===(stored.cliente||'')?' selected':''}>${escHtml(o)}</option>`).join('');
-    const numInp = (field, val) =>
-        `<input type="number" data-field="${field}" value="${val??''}" min="0" step="0.01" onchange="reembOnChange(this)" style="width:72px;font-size:12px;padding:4px 5px;text-align:right;">`;
-
-    const rowHtml = `
-        <td style="white-space:nowrap;font-weight:600;color:#7c3aed;">${escHtml(dateStr)}</td>
-        <td style="font-size:11px;color:#7c3aed;white-space:nowrap;">🏠 Volta p/ casa</td>
-        <td></td>
-        <td><select data-field="tipo_atividade" onchange="reembOnChange(this)" style="min-width:120px;font-size:11px;padding:3px 5px;"><option value="ATIVIDADE_ADM" selected>ATIVIDADE_ADM</option></select></td>
-        <td><select data-field="servico" onchange="reembOnChange(this)" style="min-width:150px;font-size:11px;padding:3px 5px;"><option value="VOLTA PARA CASA" selected>VOLTA PARA CASA</option></select></td>
-        <td><select data-field="cliente" onchange="reembOnChange(this)" style="min-width:150px;font-size:11px;padding:3px 5px;"><option value="">— selecionar —</option>${clienteOpts}</select></td>
-        <td><input type="number" data-field="km" value="${kmVolta}" min="0" step="0.1" onchange="reembOnChange(this)" style="width:72px;font-size:12px;padding:4px 5px;text-align:right;" readonly title="Calculado pelo odômetro"></td>
-        <td>${numInp('pedagio',        stored.pedagio)}</td>
-        <td>${numInp('estacionamento', stored.estacionamento)}</td>
-        <td>${numInp('outras_despesas',stored.outras_despesas)}</td>
-        <td><input type="text" data-field="obs_despesas" value="${escHtml(stored.obs_despesas||'')}" onchange="reembOnChange(this)" style="width:140px;font-size:12px;padding:4px 5px;"></td>
-        <td style="font-size:11px;color:#7c3aed;">🏠 Casa</td>`;
-
-    if (!voltaTr) {
-        voltaTr = document.createElement('tr');
-        voltaTr.dataset.volta = dateStr;
-        voltaTr.dataset.data  = dateStr;
-        voltaTr.style.background = '#faf5ff';
-
-        // Insere após o último TR desta data (chamado ou outro volta)
-        const toISO = s => { const [d,m,y]=(s||'').split('/'); return y?`${y}${m}${d}`:''; };
-        const dateISO = toISO(dateStr);
-        const allRows = Array.from(tbody.querySelectorAll('tr'));
-        let lastTarget = null;
-        allRows.forEach(tr => {
-            if (toISO(tr.dataset.data||tr.dataset.volta||'') <= dateISO) lastTarget = tr;
-        });
-        if (lastTarget && lastTarget.nextSibling) tbody.insertBefore(voltaTr, lastTarget.nextSibling);
-        else tbody.appendChild(voltaTr);
     }
 
-    voltaTr.innerHTML = rowHtml;
+    atualizarTotaisReembolso();
 }
 
 function reembOnChange(el) {
