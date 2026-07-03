@@ -5280,7 +5280,9 @@ async function carregarSemanaReembolso() {
             return dt >= iniDate && dt <= fimDate;
         }).sort((a, b) => {
             const toISO = s => { const [d,m,y] = (s||'').split('/'); return y ? `${y}${m}${d}` : ''; };
-            return toISO(a.data_atendimento).localeCompare(toISO(b.data_atendimento));
+            const dateCmp = toISO(a.data_atendimento).localeCompare(toISO(b.data_atendimento));
+            if (dateCmp !== 0) return dateCmp;
+            return (a.hora_partida || '').localeCompare(b.hora_partida || '');
         });
 
         renderizarTabelaReembolso(filtrados, ini, fim);
