@@ -952,19 +952,9 @@ create table estoque (
                             <input type="text" id="reemb_end_partida" placeholder="Ex: RUA ORLANDO SIGNORELLI, 425 - JARDIM ADELAIDE - HORTOLÂNDIA, SP" style="width:100%;box-sizing:border-box;" oninput="_reembSaveConfig()">
                         </div>
                     </div>
-                    <div style="margin-top:10px;">
-                        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Template da Empresa (.xlsx)</label>
-                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                            <label style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:#2563eb;color:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">
-                                📁 Selecionar arquivo
-                                <input type="file" accept=".xlsx" style="display:none;" onchange="uploadTemplateReembolso(this)">
-                            </label>
-                            <span id="reemb_template_status"></span>
-                        </div>
-                    </div>
                     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;">
                         <div style="min-width:150px;">
-                            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">CPF <span style="color:#94a3b8;font-weight:400;">(fallback s/ template)</span></label>
+                            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">CPF</label>
                             <input type="text" id="reemb_cpf" placeholder="000.000.000-00" style="width:100%;box-sizing:border-box;" oninput="_reembSaveConfig()">
                         </div>
                         <div style="min-width:120px;">
@@ -5188,43 +5178,7 @@ const _REEMB_KEY          = 'reemb_dados_v1';
 const _REEMB_CFG          = 'reemb_config_v1';
 const _REEMB_ODOM_KEY     = 'reemb_odom_v1';
 const _REEMB_VOLTA_KEY    = 'reemb_volta_v1';
-const _REEMB_TEMPLATE_KEY = 'reemb_template_v1';
 let _reembChamadosCache = [];
-
-function uploadTemplateReembolso(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const statusEl = document.getElementById('reemb_template_status');
-    if (statusEl) statusEl.innerHTML = '<span style="color:#2563eb;">⏳ Salvando...</span>';
-    const reader = new FileReader();
-    reader.onload = e => {
-        try {
-            const uint8 = new Uint8Array(e.target.result);
-            let bin = '';
-            for (let i = 0; i < uint8.byteLength; i++) bin += String.fromCharCode(uint8[i]);
-            localStorage.setItem(_REEMB_TEMPLATE_KEY, JSON.stringify({
-                name: file.name,
-                date: new Date().toLocaleDateString('pt-BR'),
-                data: btoa(bin)
-            }));
-            _reembUpdateTemplateStatus();
-        } catch (err) {
-            if (statusEl) statusEl.innerHTML = `<span style="color:#dc2626;">Erro: ${err.message}</span>`;
-        }
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-function _reembUpdateTemplateStatus() {
-    const el = document.getElementById('reemb_template_status');
-    if (!el) return;
-    try {
-        const t = JSON.parse(localStorage.getItem(_REEMB_TEMPLATE_KEY) || 'null');
-        el.innerHTML = t
-            ? `<span style="color:#16a34a;font-size:12px;">✓ <strong>${t.name}</strong> (salvo em ${t.date})</span>`
-            : '<span style="color:#94a3b8;font-size:12px;">Nenhum template salvo — o export usará XLSX simples</span>';
-    } catch { el.innerHTML = ''; }
-}
 
 const _TIPO_ATIVIDADE_OPTS = ['ATENDIMENTO', 'ATIVIDADE_ADM'];
 
@@ -5316,7 +5270,6 @@ function iniciarReembolso() {
     restore('reemb_cargo',   'cargo');
     restore('reemb_nome',    'nome');
     restore('reemb_km_rate', 'km_rate');
-    _reembUpdateTemplateStatus();
 }
 
 function moverSemanaReembolso(dias) {
@@ -5667,119 +5620,7 @@ function exportarReembolsoXLSX() {
     }
     const tbody = document.getElementById('corpoReembolso');
     if (!tbody) return;
-
-    // Se tem template salvo, usa ele
-    try {
-        const tmpl = JSON.parse(localStorage.getItem(_REEMB_TEMPLATE_KEY) || 'null');
-        if (tmpl && tmpl.data) { _exportarComTemplate(tmpl.data); return; }
-    } catch {}
-    // Sem template: gera XLSX standalone
     _exportarXLSXStandalone(tbody);
-}
-
-function _exportarComTemplate(b64) {
-    const tbody = document.getElementById('corpoReembolso');
-    if (!tbody) return;
-
-    let wb;
-    try {
-        wb = XLSX.read(b64, {
-            type: 'base64',
-            cellFormula: true,
-            cellNF: true,
-            cellStyles: false,   // evita corrupção de estilos complexos
-            sheetStubs: false,
-            raw: false
-        });
-    } catch (e) {
-        console.warn('Erro ao ler template, gerando XLSX standalone:', e);
-        _exportarXLSXStandalone(tbody);
-        return;
-    }
-
-    const sheetName = wb.SheetNames.find(n => /atendimento/i.test(n)) || wb.SheetNames[0];
-    const ws = wb.Sheets[sheetName];
-    const ep = (document.getElementById('reemb_end_partida')?.value || '').trim();
-
-    const dateToXl = ddmmyyyy => {
-        if (!ddmmyyyy) return null;
-        const [d, m, y] = ddmmyyyy.split('/');
-        if (!y) return null;
-        return Math.floor(new Date(+y, +m - 1, +d).getTime() / 86400000) + 25569;
-    };
-    const timeToXl = hhmm => {
-        if (!hhmm) return null;
-        const parts = hhmm.split(':');
-        return (+parts[0] * 60 + (+parts[1] || 0)) / 1440;
-    };
-
-    // Colunas que escrevemos; A-C, M, S, T, U são fórmulas do template — não tocamos
-    const WRITE_COLS = ['D','E','F','G','H','I','J','K','L','N','O','P','Q','R','V','W','X'];
-
-    // Sobrescreve células antigas com vazio (não deleta, para não quebrar tabelas Excel)
-    for (let r = 2; r <= 300; r++) {
-        WRITE_COLS.forEach(c => {
-            const addr = c + r;
-            if (ws[addr]) ws[addr] = { v: '', t: 's' };
-        });
-    }
-
-    let row = 2;
-    tbody.querySelectorAll('tr[data-cid], tr[data-volta]').forEach(tr => {
-        const g = f => (tr.querySelector(`[data-field="${f}"]`)?.value || '').trim();
-        const isVolta = !!tr.dataset.volta;
-        const voltaHfim = isVolta
-            ? (tr.querySelector('[data-field="hfim"]')?.value || tr.dataset.hfim || '') : '';
-
-        const dateVal = dateToXl(tr.dataset.data || '');
-        const hIni    = tr.dataset.hini || '';
-        const hFim    = isVolta ? voltaHfim : (tr.dataset.hfim || '');
-        const hIniVal = timeToXl(hIni);
-        const hFimVal = timeToXl(hFim);
-
-        const set = (col, v, t, z) => {
-            ws[col + row] = Object.assign({ v: v ?? '', t: t || 's' }, z ? { z } : {});
-        };
-
-        set('D', isVolta ? 'ATIVIDADE_ADM'  : g('tipo_atividade'));
-        set('E', isVolta ? 'CERB'            : g('cliente'));
-        set('F', isVolta ? 'VOLTA PARA CASA' : g('servico'));
-        set('G', 'CARRO');
-        set('H', 0, 'n', '"R$"#,##0.00');
-        set('I', isVolta ? '' : (tr.dataset.chamado || ''));
-        if (dateVal  !== null) set('J', dateVal,  'n', 'dd/mm/yyyy');
-        if (hIniVal  !== null) set('K', hIniVal,  'n', 'hh:mm');
-        if (hFimVal  !== null) set('L', hFimVal,  'n', 'hh:mm');
-        set('N', parseFloat(g('pedagio'))        || 0, 'n', '#,##0.00');
-        set('O', parseFloat(g('estacionamento')) || 0, 'n', '#,##0.00');
-        set('P', parseFloat(g('compra_pecas'))   || 0, 'n', '#,##0.00');
-        set('Q', parseFloat(g('outras_despesas'))|| 0, 'n', '#,##0.00');
-        set('R', parseFloat(g('km'))             || 0, 'n', '#,##0.0');
-        set('V', g('obs_despesas'));
-        set('W', isVolta ? (tr.dataset.end_partida || '') : (tr.dataset.end_partida || ep));
-        set('X', isVolta ? (tr.dataset.end_chegada || ep) : (tr.dataset.end_chegada || ''));
-        row++;
-    });
-
-    // Expande o range se necessário
-    try {
-        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:X1');
-        if (row - 1 > range.e.r) { range.e.r = row - 1; ws['!ref'] = XLSX.utils.encode_range(range); }
-    } catch (_) {}
-
-    const semIni = (document.getElementById('reemb_ini')?.value || '').replace(/-/g, '');
-    try {
-        // Usa Blob em vez de writeFile para evitar problemas com bookSST
-        const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array', bookSST: false, compression: true });
-        const blob = new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `reembolso_${semIni}.xlsx`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
-    } catch (e) {
-        console.warn('Erro ao escrever com template, gerando XLSX standalone:', e);
-        _exportarXLSXStandalone(tbody);
-    }
 }
 
 function _exportarXLSXStandalone(tbody) {
