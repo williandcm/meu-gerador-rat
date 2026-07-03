@@ -9,6 +9,7 @@
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js" integrity="sha384-lrb5efVIYR2lZw+OsuztHZzP9wpGNrhui+0VlpiHb/iPcZSCDT3CeETsL9EMQ8ih" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Módulo estoque em arquivo separado — falha isolada não afeta o sistema -->
     <link rel="stylesheet" href="estoque.css" onerror="console.warn('[estoque] CSS não carregado')">
     <style>
@@ -951,6 +952,24 @@ create table estoque (
                             <input type="text" id="reemb_end_partida" placeholder="Ex: RUA ORLANDO SIGNORELLI, 425 - JARDIM ADELAIDE - HORTOLÂNDIA, SP" style="width:100%;box-sizing:border-box;" oninput="_reembSaveConfig()">
                         </div>
                     </div>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;">
+                        <div style="min-width:150px;">
+                            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">CPF</label>
+                            <input type="text" id="reemb_cpf" placeholder="000.000.000-00" style="width:100%;box-sizing:border-box;" oninput="_reembSaveConfig()">
+                        </div>
+                        <div style="min-width:120px;">
+                            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Cargo</label>
+                            <input type="text" id="reemb_cargo" placeholder="TÉCNICO" style="width:100%;box-sizing:border-box;" oninput="_reembSaveConfig()">
+                        </div>
+                        <div style="flex:1;min-width:160px;">
+                            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Nome (NOME_IDCEL)</label>
+                            <input type="text" id="reemb_nome" placeholder="NOME COMPLETO" style="width:100%;box-sizing:border-box;" oninput="_reembSaveConfig()">
+                        </div>
+                        <div style="min-width:110px;">
+                            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">R$/km</label>
+                            <input type="number" id="reemb_km_rate" placeholder="0.30" min="0" step="0.01" style="width:100%;box-sizing:border-box;" oninput="_reembSaveConfig()">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Seletor de semana -->
@@ -975,7 +994,7 @@ create table estoque (
                 <div class="card" id="reembolsoCard" style="display:none;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
                         <span id="reembSemanaLabel" style="font-weight:700;font-size:14px;color:#1e293b;"></span>
-                        <button class="btn-load-all" style="background:#16a34a;color:#fff;border-color:#16a34a;" onclick="exportarReembolsoCSV()">📥 Baixar CSV</button>
+                        <button class="btn-load-all" style="background:#16a34a;color:#fff;border-color:#16a34a;" onclick="exportarReembolsoXLSX()">📥 Baixar Planilha (.xlsx)</button>
                     </div>
                     <div class="table-container" id="reembolsoTableContainer">
                         <table id="tabelaReembolso" style="min-width:1500px;">
@@ -1013,7 +1032,7 @@ create table estoque (
                         </table>
                     </div>
                     <div style="margin-top:14px;padding:10px 14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;font-size:12px;color:#0369a1;line-height:1.6;">
-                        💡 <strong>Como usar:</strong> Preencha os campos editáveis → clique <strong>Baixar CSV</strong> → no Google Sheets, abra o CSV → copie as linhas de dados → cole a partir da coluna <strong>D</strong> da aba ATENDIMENTOS do seu template (Colar especial → Somente valores).
+                        💡 <strong>Como usar:</strong> Preencha os campos e a configuração (CPF, Cargo, Nome, R$/km) → clique <strong>Baixar Planilha</strong> → abra o arquivo .xlsx baixado e envie diretamente. As colunas A–X já vêm preenchidas com fórmulas para HORAS, KM e TOTAIS.
                     </div>
                 </div>
             </div>
@@ -5203,8 +5222,16 @@ const _CLIENTE_OPTS = [
 ];
 
 function _reembSaveConfig() {
-    const ep = document.getElementById('reemb_end_partida')?.value || '';
-    try { localStorage.setItem(_REEMB_CFG, JSON.stringify({ endereco_partida: ep })); } catch {}
+    const g = id => document.getElementById(id)?.value || '';
+    try {
+        localStorage.setItem(_REEMB_CFG, JSON.stringify({
+            endereco_partida: g('reemb_end_partida'),
+            cpf:     g('reemb_cpf'),
+            cargo:   g('reemb_cargo'),
+            nome:    g('reemb_nome'),
+            km_rate: g('reemb_km_rate'),
+        }));
+    } catch {}
 }
 
 function _reembGetConfig() {
@@ -5237,8 +5264,12 @@ function iniciarReembolso() {
     fimEl.value = sex.toISOString().slice(0, 10);
 
     const cfg = _reembGetConfig();
-    const epEl = document.getElementById('reemb_end_partida');
-    if (epEl && cfg.endereco_partida) epEl.value = cfg.endereco_partida;
+    const restore = (id, key) => { const el = document.getElementById(id); if (el && cfg[key]) el.value = cfg[key]; };
+    restore('reemb_end_partida', 'endereco_partida');
+    restore('reemb_cpf',     'cpf');
+    restore('reemb_cargo',   'cargo');
+    restore('reemb_nome',    'nome');
+    restore('reemb_km_rate', 'km_rate');
 }
 
 function moverSemanaReembolso(dias) {
@@ -5582,74 +5613,113 @@ function atualizarTotaisReembolso() {
     set('reemb_tot_out',  totOut,  2);
 }
 
-function exportarReembolsoCSV() {
+function exportarReembolsoXLSX() {
+    if (typeof XLSX === 'undefined') {
+        alert('Biblioteca SheetJS não carregada. Recarregue a página e tente novamente.');
+        return;
+    }
     const tbody = document.getElementById('corpoReembolso');
     if (!tbody) return;
-    const ep = (document.getElementById('reemb_end_partida')?.value || '').trim();
 
-    // 21 colunas (D-X). Colunas M, S, T, U são fórmulas no template — exportamos vazio.
-    // D  TIPO_ATIVIDADE   E  CLIENTE         F  SERVICO
-    // G  TIPO_VEICULO     H  ADIANTAMENTO    I  Nº_CHAMADO
-    // J  DATA_CHAMADO     K  HORARIO_INICIO  L  HORARIO_FIM
-    // M  (fórmula)        N  PEDAGIO         O  ESTACIONAMENTO
-    // P  COMPRA_PECAS     Q  OUTRA_DESPESAS  R  KM_RODADO_TEC
-    // S  (fórmula)        T  (fórmula)       U  (fórmula)
-    // V  OBS_DESPESAS     W  END_PARTIDA     X  END_CHEGADA
-    const header = [
+    const cfg    = _reembGetConfig();
+    const gCfg   = id => (document.getElementById(id)?.value || '').trim();
+    const ep     = gCfg('reemb_end_partida') || cfg.endereco_partida || '';
+    const cpf    = gCfg('reemb_cpf')     || cfg.cpf     || '';
+    const cargo  = gCfg('reemb_cargo')   || cfg.cargo   || '';
+    const nome   = gCfg('reemb_nome')    || cfg.nome    || '';
+    const kmRate = parseFloat(gCfg('reemb_km_rate') || cfg.km_rate || 0);
+
+    // Excel serial: dias desde 01/01/1900
+    const dateToXl = ddmmyyyy => {
+        if (!ddmmyyyy) return null;
+        const [d, m, y] = ddmmyyyy.split('/');
+        if (!y) return null;
+        return Math.floor(new Date(+y, +m - 1, +d).getTime() / 86400000) + 25569;
+    };
+    // Excel serial de tempo: fração do dia
+    const timeToXl = hhmm => {
+        if (!hhmm) return null;
+        const parts = hhmm.split(':');
+        return (+parts[0] * 60 + (+parts[1] || 0)) / 1440;
+    };
+
+    const ws = {};
+    const COLS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X'];
+
+    // Cabeçalho (linha 1)
+    const headers = [
+        'CPF','CARGO','NOME_IDCEL',
         'TIPO_ATIVIDADE','CLIENTE','SERVICO','TIPO_VEICULO','ADIANTAMENTO',
-        'Nº_CHAMADO','DATA_CHAMADO','HORARIO_INICIO_AT','HORARIO_FIM_AT',
-        '',
+        'Nº_CHAMADO','DATA_CHAMADO','HORARIO_INICIO_AT','HORARIO_FIM_AT','HORAS_TEC',
         'PEDAGIO','ESTACIONAMENTO','COMPRA_PECAS','OUTRA_DESPESAS_(EXCECAO)',
-        'KM_RODADO_TEC',
-        '','','',
+        'KM_RODADO_TEC','VALOR_TOTAL_KM','VALOR_TOTAL_DESPESAS','VALOR_TOTAL_A_RECEBER',
         'OBS_DESPESAS_EXTRAS','ENDERECO_PARTIDA','ENDERECO_CHEGADA'
     ];
+    headers.forEach((h, i) => { ws[COLS[i] + '1'] = { v: h, t: 's' }; });
 
-    const linhas = [header];
-
+    let row = 2;
     tbody.querySelectorAll('tr[data-cid], tr[data-volta]').forEach(tr => {
         const g = f => (tr.querySelector(`[data-field="${f}"]`)?.value || '').trim();
         const isVolta = !!tr.dataset.volta;
-
-        // Horário de fim da VOLTA: input time ou dataset
         const voltaHfim = isVolta
-            ? (tr.querySelector('[data-field="hfim"]')?.value || tr.dataset.hfim || '')
-            : '';
+            ? (tr.querySelector('[data-field="hfim"]')?.value || tr.dataset.hfim || '') : '';
 
-        linhas.push([
-            /* D  TIPO_ATIVIDADE    */ isVolta ? 'ATIVIDADE_ADM' : g('tipo_atividade'),
-            /* E  CLIENTE           */ isVolta ? 'CERB'          : g('cliente'),
-            /* F  SERVICO           */ isVolta ? 'VOLTA PARA CASA' : g('servico'),
-            /* G  TIPO_VEICULO      */ 'CARRO',
-            /* H  ADIANTAMENTO      */ '0',
-            /* I  Nº_CHAMADO        */ isVolta ? '' : (tr.dataset.chamado || ''),
-            /* J  DATA_CHAMADO      */ tr.dataset.data || '',
-            /* K  HORARIO_INICIO_AT */ isVolta ? (tr.dataset.hini || '') : (tr.dataset.hini || ''),
-            /* L  HORARIO_FIM_AT    */ isVolta ? voltaHfim : (tr.dataset.hfim || ''),
-            /* M  (fórmula)         */ '',
-            /* N  PEDAGIO           */ g('pedagio')        || '0',
-            /* O  ESTACIONAMENTO    */ g('estacionamento') || '0',
-            /* P  COMPRA_PECAS      */ g('compra_pecas')   || '0',
-            /* Q  OUTRA_DESPESAS    */ g('outras_despesas')|| '0',
-            /* R  KM_RODADO_TEC     */ g('km')             || '0',
-            /* S  (fórmula)         */ '',
-            /* T  (fórmula)         */ '',
-            /* U  (fórmula)         */ '',
-            /* V  OBS_DESPESAS      */ g('obs_despesas'),
-            /* W  ENDERECO_PARTIDA  */ isVolta ? (tr.dataset.end_partida || '') : (tr.dataset.end_partida || ep),
-            /* X  ENDERECO_CHEGADA  */ isVolta ? (tr.dataset.end_chegada || ep) : (tr.dataset.end_chegada || ''),
-        ]);
+        const dateVal  = dateToXl(tr.dataset.data || '');
+        const hIni     = isVolta ? (tr.dataset.hini || '') : (tr.dataset.hini || '');
+        const hFim     = isVolta ? voltaHfim : (tr.dataset.hfim || '');
+        const hIniVal  = timeToXl(hIni);
+        const hFimVal  = timeToXl(hFim);
+
+        const s = (col, v, t, z)  => { if (v !== null && v !== undefined && v !== '') ws[col+row] = Object.assign({ v, t: t||'s' }, z ? { z } : {}); };
+        const f = (col, formula, z) => { ws[col+row] = Object.assign({ f: formula, t: 'n' }, z ? { z } : {}); };
+
+        s('A', cpf);
+        s('B', cargo);
+        s('C', nome);
+        s('D', isVolta ? 'ATIVIDADE_ADM'   : g('tipo_atividade'));
+        s('E', isVolta ? 'CERB'             : g('cliente'));
+        s('F', isVolta ? 'VOLTA PARA CASA'  : g('servico'));
+        s('G', 'CARRO');
+        s('H', 0, 'n', '"R$"#,##0.00');
+        if (!isVolta) s('I', tr.dataset.chamado || '');
+        if (dateVal !== null)  s('J', dateVal,  'n', 'dd/mm/yyyy');
+        if (hIniVal !== null)  s('K', hIniVal,  'n', 'hh:mm');
+        if (hFimVal !== null)  s('L', hFimVal,  'n', 'hh:mm');
+        // M: fórmula de horas trabalhadas
+        if (hIniVal !== null && hFimVal !== null)
+            f('M', `=IF(AND(K${row}<>"",L${row}<>""),L${row}-K${row},"")`, '[h]:mm');
+        s('N', parseFloat(g('pedagio'))        || 0, 'n', '#,##0.00');
+        s('O', parseFloat(g('estacionamento')) || 0, 'n', '#,##0.00');
+        s('P', parseFloat(g('compra_pecas'))   || 0, 'n', '#,##0.00');
+        s('Q', parseFloat(g('outras_despesas'))|| 0, 'n', '#,##0.00');
+        s('R', parseFloat(g('km'))             || 0, 'n', '#,##0.0');
+        // S: KM * taxa
+        f('S', kmRate > 0 ? `=R${row}*${kmRate}` : `=R${row}*0`, '"R$"#,##0.00');
+        // T: soma despesas
+        f('T', `=N${row}+O${row}+P${row}+Q${row}`, '"R$"#,##0.00');
+        // U: total a receber
+        f('U', `=S${row}+T${row}`, '"R$"#,##0.00');
+        s('V', g('obs_despesas'));
+        s('W', isVolta ? (tr.dataset.end_partida || '') : (tr.dataset.end_partida || ep));
+        s('X', isVolta ? (tr.dataset.end_chegada || ep) : (tr.dataset.end_chegada || ''));
+
+        row++;
     });
 
-    const csv = linhas.map(row =>
-        row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')
-    ).join('\n');
+    ws['!ref'] = `A1:X${row - 1}`;
+    ws['!cols'] = [
+        {wch:16},{wch:12},{wch:22},{wch:16},{wch:32},{wch:26},{wch:8},{wch:10},
+        {wch:14},{wch:12},{wch:10},{wch:10},{wch:10},
+        {wch:10},{wch:13},{wch:13},{wch:16},{wch:12},
+        {wch:14},{wch:16},{wch:18},
+        {wch:22},{wch:44},{wch:44}
+    ];
 
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'ATENDIMENTOS');
+
     const semIni = (document.getElementById('reemb_ini')?.value || '').replace(/-/g, '');
-    a.download = `reembolso_${semIni}.csv`;
-    a.click();
+    XLSX.writeFile(wb, `reembolso_${semIni}.xlsx`);
 }
 </script>
 
