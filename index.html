@@ -575,6 +575,10 @@
                 <span class="nav-icon">📦</span>
                 <span class="nav-label">Estoque</span>
             </div>
+            <div class="nav-item" id="nav-reembolso" onclick="ir('reembolso')">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">Reembolso</span>
+            </div>
             <div class="nav-item" id="nav-admin" onclick="ir('admin')" style="display:none;">
                 <span class="nav-icon">⚙️</span>
                 <span class="nav-label">Administração</span>
@@ -923,6 +927,89 @@ create table estoque (
   created_at   timestamptz default now()
 );</div>
                     <p style="font-size:12px;color:#94a3b8;margin-top:8px;">Após criar a tabela, clique em 🔄 Atualizar.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- PÁGINA REEMBOLSO SEMANAL -->
+        <div class="page" id="page-reembolso">
+            <div class="page-inner">
+                <div class="page-header">
+                    <div>
+                        <h1>📊 Reembolso Semanal</h1>
+                        <div class="page-sub">Relatório de km e despesas para envio por e-mail toda terça-feira</div>
+                    </div>
+                </div>
+
+                <!-- Endereço de partida -->
+                <div class="card">
+                    <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Configuração</div>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+                        <div style="flex:1;min-width:260px;">
+                            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Endereço de Partida (sua residência)</label>
+                            <input type="text" id="reemb_end_partida" placeholder="Ex: RUA ORLANDO SIGNORELLI, 425 - JARDIM ADELAIDE - HORTOLÂNDIA, SP" style="width:100%;box-sizing:border-box;" oninput="_reembSaveConfig()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seletor de semana -->
+                <div class="card">
+                    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+                        <div>
+                            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#64748b;">De</label>
+                            <input type="date" id="reemb_ini">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#64748b;">Até</label>
+                            <input type="date" id="reemb_fim">
+                        </div>
+                        <button class="btn-load-all" style="background:#f1f5f9;color:#475569;border-color:#cbd5e1;" onclick="moverSemanaReembolso(-7)">← Anterior</button>
+                        <button class="btn-load-all" onclick="carregarSemanaReembolso()">🔍 Carregar Chamados</button>
+                        <button class="btn-load-all" style="background:#f1f5f9;color:#475569;border-color:#cbd5e1;" onclick="moverSemanaReembolso(7)">Próxima →</button>
+                    </div>
+                    <div id="reemb_status" style="font-size:12px;color:#64748b;margin-top:8px;min-height:16px;"></div>
+                </div>
+
+                <!-- Tabela de chamados -->
+                <div class="card" id="reembolsoCard" style="display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+                        <span id="reembSemanaLabel" style="font-weight:700;font-size:14px;color:#1e293b;"></span>
+                        <button class="btn-load-all" style="background:#16a34a;color:#fff;border-color:#16a34a;" onclick="exportarReembolsoCSV()">📥 Baixar CSV</button>
+                    </div>
+                    <div class="table-container" id="reembolsoTableContainer">
+                        <table id="tabelaReembolso" style="min-width:1500px;">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Nº Chamado</th>
+                                    <th>Horários</th>
+                                    <th>Tipo Atividade</th>
+                                    <th>Cliente</th>
+                                    <th>Serviço</th>
+                                    <th style="min-width:70px;">KM</th>
+                                    <th style="min-width:80px;">Pedágio R$</th>
+                                    <th style="min-width:80px;">Estacion. R$</th>
+                                    <th style="min-width:80px;">Outras R$</th>
+                                    <th style="min-width:150px;">Obs. Despesas</th>
+                                    <th>End. Chegada</th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpoReembolso"></tbody>
+                            <tfoot>
+                                <tr style="background:#f8fafc;font-weight:700;font-size:13px;">
+                                    <td colspan="6" style="text-align:right;color:#64748b;padding-right:12px;">TOTAIS DA SEMANA</td>
+                                    <td id="reemb_tot_km" style="font-family:monospace;color:#2563eb;"></td>
+                                    <td id="reemb_tot_ped" style="font-family:monospace;color:#dc2626;"></td>
+                                    <td id="reemb_tot_est" style="font-family:monospace;color:#dc2626;"></td>
+                                    <td id="reemb_tot_out" style="font-family:monospace;color:#dc2626;"></td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div style="margin-top:14px;padding:10px 14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;font-size:12px;color:#0369a1;line-height:1.6;">
+                        💡 <strong>Como usar:</strong> Preencha os campos editáveis → clique <strong>Baixar CSV</strong> → no Google Sheets, abra o CSV → copie as linhas de dados → cole a partir da coluna <strong>D</strong> da aba ATENDIMENTOS do seu template (Colar especial → Somente valores).
+                    </div>
                 </div>
             </div>
         </div>
@@ -2137,6 +2224,7 @@ create table estoque (
         fecharMobile();
         if (pagina === 'admin') carregarPerfisTecnicos();
         if (pagina === 'ajuda') renderizarAjuda();
+        if (pagina === 'reembolso') iniciarReembolso();
         if (pagina === 'estoque') {
             const isAdminNav = loggedInUser?.email?.toLowerCase() === ADMIN_EMAIL;
             const tabCat = document.getElementById('tabBtnCatalogo');
@@ -5056,6 +5144,266 @@ async function buscarEquipPorPatrimonio(val, lado) {
         _showToastUniorg(`Equipamento encontrado: <span>${modelo || sn || patri}</span>`);
         if (typeof gerarERenderizar === 'function') gerarERenderizar();
     }, 700);
+}
+
+// ============================================================
+// REEMBOLSO SEMANAL
+// ============================================================
+
+const _REEMB_KEY    = 'reemb_dados_v1';
+const _REEMB_CFG    = 'reemb_config_v1';
+
+const _TIPO_ATIVIDADE_OPTS = [
+    'TROCA DE PEÇA',
+    'BAIXA DE IMAGEM',
+    'BAIXA DE IMAGEM + TROCA DE PEÇA',
+    'INSTALAÇÃO DE PERIFÉRICOS',
+    'INSTALAÇÃO|ATUALIZAÇÃO|CONFIGURAÇÃO DE SOFTWARE',
+    'INSTALAÇÃO|ATUALIZAÇÃO|CONFIGURAÇÃO DE HARDWARE',
+    'LIMPEZA|MANUTENÇÃO PREVENTIVA',
+    'RECOLHIMENTO DE EQUIPAMENTO',
+    'TREINAMENTO|ORIENTAÇÃO AO USUÁRIO',
+    'ROLLOUT',
+    'INVENTÁRIO',
+    'CORREIOS | RETIRADA DE PEÇAS | REVERSA',
+    'VOLTA PARA CASA',
+    'MATRIZ | REUNIÃO | ENTREGA DE DOCUMENTOS | RETIRADA DE MATERIAIS | VISITA OPERACIONAL',
+    'COMPRA DE INSUMO | FERRAMENTA',
+    'OUTROS',
+];
+
+const _CLIENTE_OPTS = [
+    '11.02.1-SANTANDER: INCIDENTE',
+    '11.03.1-SANTANDER: REQUISIÇÃO',
+    '11.01-SANTANDER: URA | SCREENING',
+    '11.04-SANTANDER: SERVIDORES',
+    '11.05-SANTANDER: BITLOCKER | VULNERABILIDADE',
+    '11.06-SANTANDER: TROCA_DE_MEMÓRIAS',
+    '11.07-SANTANDER: TROCA_DE_NETTOP_OBSOLETO',
+    '01.01-DIEBOLD NIXDORF: ITAÚ | LOTERIAS_CAIXA',
+    '08.01-POSITIVO: BODY_SHOP',
+    '08.10-POSITIVO: MPA | MPP | AVULSO',
+    '09.01-RICOH: PDV | FRENTE.CX',
+    '10.01-SAMSUNG: HELPDESK | TABLETS',
+    '13.01-FAROL SING_TV CORPORATIVA | MURAL DIGITAL',
+];
+
+function _reembSaveConfig() {
+    const ep = document.getElementById('reemb_end_partida')?.value || '';
+    try { localStorage.setItem(_REEMB_CFG, JSON.stringify({ endereco_partida: ep })); } catch {}
+}
+
+function _reembGetConfig() {
+    try { return JSON.parse(localStorage.getItem(_REEMB_CFG) || '{}'); } catch { return {}; }
+}
+
+function _reembGetEntry(id) {
+    try { return JSON.parse(localStorage.getItem(_REEMB_KEY) || '{}')[id] || {}; } catch { return {}; }
+}
+
+function _reembSetEntry(id, patch) {
+    try {
+        const all = JSON.parse(localStorage.getItem(_REEMB_KEY) || '{}');
+        all[id] = { ...(all[id] || {}), ...patch };
+        localStorage.setItem(_REEMB_KEY, JSON.stringify(all));
+    } catch {}
+}
+
+function iniciarReembolso() {
+    // Pré-preenche semana atual (seg→sex)
+    const iniEl = document.getElementById('reemb_ini');
+    const fimEl = document.getElementById('reemb_fim');
+    if (!iniEl || iniEl.value) return; // já inicializado
+    const hoje = new Date();
+    const dow = hoje.getDay();
+    const diffSeg = dow === 0 ? -6 : 1 - dow;
+    const seg = new Date(hoje); seg.setDate(hoje.getDate() + diffSeg);
+    const sex = new Date(seg);  sex.setDate(seg.getDate() + 4);
+    iniEl.value = seg.toISOString().slice(0, 10);
+    fimEl.value = sex.toISOString().slice(0, 10);
+
+    const cfg = _reembGetConfig();
+    const epEl = document.getElementById('reemb_end_partida');
+    if (epEl && cfg.endereco_partida) epEl.value = cfg.endereco_partida;
+}
+
+function moverSemanaReembolso(dias) {
+    const iniEl = document.getElementById('reemb_ini');
+    const fimEl = document.getElementById('reemb_fim');
+    if (!iniEl || !fimEl) return;
+    const mover = v => { const d = new Date(v + 'T12:00:00'); d.setDate(d.getDate() + dias); return d.toISOString().slice(0, 10); };
+    iniEl.value = mover(iniEl.value);
+    fimEl.value = mover(fimEl.value);
+}
+
+async function carregarSemanaReembolso() {
+    const ini = document.getElementById('reemb_ini')?.value;
+    const fim = document.getElementById('reemb_fim')?.value;
+    const statusEl = document.getElementById('reemb_status');
+    if (!ini || !fim) { if (statusEl) statusEl.textContent = 'Selecione o período.'; return; }
+    if (statusEl) statusEl.textContent = 'Carregando...';
+
+    _reembSaveConfig();
+
+    const iniDate = new Date(ini + 'T00:00:00');
+    const fimDate = new Date(fim + 'T23:59:59');
+
+    try {
+        const isAdmin = loggedInUser?.email?.toLowerCase() === ADMIN_EMAIL;
+        let q = supabaseClient.from('chamados')
+            .select('id,chamado,chamado_cerb,hora_partida,hora_chegada,hora_inicio_ate,hora_termino_ate,endereco,numero,bairro,cidade,uf,data_atendimento,tecnico')
+            .order('data_atendimento', { ascending: true });
+        if (!isAdmin) q = q.eq('tecnico', loggedInUser.email.toLowerCase());
+
+        const { data, error } = await q;
+        if (error) throw error;
+
+        const filtrados = (data || []).filter(c => {
+            if (!c.data_atendimento) return false;
+            const [d, m, y] = c.data_atendimento.split('/');
+            if (!y) return false;
+            const dt = new Date(`${y}-${m}-${d}T12:00:00`);
+            return dt >= iniDate && dt <= fimDate;
+        });
+
+        renderizarTabelaReembolso(filtrados, ini, fim);
+        if (statusEl) statusEl.textContent = `${filtrados.length} chamado(s) no período.`;
+    } catch (e) {
+        if (statusEl) statusEl.textContent = 'Erro ao carregar: ' + e.message;
+    }
+}
+
+function renderizarTabelaReembolso(chamados, ini, fim) {
+    const card  = document.getElementById('reembolsoCard');
+    const tbody = document.getElementById('corpoReembolso');
+    if (!card || !tbody) return;
+    card.style.display = '';
+    tbody.innerHTML = '';
+
+    const ep = document.getElementById('reemb_end_partida')?.value || '';
+
+    const selOpts = (field, opts, val) =>
+        `<select data-field="${field}" data-ep="${escHtml(ep)}" onchange="reembOnChange(this)" style="min-width:170px;font-size:11px;padding:3px 5px;max-width:200px;"><option value="">— selecionar —</option>` +
+        opts.map(o => `<option value="${escHtml(o)}"${o === val ? ' selected' : ''}>${escHtml(o)}</option>`).join('') +
+        `</select>`;
+
+    const numInp = (field, val) =>
+        `<input type="number" data-field="${field}" value="${escHtml(String(val ?? ''))}" min="0" step="0.01" onchange="reembOnChange(this)" style="width:72px;font-size:12px;padding:4px 5px;text-align:right;">`;
+
+    const txtInp = (field, val, w) =>
+        `<input type="text" data-field="${field}" value="${escHtml(val ?? '')}" onchange="reembOnChange(this)" style="width:${w || 140}px;font-size:12px;padding:4px 5px;">`;
+
+    chamados.forEach(c => {
+        const s = _reembGetEntry(c.id);
+        const endChegada = [c.endereco, c.numero, c.bairro, c.cidade].filter(Boolean).join(', ');
+        const hIni = c.hora_partida || '';
+        const hFim = c.hora_termino_ate || '';
+        const tr = document.createElement('tr');
+        tr.dataset.cid = c.id;
+        tr.dataset.data = c.data_atendimento || '';
+        tr.dataset.chamado = c.chamado || c.chamado_cerb || '';
+        tr.dataset.hini = hIni;
+        tr.dataset.hfim = hFim;
+        tr.dataset.end_chegada = endChegada;
+        tr.innerHTML = `
+            <td style="white-space:nowrap;font-weight:600;">${escHtml(c.data_atendimento || '')}</td>
+            <td style="font-family:monospace;font-size:12px;white-space:nowrap;">${escHtml(c.chamado || c.chamado_cerb || '—')}</td>
+            <td style="white-space:nowrap;font-size:12px;">${escHtml(hIni)}${hIni && hFim ? ' → ' : ''}${escHtml(hFim)}</td>
+            <td>${selOpts('tipo_atividade', _TIPO_ATIVIDADE_OPTS, s.tipo_atividade || '')}</td>
+            <td>${selOpts('cliente', _CLIENTE_OPTS, s.cliente || '')}</td>
+            <td>${txtInp('servico', s.servico || '', 140)}</td>
+            <td>${numInp('km', s.km)}</td>
+            <td>${numInp('pedagio', s.pedagio)}</td>
+            <td>${numInp('estacionamento', s.estacionamento)}</td>
+            <td>${numInp('outras_despesas', s.outras_despesas)}</td>
+            <td>${txtInp('obs_despesas', s.obs_despesas || '', 160)}</td>
+            <td style="font-size:11px;color:#475569;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(endChegada)}">${escHtml(endChegada)}</td>`;
+        tbody.appendChild(tr);
+    });
+
+    if (!chamados.length) {
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#94a3b8;padding:20px;">Nenhum chamado encontrado no período.</td></tr>';
+    }
+
+    atualizarTotaisReembolso();
+
+    const lbl = document.getElementById('reembSemanaLabel');
+    if (lbl) {
+        const fmt = iso => new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR');
+        lbl.textContent = `Semana: ${fmt(ini)} a ${fmt(fim)}`;
+    }
+}
+
+function reembOnChange(el) {
+    const tr = el.closest('tr');
+    if (!tr) return;
+    _reembSetEntry(tr.dataset.cid, { [el.dataset.field]: el.value });
+    atualizarTotaisReembolso();
+}
+
+function atualizarTotaisReembolso() {
+    let totKm = 0, totPed = 0, totEst = 0, totOut = 0;
+    document.querySelectorAll('#corpoReembolso tr').forEach(tr => {
+        const n = f => parseFloat(tr.querySelector(`[data-field="${f}"]`)?.value || 0) || 0;
+        totKm  += n('km');
+        totPed += n('pedagio');
+        totEst += n('estacionamento');
+        totOut += n('outras_despesas');
+    });
+    const fmt = (v, dec = 1) => v.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    const set = (id, v, dec) => { const el = document.getElementById(id); if (el) el.textContent = fmt(v, dec); };
+    set('reemb_tot_km',  totKm,  1);
+    set('reemb_tot_ped', totPed, 2);
+    set('reemb_tot_est', totEst, 2);
+    set('reemb_tot_out', totOut, 2);
+}
+
+function exportarReembolsoCSV() {
+    const tbody = document.getElementById('corpoReembolso');
+    if (!tbody) return;
+    const ep = (document.getElementById('reemb_end_partida')?.value || '').trim();
+
+    const header = [
+        'TIPO_ATIVIDADE','CLIENTE','SERVICO','TIPO_VEICULO','ADIANTAMENTO',
+        'Nº_CHAMADO','DATA_CHAMADO','HORARIO_INICIO_AT','HORARIO_FIM_AT',
+        'PEDAGIO','ESTACIONAMENTO','COMPRA_PECAS','OUTRA_DESPESAS_(EXCECAO)',
+        'KM_RODADO_TEC','OBS_DESPESAS_EXTRAS','ENDERECO_PARTIDA','ENDERECO_CHEGADA'
+    ];
+
+    const linhas = [header];
+
+    tbody.querySelectorAll('tr[data-cid]').forEach(tr => {
+        const g = f => (tr.querySelector(`[data-field="${f}"]`)?.value || '').trim();
+        linhas.push([
+            g('tipo_atividade'),
+            g('cliente'),
+            g('servico'),
+            'CARRO',
+            '0',
+            tr.dataset.chamado || '',
+            tr.dataset.data    || '',
+            tr.dataset.hini    || '',
+            tr.dataset.hfim    || '',
+            g('pedagio')           || '0',
+            g('estacionamento')    || '0',
+            '0',
+            g('outras_despesas')   || '0',
+            g('km')                || '0',
+            g('obs_despesas'),
+            ep,
+            tr.dataset.end_chegada || '',
+        ]);
+    });
+
+    const csv = linhas.map(row =>
+        row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')
+    ).join('\n');
+
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    const semIni = (document.getElementById('reemb_ini')?.value || '').replace(/-/g, '');
+    a.download = `reembolso_${semIni}.csv`;
+    a.click();
 }
 </script>
 
