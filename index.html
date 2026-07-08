@@ -630,6 +630,17 @@
         .comp-qualidade-ok { background:#dcfce7; border:1px solid #86efac; border-radius:6px; padding:8px 12px; color:#166534; font-size:13px; font-weight:600; }
         .comp-qualidade-ruim { background:#fef2f2; border:1px solid #fecaca; border-radius:6px; padding:8px 12px; color:#dc2626; font-size:13px; font-weight:600; }
         .comp-vazio { text-align:center; padding:40px 20px; color:#94a3b8; }
+
+        /* CROP OVERLAY */
+        .comp-crop-overlay { position:fixed; inset:0; background:#111; z-index:3000; display:flex; flex-direction:column; align-items:center; }
+        .comp-crop-header { width:100%; background:rgba(0,0,0,.85); padding:14px 16px; color:white; font-size:13px; font-weight:600; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+        .comp-crop-hint { font-size:11px; color:rgba(255,255,255,.6); font-weight:400; margin-top:2px; }
+        .comp-crop-skip { background:rgba(255,255,255,.15); color:white; border:none; padding:6px 14px; border-radius:6px; font-size:13px; cursor:pointer; }
+        .comp-crop-wrapper { flex:1; display:flex; align-items:center; justify-content:center; width:100%; padding:8px; box-sizing:border-box; overflow:hidden; }
+        #compCropCanvas { touch-action:none; cursor:crosshair; display:block; }
+        .comp-crop-footer { width:100%; padding:12px 16px; background:rgba(0,0,0,.85); flex-shrink:0; }
+        .comp-crop-btn { width:100%; padding:14px; background:#3b82f6; color:white; border:none; border-radius:10px; font-size:16px; font-weight:700; cursor:pointer; }
+        .comp-crop-btn:active { background:#2563eb; }
     </style>
 </head>
 <body>
@@ -1182,6 +1193,23 @@ create table estoque (
                 </div>
 
                 <div id="comprovantesLista"></div>
+            </div>
+        </div>
+
+        <!-- CROP OVERLAY -->
+        <div class="comp-crop-overlay" id="compCropOverlay" style="display:none;">
+            <div class="comp-crop-header">
+                <div>
+                    <div>Ajuste os cantos ao documento</div>
+                    <div class="comp-crop-hint">Arraste os 4 pontos azuis para as bordas do comprovante</div>
+                </div>
+                <button class="comp-crop-skip" onclick="compCropPular()">Pular</button>
+            </div>
+            <div class="comp-crop-wrapper">
+                <canvas id="compCropCanvas"></canvas>
+            </div>
+            <div class="comp-crop-footer">
+                <button class="comp-crop-btn" onclick="compCropConfirmar()">✅ Recortar e Continuar</button>
             </div>
         </div>
 
@@ -3987,23 +4015,266 @@ create table estoque (
     function compFotoSelecionada(event) {
         const file = event.target.files[0];
         if (!file) return;
-        _compFotoBlob = file;
-        _compFotoOK = false;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = new Image();
+            img.onload = () => _compIniciarCrop(img, file);
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ── CROP ENGINE ──────────────────────────────────────────────────────────
+    let _cropImg    = null;   // original HTMLImageElement
+    let _cropFile   = null;   // original File
+    let _cropScale  = 1;      // display scale (canvas px / img px)
+    let _cropCorners = [];    // [{x,y}] in canvas coords, order: TL TR BR BL
+    let _cropDrag   = -1;     // index of corner being dragged
+    const HANDLE_R  = 18;     // radius for hit detection
+
+    function _compIniciarCrop(imgEl, file) {
+        _cropImg  = imgEl;
+        _cropFile = file;
+
+        const overlay = document.getElementById('compCropOverlay');
+        const canvas  = document.getElementById('compCropCanvas');
+
+        // Size canvas to fit available space (viewport - header - footer)
+        const maxW = window.innerWidth  - 16;
+        const maxH = window.innerHeight - 160;
+        _cropScale = Math.min(1, maxW / imgEl.naturalWidth, maxH / imgEl.naturalHeight);
+        canvas.width  = Math.round(imgEl.naturalWidth  * _cropScale);
+        canvas.height = Math.round(imgEl.naturalHeight * _cropScale);
+
+        // Default corners: 10% inset so user can see the handles clearly
+        const pad = Math.round(Math.min(canvas.width, canvas.height) * 0.08);
+        _cropCorners = [
+            { x: pad,                  y: pad },
+            { x: canvas.width  - pad,  y: pad },
+            { x: canvas.width  - pad,  y: canvas.height - pad },
+            { x: pad,                  y: canvas.height - pad }
+        ];
+        _cropDrag = -1;
+
+        // Event listeners (remove old ones first)
+        canvas.onmousedown  = _cropMouseDown;
+        canvas.onmousemove  = _cropMouseMove;
+        canvas.onmouseup    = _cropMouseUp;
+        canvas.ontouchstart = _cropTouchStart;
+        canvas.ontouchmove  = _cropTouchMove;
+        canvas.ontouchend   = _cropTouchEnd;
+
+        overlay.style.display = 'flex';
+        _compDesenharCrop();
+    }
+
+    function _compDesenharCrop() {
+        const canvas = document.getElementById('compCropCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw image
+        ctx.drawImage(_cropImg, 0, 0, canvas.width, canvas.height);
+
+        // Dark overlay outside the quad
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, canvas.width, canvas.height);
+        ctx.moveTo(_cropCorners[0].x, _cropCorners[0].y);
+        for (let i = 1; i < 4; i++) ctx.lineTo(_cropCorners[i].x, _cropCorners[i].y);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fill('evenodd');
+        ctx.restore();
+
+        // Blue quad border
+        ctx.beginPath();
+        ctx.moveTo(_cropCorners[0].x, _cropCorners[0].y);
+        for (let i = 1; i < 4; i++) ctx.lineTo(_cropCorners[i].x, _cropCorners[i].y);
+        ctx.closePath();
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Corner handles
+        _cropCorners.forEach((p, i) => {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+            ctx.fillStyle = '#3b82f6';
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            // Small inner dot
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+        });
+    }
+
+    function _cropPt(canvas, clientX, clientY) {
+        const r = canvas.getBoundingClientRect();
+        const scaleX = canvas.width  / r.width;
+        const scaleY = canvas.height / r.height;
+        return { x: (clientX - r.left) * scaleX, y: (clientY - r.top) * scaleY };
+    }
+
+    function _cropNearest(pt) {
+        let best = -1, bestD = HANDLE_R * 2.5;
+        _cropCorners.forEach((c, i) => {
+            const d = Math.hypot(c.x - pt.x, c.y - pt.y);
+            if (d < bestD) { bestD = d; best = i; }
+        });
+        return best;
+    }
+
+    function _cropMouseDown(e) {
+        e.preventDefault();
+        _cropDrag = _cropNearest(_cropPt(this, e.clientX, e.clientY));
+    }
+    function _cropMouseMove(e) {
+        if (_cropDrag < 0) return;
+        e.preventDefault();
+        const pt = _cropPt(this, e.clientX, e.clientY);
+        _cropCorners[_cropDrag] = { x: Math.max(0, Math.min(this.width,  pt.x)),
+                                     y: Math.max(0, Math.min(this.height, pt.y)) };
+        _compDesenharCrop();
+    }
+    function _cropMouseUp(e) { _cropDrag = -1; }
+
+    function _cropTouchStart(e) {
+        e.preventDefault();
+        const t = e.touches[0];
+        _cropDrag = _cropNearest(_cropPt(this, t.clientX, t.clientY));
+    }
+    function _cropTouchMove(e) {
+        if (_cropDrag < 0) return;
+        e.preventDefault();
+        const t = e.touches[0];
+        const pt = _cropPt(this, t.clientX, t.clientY);
+        _cropCorners[_cropDrag] = { x: Math.max(0, Math.min(this.width,  pt.x)),
+                                     y: Math.max(0, Math.min(this.height, pt.y)) };
+        _compDesenharCrop();
+    }
+    function _cropTouchEnd(e) { _cropDrag = -1; }
+
+    function compCropPular() {
+        document.getElementById('compCropOverlay').style.display = 'none';
+        _compProsseguirComFoto(_cropFile);
+    }
+
+    async function compCropConfirmar() {
+        document.getElementById('compCropOverlay').style.display = 'none';
+
+        // Scale corners back to original image coordinates
+        const srcPts = _cropCorners.map(p => ({
+            x: p.x / _cropScale,
+            y: p.y / _cropScale
+        }));
+
+        // Output dimensions = distances between corners, capped at 1400px
+        const dist = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+        const dstW_raw = Math.max(dist(srcPts[0], srcPts[1]), dist(srcPts[3], srcPts[2]));
+        const dstH_raw = Math.max(dist(srcPts[0], srcPts[3]), dist(srcPts[1], srcPts[2]));
+        const MAX_OUT = 1400;
+        const outScale = Math.min(1, MAX_OUT / Math.max(dstW_raw, dstH_raw));
+        const dstW = Math.round(dstW_raw * outScale);
+        const dstH = Math.round(dstH_raw * outScale);
+        const scaledSrc = srcPts.map(p => ({ x: p.x * outScale, y: p.y * outScale }));
+
+        // Warp on a downscaled copy of the source for speed
+        const srcCanvas = document.createElement('canvas');
+        srcCanvas.width  = Math.round(_cropImg.naturalWidth  * outScale);
+        srcCanvas.height = Math.round(_cropImg.naturalHeight * outScale);
+        srcCanvas.getContext('2d').drawImage(_cropImg, 0, 0, srcCanvas.width, srcCanvas.height);
+
+        const warpedCanvas = _cropWarpPerspective(srcCanvas, scaledSrc, dstW, dstH);
+
+        warpedCanvas.toBlob(blob => {
+            _compProsseguirComFoto(blob);
+        }, 'image/jpeg', 0.92);
+    }
+
+    function _cropSolveHomography(src, dst) {
+        // Build 8x8 linear system for homography H: dst → src
+        const A = [], b = [];
+        for (let i = 0; i < 4; i++) {
+            const sx = src[i].x, sy = src[i].y, dx = dst[i].x, dy = dst[i].y;
+            A.push([dx, dy, 1, 0, 0, 0, -sx*dx, -sx*dy]); b.push(sx);
+            A.push([0, 0, 0, dx, dy, 1, -sy*dx, -sy*dy]); b.push(sy);
+        }
+        const n = 8;
+        const M = A.map((row, i) => [...row, b[i]]);
+        for (let col = 0; col < n; col++) {
+            let maxR = col, maxV = Math.abs(M[col][col]);
+            for (let row = col+1; row < n; row++) {
+                if (Math.abs(M[row][col]) > maxV) { maxV = Math.abs(M[row][col]); maxR = row; }
+            }
+            [M[col], M[maxR]] = [M[maxR], M[col]];
+            for (let row = 0; row < n; row++) {
+                if (row === col) continue;
+                const f = M[row][col] / M[col][col];
+                for (let c = col; c <= n; c++) M[row][c] -= f * M[col][c];
+            }
+        }
+        return M.map((row, i) => row[n] / row[i]); // [h0..h7]
+    }
+
+    function _cropWarpPerspective(srcCanvas, srcPts, dstW, dstH) {
+        const dstPts = [{ x:0, y:0 }, { x:dstW, y:0 }, { x:dstW, y:dstH }, { x:0, y:dstH }];
+        const h = _cropSolveHomography(srcPts, dstPts);
+
+        const srcCtx  = srcCanvas.getContext('2d');
+        const srcData = srcCtx.getImageData(0, 0, srcCanvas.width, srcCanvas.height);
+        const sW = srcCanvas.width, sH = srcCanvas.height;
+
+        const out    = document.createElement('canvas');
+        out.width    = dstW; out.height = dstH;
+        const outCtx = out.getContext('2d');
+        const outImg = outCtx.createImageData(dstW, dstH);
+        const od = outImg.data, sd = srcData.data;
+
+        for (let dy = 0; dy < dstH; dy++) {
+            for (let dx = 0; dx < dstW; dx++) {
+                const w  = h[6]*dx + h[7]*dy + 1;
+                const sx = (h[0]*dx + h[1]*dy + h[2]) / w;
+                const sy = (h[3]*dx + h[4]*dy + h[5]) / w;
+                const x0 = sx|0, y0 = sy|0, x1 = x0+1, y1 = y0+1;
+                const fx = sx - x0, fy = sy - y0;
+                const oi = (dy*dstW + dx) * 4;
+                if (x0 < 0 || y0 < 0 || x1 >= sW || y1 >= sH) { od[oi+3]=0; continue; }
+                for (let c = 0; c < 3; c++) {
+                    od[oi+c] = sd[(y0*sW+x0)*4+c]*(1-fx)*(1-fy)
+                             + sd[(y0*sW+x1)*4+c]*fx*(1-fy)
+                             + sd[(y1*sW+x0)*4+c]*(1-fx)*fy
+                             + sd[(y1*sW+x1)*4+c]*fx*fy;
+                }
+                od[oi+3] = 255;
+            }
+        }
+        outCtx.putImageData(outImg, 0, 0);
+        return out;
+    }
+
+    function _compProsseguirComFoto(blob) {
+        _compFotoBlob = blob;
+        _compFotoOK   = false;
 
         const reader = new FileReader();
         reader.onload = e => {
-            const img = document.getElementById('compFotoPreview');
-            img.src = e.target.result;
-            img.style.display = 'block';
+            const prevImg = document.getElementById('compFotoPreview');
+            prevImg.src = e.target.result;
+            prevImg.style.display = 'block';
             document.getElementById('compFotoPlaceholder').style.display = 'none';
 
-            // quality check
             const qualEl = document.getElementById('compQualidadeMsg');
             qualEl.style.display = '';
+            qualEl.className = '';
             qualEl.innerHTML = '<span style="color:#64748b;">🔍 Verificando qualidade...</span>';
 
-            img.onload = () => {
-                const result = _compVerificarQualidade(img);
+            prevImg.onload = () => {
+                const result = _compVerificarQualidade(prevImg);
                 if (result.ok) {
                     qualEl.className = 'comp-qualidade-ok';
                     qualEl.innerHTML = '✅ Imagem com boa qualidade.';
@@ -4017,7 +4288,7 @@ create table estoque (
                 }
             };
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(blob);
     }
 
     function _compVerificarQualidade(imgEl) {
