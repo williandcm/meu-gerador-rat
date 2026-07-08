@@ -9,6 +9,7 @@
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js" integrity="sha384-lrb5efVIYR2lZw+OsuztHZzP9wpGNrhui+0VlpiHb/iPcZSCDT3CeETsL9EMQ8ih" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <!-- Módulo estoque em arquivo separado — falha isolada não afeta o sistema -->
     <link rel="stylesheet" href="estoque.css" onerror="console.warn('[estoque] CSS não carregado')">
     <style>
@@ -595,6 +596,40 @@
         .btn-retorno:hover { background:#14532d; }
         .btn-cancelar-ret { background:#f1f5f9; color:#475569; border:none; padding:12px 20px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; width:100%; transition:.2s; margin-bottom:8px; }
         .btn-cancelar-ret:hover { background:#e2e8f0; }
+
+        /* COMPROVANTES */
+        .comp-filtros { display:flex; gap:8px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+        .comp-filtros input[type=date] { padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:14px; outline:none; }
+        .comp-card { background:white; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:10px; display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:start; }
+        .comp-card-icon { font-size:28px; }
+        .comp-card-tipo { font-weight:700; color:#1e293b; font-size:14px; }
+        .comp-card-sub { font-size:12px; color:#64748b; margin-top:2px; }
+        .comp-card-valor { font-weight:800; color:#166534; font-size:18px; text-align:right; }
+        .comp-card-actions { grid-column:span 3; display:flex; gap:6px; border-top:1px solid #f1f5f9; padding-top:10px; margin-top:4px; }
+        .comp-card-actions button { flex:1; padding:6px; border:1px solid #e2e8f0; background:#f8fafc; border-radius:6px; font-size:12px; cursor:pointer; font-weight:600; }
+        .comp-card-actions button:hover { background:#e2e8f0; }
+        .comp-card-actions .btn-del { color:#dc2626; border-color:#fecaca; }
+        .comp-card-actions .btn-del:hover { background:#fef2f2; }
+        .comp-total-barra { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:14px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
+        .comp-total-label { font-size:13px; color:#166534; font-weight:600; }
+        .comp-total-valor { font-size:20px; font-weight:800; color:#166534; }
+        .modal-comp { background:white; border-radius:14px; padding:24px; width:100%; max-width:480px; box-shadow:0 20px 60px rgba(0,0,0,.2); max-height:90vh; overflow-y:auto; }
+        .modal-comp h3 { font-size:17px; font-weight:800; color:var(--dark); margin-bottom:16px; }
+        .comp-foto-area { background:#f8fafc; border:2px dashed #cbd5e1; border-radius:10px; min-height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px; cursor:pointer; transition:.2s; }
+        .comp-foto-area:hover { border-color:var(--primary); background:#eff6ff; }
+        .comp-foto-placeholder { text-align:center; color:#94a3b8; }
+        .comp-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .comp-form-grid .field label { font-size:11px; font-weight:700; color:#475569; text-transform:uppercase; display:block; margin-bottom:4px; }
+        .comp-form-grid .field input, .comp-form-grid .field select { width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; outline:none; box-sizing:border-box; }
+        .comp-form-grid .field input:focus, .comp-form-grid .field select:focus { border-color:var(--primary); }
+        .comp-modal-footer { display:flex; flex-direction:column; gap:8px; margin-top:20px; }
+        .btn-comp-foto { background:var(--primary); color:white; border:none; padding:10px 16px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; transition:.2s; }
+        .btn-comp-foto:hover { background:#1d4ed8; }
+        .comp-ocr-loading { display:flex; align-items:center; gap:10px; color:#475569; font-size:14px; background:#f1f5f9; padding:12px; border-radius:8px; }
+        .comp-spinner { width:20px; height:20px; border:3px solid #cbd5e1; border-top-color:var(--primary); border-radius:50%; animation:spin 0.8s linear infinite; flex-shrink:0; }
+        .comp-qualidade-ok { background:#dcfce7; border:1px solid #86efac; border-radius:6px; padding:8px 12px; color:#166534; font-size:13px; font-weight:600; }
+        .comp-qualidade-ruim { background:#fef2f2; border:1px solid #fecaca; border-radius:6px; padding:8px 12px; color:#dc2626; font-size:13px; font-weight:600; }
+        .comp-vazio { text-align:center; padding:40px 20px; color:#94a3b8; }
     </style>
 </head>
 <body>
@@ -651,6 +686,10 @@
             <div class="nav-item" id="nav-docs" onclick="ir('docs')">
                 <span class="nav-icon">📝</span>
                 <span class="nav-label">Procedimentos</span>
+            </div>
+            <div class="nav-item" id="nav-comprovantes" onclick="ir('comprovantes')">
+                <span class="nav-icon">🧾</span>
+                <span class="nav-label">Comprovantes</span>
             </div>
 
             <div class="nav-item" id="nav-admin" onclick="ir('admin')" style="display:none;">
@@ -1122,6 +1161,102 @@ create table estoque (
                     <button class="btn-novo" id="btnNovoProcedimento" onclick="novoDoc()" style="display:none;">➕ Novo Procedimento</button>
                 </div>
                 <div id="docsConteudo"></div>
+            </div>
+        </div>
+
+        <!-- PÁGINA COMPROVANTES -->
+        <div class="page" id="page-comprovantes">
+            <div class="page-inner">
+                <div class="page-header">
+                    <div>
+                        <h1>🧾 Comprovantes</h1>
+                        <div class="page-sub">Estacionamento, pedágio e outros gastos</div>
+                    </div>
+                    <button class="btn-novo" onclick="abrirModalNovoComprovante()">➕ Novo Comprovante</button>
+                </div>
+
+                <div class="comp-filtros">
+                    <input type="date" id="compFiltroData" onchange="carregarComprovantes()">
+                    <button class="btn-secundario" onclick="compHoje()">Hoje</button>
+                    <button class="btn-secundario" onclick="compMes()">Este mês</button>
+                </div>
+
+                <div id="comprovantesLista"></div>
+            </div>
+        </div>
+
+        <!-- MODAL NOVO COMPROVANTE -->
+        <div class="modal-overlay" id="modalComprovante" style="display:none;">
+            <div class="modal-comp">
+                <!-- STEP 1: Foto -->
+                <div id="compStep1">
+                    <h3>🧾 Novo Comprovante</h3>
+                    <p style="color:#64748b;font-size:14px;margin-bottom:16px;">Tire uma foto do comprovante para extrair os dados automaticamente, ou preencha manualmente.</p>
+                    <div class="comp-foto-area" id="compFotoArea">
+                        <div class="comp-foto-placeholder" id="compFotoPlaceholder">
+                            <span style="font-size:48px;">📷</span>
+                            <p style="margin:8px 0 0;">Clique para fotografar ou selecionar</p>
+                        </div>
+                        <img id="compFotoPreview" style="display:none;max-width:100%;border-radius:8px;max-height:300px;object-fit:contain;" />
+                        <div id="compQualidadeMsg" style="display:none;"></div>
+                    </div>
+                    <input type="file" id="compFotoInput" accept="image/*" capture="environment" style="display:none;" onchange="compFotoSelecionada(event)">
+                    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                        <button class="btn-comp-foto" onclick="document.getElementById('compFotoInput').click()">📷 Fotografar / Selecionar</button>
+                        <button class="btn-secundario" id="compBtnOCR" style="display:none;" onclick="compExecutarOCR()">🔍 Extrair dados da foto</button>
+                        <button class="btn-secundario" onclick="compPularFoto()">✏️ Preencher manualmente</button>
+                    </div>
+                    <div id="compOCRProgress" style="display:none;margin-top:12px;">
+                        <div class="comp-ocr-loading">
+                            <div class="comp-spinner"></div>
+                            <span id="compOCRStatus">Processando imagem...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Formulário de revisão -->
+                <div id="compStep2" style="display:none;">
+                    <h3>✅ Confirmar Dados</h3>
+                    <div class="comp-form-grid">
+                        <div class="field">
+                            <label>Tipo</label>
+                            <select id="compTipo">
+                                <option value="estacionamento">🅿️ Estacionamento</option>
+                                <option value="pedagio">🛣️ Pedágio</option>
+                                <option value="alimentacao">🍽️ Alimentação</option>
+                                <option value="outro">📋 Outro</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>Valor (R$)</label>
+                            <input type="number" id="compValor" step="0.01" min="0" placeholder="0,00">
+                        </div>
+                        <div class="field">
+                            <label>Data</label>
+                            <input type="date" id="compData">
+                        </div>
+                        <div class="field">
+                            <label>Hora</label>
+                            <input type="text" id="compHora" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)">
+                        </div>
+                        <div class="field" style="grid-column:span 2;">
+                            <label>Estabelecimento</label>
+                            <input type="text" id="compEstabelecimento" placeholder="Nome do local">
+                        </div>
+                        <div class="field" style="grid-column:span 2;">
+                            <label>Observação</label>
+                            <input type="text" id="compObservacao" placeholder="Referência (ex: chamado INC12345)">
+                        </div>
+                    </div>
+                    <div id="compFotoThumb" style="margin-top:8px;display:none;">
+                        <img id="compFotoThumbImg" style="max-height:100px;border-radius:6px;border:1px solid #e2e8f0;" />
+                    </div>
+                </div>
+
+                <div class="comp-modal-footer">
+                    <button class="btn-cancelar-ret" onclick="fecharModalComprovante()">Cancelar</button>
+                    <button class="btn-retorno" id="compBtnSalvar" style="display:none;" onclick="salvarComprovante()">💾 Salvar Comprovante</button>
+                </div>
             </div>
         </div>
 
@@ -2303,6 +2438,7 @@ create table estoque (
         if (pagina === 'admin') carregarPerfisTecnicos();
         if (pagina === 'ajuda') renderizarAjuda();
         if (pagina === 'docs') iniciarDocs();
+        if (pagina === 'comprovantes') iniciarComprovantes();
         if (pagina === 'chamados') carregarRetornos();
 
         if (pagina === 'estoque') {
@@ -3802,6 +3938,362 @@ create table estoque (
             ? `<div style="padding-top:8px;text-align:right;font-size:13px;font-weight:800;color:#166534;">Total do dia: ${totalKm} km</div>`
             : '');
     }
+
+    // ─── COMPROVANTES ────────────────────────────────────────────────────────
+    let _compEditId = null;
+    let _compFotoBlob = null;
+    let _compFotoOK = false;
+
+    const COMP_ICONES = { estacionamento:'🅿️', pedagio:'🛣️', alimentacao:'🍽️', outro:'📋' };
+    const COMP_LABELS = { estacionamento:'Estacionamento', pedagio:'Pedágio', alimentacao:'Alimentação', outro:'Outro' };
+
+    function abrirModalNovoComprovante() {
+        _compEditId = null;
+        _compFotoBlob = null;
+        _compFotoOK = false;
+        document.getElementById('compStep1').style.display = '';
+        document.getElementById('compStep2').style.display = 'none';
+        document.getElementById('compBtnSalvar').style.display = 'none';
+        document.getElementById('compBtnOCR').style.display = 'none';
+        document.getElementById('compFotoPreview').style.display = 'none';
+        document.getElementById('compFotoPlaceholder').style.display = '';
+        document.getElementById('compQualidadeMsg').style.display = 'none';
+        document.getElementById('compOCRProgress').style.display = 'none';
+        document.getElementById('compFotoInput').value = '';
+        // pre-fill data com hoje
+        document.getElementById('compData').value = _hojeISO();
+        document.getElementById('compValor').value = '';
+        document.getElementById('compHora').value = '';
+        document.getElementById('compEstabelecimento').value = '';
+        document.getElementById('compObservacao').value = '';
+        document.getElementById('compTipo').value = 'estacionamento';
+        document.getElementById('compFotoThumb').style.display = 'none';
+        document.getElementById('modalComprovante').style.display = 'flex';
+    }
+
+    function fecharModalComprovante() {
+        document.getElementById('modalComprovante').style.display = 'none';
+        _compFotoBlob = null;
+        _compFotoOK = false;
+    }
+
+    function compPularFoto() {
+        document.getElementById('compStep1').style.display = 'none';
+        document.getElementById('compStep2').style.display = '';
+        document.getElementById('compBtnSalvar').style.display = '';
+        document.getElementById('compFotoThumb').style.display = 'none';
+    }
+
+    function compFotoSelecionada(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        _compFotoBlob = file;
+        _compFotoOK = false;
+
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = document.getElementById('compFotoPreview');
+            img.src = e.target.result;
+            img.style.display = 'block';
+            document.getElementById('compFotoPlaceholder').style.display = 'none';
+
+            // quality check
+            const qualEl = document.getElementById('compQualidadeMsg');
+            qualEl.style.display = '';
+            qualEl.innerHTML = '<span style="color:#64748b;">🔍 Verificando qualidade...</span>';
+
+            img.onload = () => {
+                const result = _compVerificarQualidade(img);
+                if (result.ok) {
+                    qualEl.className = 'comp-qualidade-ok';
+                    qualEl.innerHTML = '✅ Imagem com boa qualidade.';
+                    _compFotoOK = true;
+                    document.getElementById('compBtnOCR').style.display = '';
+                } else {
+                    qualEl.className = 'comp-qualidade-ruim';
+                    qualEl.innerHTML = `⚠️ ${result.motivo} — Tente tirar outra foto com mais luz e sem movimento.`;
+                    _compFotoOK = false;
+                    document.getElementById('compBtnOCR').style.display = 'none';
+                }
+            };
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function _compVerificarQualidade(imgEl) {
+        const canvas = document.createElement('canvas');
+        const MAX = 600;
+        const scale = Math.min(1, MAX / Math.max(imgEl.naturalWidth, imgEl.naturalHeight));
+        canvas.width  = Math.round(imgEl.naturalWidth  * scale);
+        canvas.height = Math.round(imgEl.naturalHeight * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        const n = canvas.width * canvas.height;
+
+        // Mean brightness
+        let sumBright = 0;
+        for (let i = 0; i < data.length; i += 4) {
+            sumBright += 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+        }
+        const brightness = sumBright / n;
+        if (brightness < 40)  return { ok: false, motivo: 'Imagem muito escura' };
+        if (brightness > 230) return { ok: false, motivo: 'Imagem muito clara (superexposta)' };
+
+        // Laplacian variance (blur detection) on grayscale
+        const gray = new Float32Array(n);
+        for (let i = 0; i < n; i++) {
+            gray[i] = 0.299 * data[i*4] + 0.587 * data[i*4+1] + 0.114 * data[i*4+2];
+        }
+        const W = canvas.width, H = canvas.height;
+        let lapSum = 0, lapSumSq = 0, lapCount = 0;
+        for (let y = 1; y < H-1; y++) {
+            for (let x = 1; x < W-1; x++) {
+                const idx = y*W + x;
+                const lap = -gray[idx-W-1] - gray[idx-W] - gray[idx-W+1]
+                            - gray[idx-1]  + 8*gray[idx] - gray[idx+1]
+                            - gray[idx+W-1] - gray[idx+W] - gray[idx+W+1];
+                lapSum   += lap;
+                lapSumSq += lap * lap;
+                lapCount++;
+            }
+        }
+        const mean = lapSum / lapCount;
+        const variance = lapSumSq / lapCount - mean * mean;
+        if (variance < 80) return { ok: false, motivo: 'Imagem borrada ou desfocada' };
+
+        return { ok: true };
+    }
+
+    async function compExecutarOCR() {
+        if (!_compFotoBlob) return;
+        const progEl = document.getElementById('compOCRProgress');
+        const statusEl = document.getElementById('compOCRStatus');
+        progEl.style.display = '';
+        document.getElementById('compBtnOCR').style.display = 'none';
+        statusEl.textContent = 'Carregando engine de OCR...';
+
+        try {
+            const worker = await Tesseract.createWorker('por', 1, {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        statusEl.textContent = `Lendo texto... ${Math.round((m.progress || 0) * 100)}%`;
+                    } else if (m.status) {
+                        statusEl.textContent = m.status.replace(/_/g,' ');
+                    }
+                }
+            });
+            const { data: { text } } = await worker.recognize(_compFotoBlob);
+            await worker.terminate();
+
+            progEl.style.display = 'none';
+            _compPreencherComTextoOCR(text);
+
+            // show thumb
+            const thumbContainer = document.getElementById('compFotoThumb');
+            const thumbImg = document.getElementById('compFotoThumbImg');
+            thumbImg.src = document.getElementById('compFotoPreview').src;
+            thumbContainer.style.display = '';
+
+            document.getElementById('compStep1').style.display = 'none';
+            document.getElementById('compStep2').style.display = '';
+            document.getElementById('compBtnSalvar').style.display = '';
+        } catch (e) {
+            progEl.style.display = 'none';
+            mostrarToast('Erro no OCR: ' + e.message, 'erro');
+            document.getElementById('compBtnOCR').style.display = '';
+        }
+    }
+
+    function _compPreencherComTextoOCR(text) {
+        // Valor: R$ XX,XX ou R$XX.XX
+        const mValor = text.match(/R\$\s*([\d.,]+)/i);
+        if (mValor) {
+            const v = parseFloat(mValor[1].replace(/\./g,'').replace(',','.'));
+            if (!isNaN(v)) document.getElementById('compValor').value = v.toFixed(2);
+        }
+
+        // Data: DD/MM/YYYY ou DD/MM/YY
+        const mData = text.match(/(\d{2})\/(\d{2})\/(\d{2,4})/);
+        if (mData) {
+            let y = mData[3]; if (y.length === 2) y = '20' + y;
+            document.getElementById('compData').value = `${y}-${mData[2]}-${mData[1]}`;
+        }
+
+        // Hora: HH:MM
+        const mHora = text.match(/\b(\d{2}):(\d{2})\b/);
+        if (mHora) document.getElementById('compHora').value = `${mHora[1]}:${mHora[2]}`;
+
+        // Estabelecimento: primeira linha não-vazia
+        const linhas = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+        if (linhas.length) document.getElementById('compEstabelecimento').value = linhas[0].slice(0, 60);
+
+        // Auto-detectar tipo
+        const lower = text.toLowerCase();
+        if (/estacionamento|parking|park/i.test(lower)) document.getElementById('compTipo').value = 'estacionamento';
+        else if (/pedágio|pedagio|toll|praça|praca/i.test(lower)) document.getElementById('compTipo').value = 'pedagio';
+        else if (/restaurante|lanche|food|ifood|deli|padaria|café|cafe|refeição/i.test(lower)) document.getElementById('compTipo').value = 'alimentacao';
+    }
+
+    async function salvarComprovante() {
+        const valor = parseFloat(document.getElementById('compValor').value);
+        const data  = document.getElementById('compData').value;
+        if (!data) { mostrarToast('Informe a data.', 'erro'); return; }
+        if (isNaN(valor) || valor <= 0) { mostrarToast('Informe o valor.', 'erro'); return; }
+
+        const btn = document.getElementById('compBtnSalvar');
+        btn.disabled = true; btn.textContent = '⏳ Salvando...';
+
+        let foto_url = '';
+        if (_compFotoBlob && _compFotoOK) {
+            try {
+                const ext = _compFotoBlob.type.includes('png') ? 'png' : 'jpg';
+                const path = `comprovantes/${_usuarioAtual}/${Date.now()}.${ext}`;
+                const { data: upData, error: upErr } = await supabaseClient.storage
+                    .from('docs-fotos').upload(path, _compFotoBlob, { contentType: _compFotoBlob.type, upsert: false });
+                if (upErr) throw upErr;
+                const { data: urlData } = supabaseClient.storage.from('docs-fotos').getPublicUrl(path);
+                foto_url = urlData.publicUrl || '';
+            } catch (e) {
+                mostrarToast('Erro ao enviar foto: ' + e.message, 'erro');
+                btn.disabled = false; btn.textContent = '💾 Salvar Comprovante';
+                return;
+            }
+        }
+
+        const payload = {
+            tipo:            document.getElementById('compTipo').value,
+            valor:           valor,
+            data:            data,
+            hora:            document.getElementById('compHora').value || null,
+            estabelecimento: document.getElementById('compEstabelecimento').value || '',
+            observacao:      document.getElementById('compObservacao').value || '',
+            foto_url:        foto_url,
+            tecnico:         _usuarioAtual
+        };
+
+        let err;
+        if (_compEditId) {
+            ({ error: err } = await supabaseClient.from('comprovantes').update(payload).eq('id', _compEditId));
+        } else {
+            ({ error: err } = await supabaseClient.from('comprovantes').insert(payload));
+        }
+
+        btn.disabled = false; btn.textContent = '💾 Salvar Comprovante';
+        if (err) { mostrarToast('Erro ao salvar: ' + err.message, 'erro'); return; }
+
+        fecharModalComprovante();
+        mostrarToast(_compEditId ? 'Comprovante atualizado!' : 'Comprovante salvo!');
+        carregarComprovantes();
+    }
+
+    async function editarComprovante(id) {
+        const { data, error } = await supabaseClient.from('comprovantes').select('*').eq('id', id).single();
+        if (error || !data) { mostrarToast('Erro ao carregar.', 'erro'); return; }
+
+        _compEditId = id;
+        _compFotoBlob = null;
+        _compFotoOK = false;
+
+        document.getElementById('compTipo').value           = data.tipo || 'outro';
+        document.getElementById('compValor').value          = data.valor ?? '';
+        document.getElementById('compData').value           = data.data || '';
+        document.getElementById('compHora').value           = data.hora || '';
+        document.getElementById('compEstabelecimento').value = data.estabelecimento || '';
+        document.getElementById('compObservacao').value     = data.observacao || '';
+
+        if (data.foto_url) {
+            const thumbImg = document.getElementById('compFotoThumbImg');
+            thumbImg.src = data.foto_url;
+            document.getElementById('compFotoThumb').style.display = '';
+        } else {
+            document.getElementById('compFotoThumb').style.display = 'none';
+        }
+
+        document.getElementById('compStep1').style.display = 'none';
+        document.getElementById('compStep2').style.display = '';
+        document.getElementById('compBtnSalvar').style.display = '';
+        document.getElementById('compBtnSalvar').textContent = '💾 Salvar Alterações';
+        document.getElementById('modalComprovante').style.display = 'flex';
+    }
+
+    async function excluirComprovante(id) {
+        if (!confirm('Excluir este comprovante?')) return;
+        const { error } = await supabaseClient.from('comprovantes').delete().eq('id', id);
+        if (error) { mostrarToast('Erro ao excluir: ' + error.message, 'erro'); return; }
+        mostrarToast('Comprovante excluído.');
+        carregarComprovantes();
+    }
+
+    async function carregarComprovantes() {
+        const filtroEl = document.getElementById('compFiltroData');
+        const listaEl  = document.getElementById('comprovantesLista');
+        if (!listaEl) return;
+
+        let query = supabaseClient.from('comprovantes').select('*').order('data', { ascending: false }).order('criado_em', { ascending: false });
+        if (!_isAdmin()) query = query.eq('tecnico', _usuarioAtual);
+        if (filtroEl?.value) query = query.eq('data', filtroEl.value);
+
+        const { data, error } = await query;
+        if (error) { listaEl.innerHTML = '<p style="color:red;">Erro ao carregar.</p>'; return; }
+        renderizarComprovantes(data || []);
+    }
+
+    function compHoje() {
+        const el = document.getElementById('compFiltroData');
+        if (el) { el.value = _hojeISO(); carregarComprovantes(); }
+    }
+
+    function compMes() {
+        const el = document.getElementById('compFiltroData');
+        if (el) { el.value = ''; carregarComprovantes(); }
+    }
+
+    function renderizarComprovantes(lista) {
+        const listaEl = document.getElementById('comprovantesLista');
+        if (!listaEl) return;
+        if (!lista.length) {
+            listaEl.innerHTML = '<div class="comp-vazio">📭<br>Nenhum comprovante encontrado.</div>';
+            return;
+        }
+
+        const total = lista.reduce((acc, c) => acc + (parseFloat(c.valor) || 0), 0);
+
+        listaEl.innerHTML = `<div class="comp-total-barra">
+            <span class="comp-total-label">Total (${lista.length} comprovante${lista.length !== 1 ? 's' : ''})</span>
+            <span class="comp-total-valor">R$ ${total.toFixed(2).replace('.',',')}</span>
+        </div>` + lista.map(c => {
+            const icone  = COMP_ICONES[c.tipo] || '📋';
+            const label  = COMP_LABELS[c.tipo]  || 'Outro';
+            const valor  = parseFloat(c.valor || 0).toFixed(2).replace('.',',');
+            const dataFmt = c.data ? c.data.split('-').reverse().join('/') : '—';
+            const sub = [dataFmt, c.hora, c.estabelecimento].filter(Boolean).join(' · ');
+            return `<div class="comp-card">
+                <div class="comp-card-icon">${icone}</div>
+                <div>
+                    <div class="comp-card-tipo">${label}</div>
+                    <div class="comp-card-sub">${sub || '—'}</div>
+                    ${c.observacao ? `<div class="comp-card-sub" style="color:#475569;">${c.observacao}</div>` : ''}
+                </div>
+                <div>
+                    <div class="comp-card-valor">R$ ${valor}</div>
+                    ${c.foto_url ? `<div style="text-align:right;margin-top:4px;"><a href="${c.foto_url}" target="_blank" style="font-size:11px;color:#3b82f6;">📷 ver foto</a></div>` : ''}
+                </div>
+                <div class="comp-card-actions">
+                    <button onclick="editarComprovante(${c.id})">✏️ Editar</button>
+                    <button class="btn-del" onclick="excluirComprovante(${c.id})">🗑 Excluir</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function iniciarComprovantes() {
+        const filtroEl = document.getElementById('compFiltroData');
+        if (filtroEl && !filtroEl.value) filtroEl.value = _hojeISO();
+        carregarComprovantes();
+    }
+    // ─── FIM COMPROVANTES ─────────────────────────────────────────────────────
 
     function calcularKmRodado() {
         const s = parseInt(document.getElementById('f_km_saida')?.value || '');
