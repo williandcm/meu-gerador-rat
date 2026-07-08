@@ -746,6 +746,20 @@
                                 <div class="field"><label>Hora Início Atendimento</label><input type="text" id="f_inicio_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
                                 <div class="field"><label>Hora Término Atendimento</label><input type="text" id="f_termino_ate" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)"></div>
                             </div>
+                            <div class="time-container" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;">
+                                <div class="field">
+                                    <label>🚗 KM Saída <span style="font-size:10px;color:#64748b;font-weight:normal;">(uso interno — não aparece na RAT)</span></label>
+                                    <input type="number" id="f_km_saida" placeholder="Ex: 12350" min="0" step="1" oninput="calcularKmRodado()">
+                                </div>
+                                <div class="field">
+                                    <label>🚗 KM Chegada <span style="font-size:10px;color:#64748b;font-weight:normal;">(uso interno — não aparece na RAT)</span></label>
+                                    <input type="number" id="f_km_chegada" placeholder="Ex: 12420" min="0" step="1" oninput="calcularKmRodado()">
+                                </div>
+                                <div class="field" id="kmRodadoWrap" style="display:none;grid-column:span 2;">
+                                    <label>KM Rodado</label>
+                                    <div id="kmRodadoValor" style="padding:10px;background:#dcfce7;border:1px solid #86efac;border-radius:6px;font-weight:800;color:#166534;font-size:16px;"></div>
+                                </div>
+                            </div>
                             <div class="field full-width"><label>Uniorg</label><input type="text" id="f_uniorg" onchange="buscarEnderecoUniorg(this.value)"></div>
                             <div class="field full-width"><label>Endereço</label><input type="text" id="f_rua"></div>
                             <div class="field"><label>Número</label><input type="text" id="f_num"></div>
@@ -2888,7 +2902,7 @@ create table estoque (
         'endereco,numero,bairro,cidade,uf,descritivo_defeito_causa,' +
         'patri_ret,sn_ret,modelo_ret,host_ret,mac_ret,' +
         'patri_inst,sn_inst,modelo_inst,host_inst,mac_inst,' +
-        'solucao,observacoes,responsavel,matricula,data_atendimento,chamado_cerb,tecnico';
+        'solucao,observacoes,km_saida,km_chegada,responsavel,matricula,data_atendimento,chamado_cerb,tecnico';
 
     async function carregarTodosChamados() {
         if (!loggedInUser) return;
@@ -3428,6 +3442,9 @@ create table estoque (
         set('f_patri_inst', d.patri_inst); set('f_sn_inst', d.sn_inst);
         set('f_modelo_inst', d.modelo_inst); set('f_host_inst', d.host_inst); set('f_mac_inst', d.mac_inst);
         set('f_solucao', d.solucao); set('f_observacoes', d.observacoes); set('f_resp', d.responsavel); set('f_matricula', d.matricula);
+        const kmS = document.getElementById('f_km_saida'); if (kmS) kmS.value = d.km_saida ?? '';
+        const kmC = document.getElementById('f_km_chegada'); if (kmC) kmC.value = d.km_chegada ?? '';
+        calcularKmRodado();
         set('f_local_data_cidade', d.cidade); set('chamado_cerb', d.chamado_cerb);
         if (d.data_atendimento) {
             const p = d.data_atendimento.split('/');
@@ -3451,7 +3468,8 @@ create table estoque (
          'f_uniorg','f_rua','f_num','f_bai','f_cid','f_uf',
          'f_patri_ret','f_sn_ret','f_modelo_ret','f_host_ret','f_mac_ret',
          'f_patri_inst','f_sn_inst','f_modelo_inst','f_host_inst','f_mac_inst',
-         'f_solucao','f_observacoes','f_resp','f_matricula','f_local_data_cidade'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+         'f_solucao','f_observacoes','f_km_saida','f_km_chegada','f_resp','f_matricula','f_local_data_cidade'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        calcularKmRodado();
         document.getElementById('f_descritivo_defeito').value = 'EQUIPAMENTO INOPERANTE';
         limparAssinaturaOverlay();
         carregarDadosTecnicoLocal();
@@ -3480,6 +3498,20 @@ create table estoque (
         let v = input.value.replace(/\D/g, "");
         if (v.length > 2) v = v.slice(0, 2) + ":" + v.slice(2, 4);
         input.value = v;
+    }
+
+    function calcularKmRodado() {
+        const s = parseInt(document.getElementById('f_km_saida')?.value || '');
+        const c = parseInt(document.getElementById('f_km_chegada')?.value || '');
+        const wrap = document.getElementById('kmRodadoWrap');
+        const val  = document.getElementById('kmRodadoValor');
+        if (!wrap || !val) return;
+        if (!isNaN(s) && !isNaN(c) && c >= s) {
+            val.textContent = `${c - s} km rodados`;
+            wrap.style.display = '';
+        } else {
+            wrap.style.display = 'none';
+        }
     }
 
     function mascaraCPF(input) {
@@ -3884,6 +3916,8 @@ create table estoque (
                 descritivo_defeito_causa: fu('f_descritivo_defeito'),
                 solucao:           fu('f_solucao'),
                 observacoes:       fu('f_observacoes'),
+                km_saida:          parseInt(document.getElementById('f_km_saida')?.value || '') || null,
+                km_chegada:        parseInt(document.getElementById('f_km_chegada')?.value || '') || null,
                 chamado_cerb:      fu('chamado_cerb'),
                 pdf_base64:        pdfBase64
             };
