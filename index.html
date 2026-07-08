@@ -564,7 +564,7 @@
         .docs-foto-num { position:absolute; top:3px; left:3px; background:rgba(0,0,0,.55); color:white; font-size:10px; font-weight:700; border-radius:3px; padding:1px 5px; pointer-events:none; }
         .docs-foto-del { position:absolute; top:3px; right:3px; background:rgba(239,68,68,.85); color:white; border:none; border-radius:3px; width:18px; height:18px; font-size:11px; line-height:18px; text-align:center; cursor:pointer; padding:0; }
         .docs-fotos-view { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
-        .docs-foto-view-item { }
+
         .docs-foto-view-num { font-size:11px; font-weight:700; color:#64748b; margin-bottom:4px; }
         .docs-foto-view-item img { max-width:100%; max-height:500px; object-fit:contain; border-radius:8px; border:1px solid #e2e8f0; display:block; cursor:pointer; }
         .btn-add-etapa { background:white; color:var(--primary); border:2px dashed var(--primary); padding:11px; border-radius:8px; width:100%; cursor:pointer; font-weight:700; font-size:13px; transition:.15s; margin-bottom:4px; }
@@ -574,6 +574,27 @@
         .docs-back-btn { display:inline-flex; align-items:center; gap:6px; background:none; border:none; color:#64748b; cursor:pointer; font-size:13px; font-weight:600; padding:6px 0; margin-bottom:12px; }
         .docs-back-btn:hover { color:var(--dark); }
         .docs-foto-loading { font-size:12px; color:#64748b; font-style:italic; }
+
+        /* ── RETORNO CASA ── */
+        .retorno-card { background:white; border-radius:12px; padding:14px 18px; box-shadow:0 2px 8px rgba(0,0,0,.06); border-left:4px solid #166534; }
+        .retorno-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+        .retorno-card-title { font-size:13px; font-weight:700; color:#166534; text-transform:uppercase; }
+        .retorno-linha { display:flex; gap:16px; align-items:center; padding:8px 0; border-bottom:1px solid #e2e8f0; font-size:13px; flex-wrap:wrap; }
+        .retorno-linha:last-child { border-bottom:none; }
+        .retorno-km { font-weight:800; color:#166534; font-size:15px; }
+        .retorno-info { color:#64748b; }
+        .modal-retorno { background:white; border-radius:14px; padding:24px; width:100%; max-width:420px; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+        .modal-retorno h3 { font-size:17px; font-weight:800; color:var(--dark); margin-bottom:18px; }
+        .modal-retorno label { font-size:11px; font-weight:700; color:#475569; text-transform:uppercase; display:block; margin-bottom:4px; }
+        .modal-retorno input { width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; outline:none; box-sizing:border-box; }
+        .modal-retorno input:focus { border-color:var(--primary); }
+        .modal-retorno .field { margin-bottom:14px; }
+        .retorno-total { background:#dcfce7; border:1px solid #86efac; border-radius:8px; padding:12px; text-align:center; font-weight:800; color:#166534; font-size:17px; display:none; margin-bottom:14px; }
+        .retorno-auto-info { background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:8px 10px; font-size:12px; color:#0369a1; margin-bottom:14px; }
+        .btn-retorno { background:#166534; color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; width:100%; transition:.2s; }
+        .btn-retorno:hover { background:#14532d; }
+        .btn-cancelar-ret { background:#f1f5f9; color:#475569; border:none; padding:12px 20px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; width:100%; transition:.2s; margin-bottom:8px; }
+        .btn-cancelar-ret:hover { background:#e2e8f0; }
     </style>
 </head>
 <body>
@@ -664,7 +685,10 @@
                         <h1>📋 Chamados</h1>
                         <div class="page-sub">Pesquise e gerencie os atendimentos registrados</div>
                     </div>
-                    <button class="btn-novo" onclick="novoAtendimento()">➕ Novo Atendimento</button>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="btn-novo" style="background:#166534;" onclick="abrirModalRetorno()">🏠 Retorno Casa</button>
+                        <button class="btn-novo" onclick="novoAtendimento()">➕ Novo Atendimento</button>
+                    </div>
                 </div>
 
                 <div class="stats-row">
@@ -680,6 +704,14 @@
                         <div class="stat-value" id="statSemTroca">—</div>
                         <div class="stat-label">Sem Troca</div>
                     </div>
+                </div>
+
+                <div class="retorno-card" id="retornoCard" style="display:none;">
+                    <div class="retorno-card-header">
+                        <span class="retorno-card-title">🏠 Retornos Casa — Hoje</span>
+                        <button onclick="abrirModalRetorno()" style="background:#166534;color:white;border:none;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">+ Novo</button>
+                    </div>
+                    <div id="retornoLista"></div>
                 </div>
 
                 <div class="card search-box">
@@ -1103,6 +1135,35 @@ create table estoque (
         </div>
 
     </main>
+</div>
+
+<!-- MODAL RETORNO CASA -->
+<div class="modal-overlay" id="modalRetorno">
+    <div class="modal-retorno">
+        <h3>🏠 Registrar Retorno Casa</h3>
+
+        <div class="retorno-auto-info" id="retornoAutoInfo" style="display:none;"></div>
+
+        <div class="field">
+            <label>Hora Saída <span style="font-weight:normal;color:#94a3b8;">(término do atendimento)</span></label>
+            <input type="text" id="retornoHoraSaida" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)">
+        </div>
+        <div class="field">
+            <label>KM Saída <span style="font-weight:normal;color:#94a3b8;">(hodômetro ao sair do chamado)</span></label>
+            <input type="number" id="retornoKmSaida" placeholder="Ex: 12050" min="0" step="1" oninput="calcularRetornoKm()">
+        </div>
+        <div class="field">
+            <label>KM Chegada <span style="font-weight:normal;color:#94a3b8;">(hodômetro ao chegar em casa)</span></label>
+            <input type="number" id="retornoKmChegada" placeholder="Ex: 12120" min="0" step="1" oninput="calcularRetornoKm()">
+        </div>
+
+        <div class="retorno-total" id="retornoTotal"></div>
+
+        <p style="font-size:12px;color:#94a3b8;margin-bottom:16px;">A hora de chegada em casa será registrada automaticamente ao salvar.</p>
+
+        <button class="btn-cancelar-ret" onclick="fecharModalRetorno()">Cancelar</button>
+        <button class="btn-retorno" onclick="salvarRetorno()">✅ Registrar Chegada em Casa</button>
+    </div>
 </div>
 
 <!-- MODAL ASSINAR NO DOCUMENTO — TELA CHEIA -->
@@ -2232,6 +2293,7 @@ create table estoque (
         if (pagina === 'admin') carregarPerfisTecnicos();
         if (pagina === 'ajuda') renderizarAjuda();
         if (pagina === 'docs') iniciarDocs();
+        if (pagina === 'chamados') carregarRetornos();
 
         if (pagina === 'estoque') {
             const isAdminNav = loggedInUser?.email?.toLowerCase() === ADMIN_EMAIL;
@@ -3507,6 +3569,135 @@ create table estoque (
         let v = input.value.replace(/\D/g, "");
         if (v.length > 2) v = v.slice(0, 2) + ":" + v.slice(2, 4);
         input.value = v;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // RETORNO CASA
+    // ─────────────────────────────────────────────────────────────
+
+    async function abrirModalRetorno() {
+        // pré-preenche a partir do último chamado do dia
+        const hoje = new Date().toLocaleDateString('pt-BR');
+        const email = (loggedInUser?.email || '').toLowerCase();
+
+        const chamadosHoje = (todosChamadosCache || [])
+            .filter(c => c.data_atendimento === hoje && c.tecnico?.toLowerCase() === email)
+            .sort((a, b) => (b.hora_termino_ate || '').localeCompare(a.hora_termino_ate || ''));
+
+        let ultimo = chamadosHoje[0];
+
+        // Se o cache não tiver dados de hoje, busca no banco
+        if (!ultimo) {
+            const { data } = await supabaseClient
+                .from('chamados')
+                .select('hora_termino_ate,km_chegada,chamado')
+                .eq('tecnico', email)
+                .eq('data_atendimento', hoje)
+                .order('hora_termino_ate', { ascending: false })
+                .limit(1);
+            ultimo = data?.[0] || null;
+        }
+
+        const infoEl = document.getElementById('retornoAutoInfo');
+        if (ultimo) {
+            document.getElementById('retornoHoraSaida').value = ultimo.hora_termino_ate || '';
+            document.getElementById('retornoKmSaida').value = ultimo.km_chegada != null ? ultimo.km_chegada : '';
+            infoEl.textContent = `Pré-preenchido com o último chamado do dia${ultimo.chamado ? ' (' + ultimo.chamado + ')' : ''}.`;
+            infoEl.style.display = '';
+        } else {
+            document.getElementById('retornoHoraSaida').value = '';
+            document.getElementById('retornoKmSaida').value = '';
+            infoEl.style.display = 'none';
+        }
+
+        document.getElementById('retornoKmChegada').value = '';
+        document.getElementById('retornoTotal').style.display = 'none';
+        document.getElementById('modalRetorno').classList.add('open');
+        setTimeout(() => document.getElementById('retornoKmChegada').focus(), 100);
+    }
+
+    function fecharModalRetorno() {
+        document.getElementById('modalRetorno').classList.remove('open');
+    }
+
+    function calcularRetornoKm() {
+        const s = parseInt(document.getElementById('retornoKmSaida')?.value || '');
+        const c = parseInt(document.getElementById('retornoKmChegada')?.value || '');
+        const el = document.getElementById('retornoTotal');
+        if (!el) return;
+        if (!isNaN(s) && !isNaN(c) && c >= s) {
+            el.textContent = `${c - s} km rodados`;
+            el.style.display = '';
+        } else {
+            el.style.display = 'none';
+        }
+    }
+
+    async function salvarRetorno() {
+        const kmChegada = parseInt(document.getElementById('retornoKmChegada')?.value || '');
+        if (isNaN(kmChegada)) {
+            alert('Informe o KM de chegada em casa.');
+            document.getElementById('retornoKmChegada').focus();
+            return;
+        }
+
+        const horaSaida  = (document.getElementById('retornoHoraSaida')?.value || '').trim();
+        const kmSaida    = parseInt(document.getElementById('retornoKmSaida')?.value || '');
+        const agora      = new Date();
+        const horaChegada = agora.toTimeString().slice(0, 5);
+        const data        = agora.toLocaleDateString('pt-BR');
+
+        const payload = {
+            data,
+            hora_saida:    horaSaida || null,
+            km_saida:      isNaN(kmSaida) ? null : kmSaida,
+            hora_chegada:  horaChegada,
+            km_chegada:    kmChegada,
+            tecnico:       (loggedInUser?.email || '').toLowerCase(),
+        };
+
+        const { error } = await supabaseClient.from('km_retorno').insert(payload);
+        if (error) { alert('Erro ao registrar: ' + error.message); return; }
+
+        fecharModalRetorno();
+        await carregarRetornos();
+
+        const kmRodado = !isNaN(kmSaida) ? kmChegada - kmSaida : null;
+        alert(`Chegada registrada às ${horaChegada}${kmRodado != null ? ' — ' + kmRodado + ' km rodados' : ''}.`);
+    }
+
+    async function carregarRetornos() {
+        const hoje  = new Date().toLocaleDateString('pt-BR');
+        const email = (loggedInUser?.email || '').toLowerCase();
+
+        const { data } = await supabaseClient
+            .from('km_retorno')
+            .select('*')
+            .eq('tecnico', email)
+            .eq('data', hoje)
+            .order('criado_em', { ascending: true });
+
+        renderizarRetornos(data || []);
+    }
+
+    function renderizarRetornos(lista) {
+        const card  = document.getElementById('retornoCard');
+        const listaEl = document.getElementById('retornoLista');
+        if (!card || !listaEl) return;
+
+        if (!lista.length) { card.style.display = 'none'; return; }
+
+        card.style.display = '';
+        listaEl.innerHTML = lista.map(r => {
+            const km = r.km_saida != null && r.km_chegada != null ? r.km_chegada - r.km_saida : null;
+            return `<div class="retorno-linha">
+                <span>🚗</span>
+                <span class="retorno-info">Saída: <strong>${r.hora_saida || '—'}</strong></span>
+                <span class="retorno-info">Chegada: <strong>${r.hora_chegada || '—'}</strong></span>
+                ${r.km_saida != null ? `<span class="retorno-info">KM: ${r.km_saida} → ${r.km_chegada}</span>` : ''}
+                ${km != null ? `<span class="retorno-km">${km} km</span>` : ''}
+            </div>`;
+        }).join('');
     }
 
     function calcularKmRodado() {
