@@ -4377,12 +4377,34 @@ create table estoque (
         }
     }
 
+    function _parseCurrencyOCR(str) {
+        str = str.trim();
+        const dots   = (str.match(/\./g)  || []).length;
+        const commas = (str.match(/,/g)   || []).length;
+        if (!dots && !commas) return parseFloat(str);
+        if (dots && commas) {
+            return str.lastIndexOf('.') > str.lastIndexOf(',')
+                ? parseFloat(str.replace(/,/g, ''))
+                : parseFloat(str.replace(/\./g,'').replace(',','.'));
+        }
+        if (dots && !commas) {
+            // ponto antes de 2 dígitos = decimal ("12.80"); senão milhar ("1.280")
+            const afterDot = str.slice(str.lastIndexOf('.') + 1);
+            return afterDot.length === 2 ? parseFloat(str) : parseFloat(str.replace(/\./g,''));
+        }
+        // apenas vírgula
+        const afterComma = str.slice(str.lastIndexOf(',') + 1);
+        return afterComma.length === 2
+            ? parseFloat(str.replace(',','.'))
+            : parseFloat(str.replace(/,/g,''));
+    }
+
     function _compPreencherComTextoOCR(text) {
-        // Valor: R$ XX,XX ou R$XX.XX
+        // Valor: R$ XX,XX / R$ XX.XX / Valor:R$ 12.80
         const mValor = text.match(/R\$\s*([\d.,]+)/i);
         if (mValor) {
-            const v = parseFloat(mValor[1].replace(/\./g,'').replace(',','.'));
-            if (!isNaN(v)) document.getElementById('compValor').value = v.toFixed(2);
+            const v = _parseCurrencyOCR(mValor[1]);
+            if (!isNaN(v) && v > 0) document.getElementById('compValor').value = v.toFixed(2);
         }
 
         // Data: DD/MM/YYYY ou DD/MM/YY
@@ -4392,19 +4414,23 @@ create table estoque (
             document.getElementById('compData').value = `${y}-${mData[2]}-${mData[1]}`;
         }
 
-        // Hora: HH:MM
-        const mHora = text.match(/\b(\d{2}):(\d{2})\b/);
+        // Hora: HH:MM (apenas horas válidas, ignora pares como 08/07)
+        const mHora = text.match(/\b([01]\d|2[0-3]):([0-5]\d)\b/);
         if (mHora) document.getElementById('compHora').value = `${mHora[1]}:${mHora[2]}`;
 
         // Estabelecimento: primeira linha não-vazia
         const linhas = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
         if (linhas.length) document.getElementById('compEstabelecimento').value = linhas[0].slice(0, 60);
 
-        // Auto-detectar tipo
+        // Auto-detectar tipo — pedágio primeiro (evita falso "park" em nomes de rodovias)
         const lower = text.toLowerCase();
-        if (/estacionamento|parking|park/i.test(lower)) document.getElementById('compTipo').value = 'estacionamento';
-        else if (/pedágio|pedagio|toll|praça|praca/i.test(lower)) document.getElementById('compTipo').value = 'pedagio';
-        else if (/restaurante|lanche|food|ifood|deli|padaria|café|cafe|refeição/i.test(lower)) document.getElementById('compTipo').value = 'alimentacao';
+        if (/pedágio|pedagio|toll|passagem veicular|rpv|autoban|ccr|ecopistas|via dutra|via lago|anhanguera|bandeirantes|rodovia|praça de pedágio|praca de pedagio/i.test(lower)) {
+            document.getElementById('compTipo').value = 'pedagio';
+        } else if (/estacionamento|parking|park/i.test(lower)) {
+            document.getElementById('compTipo').value = 'estacionamento';
+        } else if (/restaurante|lanche|food|ifood|deli|padaria|café|cafe|refeição/i.test(lower)) {
+            document.getElementById('compTipo').value = 'alimentacao';
+        }
     }
 
     async function salvarComprovante() {
