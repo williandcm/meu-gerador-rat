@@ -558,6 +558,15 @@
         .btn-foto-upload { background:#f1f5f9; color:#475569; padding:7px 12px; border:1px dashed #cbd5e1; border-radius:6px; font-size:12px; cursor:pointer; transition:.15s; display:inline-block; }
         .btn-foto-upload:hover { background:#e2e8f0; }
         .btn-remover-foto { background:transparent; color:#ef4444; border:none; cursor:pointer; font-size:12px; font-weight:700; padding:4px; }
+        .docs-fotos-edit { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; align-items:flex-start; }
+        .docs-foto-item { position:relative; flex-shrink:0; }
+        .docs-foto-item img { width:90px; height:70px; object-fit:cover; border-radius:6px; border:1px solid #e2e8f0; display:block; }
+        .docs-foto-num { position:absolute; top:3px; left:3px; background:rgba(0,0,0,.55); color:white; font-size:10px; font-weight:700; border-radius:3px; padding:1px 5px; pointer-events:none; }
+        .docs-foto-del { position:absolute; top:3px; right:3px; background:rgba(239,68,68,.85); color:white; border:none; border-radius:3px; width:18px; height:18px; font-size:11px; line-height:18px; text-align:center; cursor:pointer; padding:0; }
+        .docs-fotos-view { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+        .docs-foto-view-item { }
+        .docs-foto-view-num { font-size:11px; font-weight:700; color:#64748b; margin-bottom:4px; }
+        .docs-foto-view-item img { max-width:100%; max-height:500px; object-fit:contain; border-radius:8px; border:1px solid #e2e8f0; display:block; cursor:pointer; }
         .btn-add-etapa { background:white; color:var(--primary); border:2px dashed var(--primary); padding:11px; border-radius:8px; width:100%; cursor:pointer; font-weight:700; font-size:13px; transition:.15s; margin-bottom:4px; }
         .btn-add-etapa:hover { background:rgba(59,130,246,.05); }
         .docs-empty { text-align:center; padding:60px 20px; color:#94a3b8; }
@@ -5272,7 +5281,16 @@ async function buscarEquipPorPatrimonio(val, lado) {
                 html += `<div class="docs-etapa">
                     <div class="docs-etapa-num">Etapa ${i + 1}</div>
                     <div class="docs-etapa-texto">${_esc(e.texto || '')}</div>
-                    ${e.foto_url ? `<div class="docs-etapa-foto"><img src="${e.foto_url}" alt="Foto etapa ${i + 1}" onclick="docsAbrirFoto('${e.foto_url.replace(/'/g, "\\'")}')"></div>` : ''}
+                    ${(() => {
+                        const fotos = e.fotos || (e.foto_url ? [e.foto_url] : []);
+                        if (!fotos.length) return '';
+                        return `<div class="docs-fotos-view">${fotos.map((url, fi) =>
+                            `<div class="docs-foto-view-item">
+                                ${fotos.length > 1 ? `<div class="docs-foto-view-num">Foto ${fi + 1}</div>` : ''}
+                                <img src="${url}" alt="Foto ${fi + 1}" onclick="docsAbrirFoto('${url.replace(/'/g, "\\'")}')">
+                            </div>`
+                        ).join('')}</div>`;
+                    })()}
                 </div>`;
             });
         }
@@ -5287,7 +5305,7 @@ async function buscarEquipPorPatrimonio(val, lado) {
 
     function novoDoc() {
         _docsState.editId = null;
-        _docsState.etapasEdit = [{ texto: '', foto_url: '' }];
+        _docsState.etapasEdit = [{ texto: '', fotos: [] }];
         _docsState.modo = 'editar';
         document.getElementById('btnNovoProcedimento').style.display = 'none';
         _renderizarEditDoc(null);
@@ -5297,8 +5315,12 @@ async function buscarEquipPorPatrimonio(val, lado) {
         const doc = _docsState.lista.find(d => d.id === id);
         if (!doc) return;
         _docsState.editId = id;
-        _docsState.etapasEdit = JSON.parse(JSON.stringify(doc.etapas || []));
-        if (!_docsState.etapasEdit.length) _docsState.etapasEdit.push({ texto: '', foto_url: '' });
+        // migra formato antigo foto_url → fotos[]
+        _docsState.etapasEdit = (doc.etapas || []).map(e => ({
+            texto: e.texto || '',
+            fotos: e.fotos || (e.foto_url ? [e.foto_url] : []),
+        }));
+        if (!_docsState.etapasEdit.length) _docsState.etapasEdit.push({ texto: '', fotos: [] });
         _docsState.modo = 'editar';
         document.getElementById('btnNovoProcedimento').style.display = 'none';
         _renderizarEditDoc(doc);
@@ -5364,7 +5386,7 @@ async function buscarEquipPorPatrimonio(val, lado) {
 
         let html = '';
         _docsState.etapasEdit.forEach((etapa, i) => {
-            const textoSafe = _esc(etapa.texto || '');
+            const fotos = etapa.fotos || [];
             html += `<div class="docs-edit-etapa" id="docsEtapa_${i}">
                 <div class="docs-edit-etapa-header">
                     <span class="docs-edit-etapa-num">Etapa ${i + 1}</span>
@@ -5372,22 +5394,24 @@ async function buscarEquipPorPatrimonio(val, lado) {
                 </div>
                 <textarea class="docs-edit-textarea" placeholder="Descreva esta etapa com detalhes..."
                     onchange="_docsSyncTexto(${i},this.value)"
-                    oninput="_docsSyncTexto(${i},this.value)">${textoSafe}</textarea>
-                <div class="docs-foto-preview">`;
+                    oninput="_docsSyncTexto(${i},this.value)">${_esc(etapa.texto || '')}</textarea>
+                <div class="docs-fotos-edit">`;
+
+            fotos.forEach((url, fi) => {
+                html += `<div class="docs-foto-item">
+                    <img src="${url}" alt="foto ${fi + 1}">
+                    <span class="docs-foto-num">${fi + 1}</span>
+                    <button class="docs-foto-del" onclick="docsRemoverFoto(${i},${fi})" title="Remover foto">✕</button>
+                </div>`;
+            });
 
             if (etapa.uploading) {
-                html += `<span class="docs-foto-loading">⏳ Enviando foto...</span>`;
+                html += `<span class="docs-foto-loading">⏳ Enviando...</span>`;
             } else {
-                if (etapa.foto_url) {
-                    html += `<img class="docs-foto-thumb" src="${etapa.foto_url}" alt="foto">`;
-                }
-                html += `<label class="btn-foto-upload">
-                    ${etapa.foto_url ? '🔄 Trocar foto' : '📷 Adicionar foto'}
+                html += `<label class="btn-foto-upload" style="align-self:center;">
+                    📷 ${fotos.length ? 'Mais foto' : 'Adicionar foto'}
                     <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="docsUploadFoto(${i}, this)">
                 </label>`;
-                if (etapa.foto_url) {
-                    html += `<button class="btn-remover-foto" onclick="docsRemoverFoto(${i})">✕ Remover foto</button>`;
-                }
             }
 
             html += `</div></div>`;
@@ -5402,7 +5426,7 @@ async function buscarEquipPorPatrimonio(val, lado) {
 
     function docsAdicionarEtapa() {
         _syncAllTextos();
-        _docsState.etapasEdit.push({ texto: '', foto_url: '' });
+        _docsState.etapasEdit.push({ texto: '', fotos: [] });
         _renderizarEtapasEdit();
         setTimeout(() => {
             const el = document.getElementById(`docsEtapa_${_docsState.etapasEdit.length - 1}`);
@@ -5413,14 +5437,14 @@ async function buscarEquipPorPatrimonio(val, lado) {
     function docsRemoverEtapa(index) {
         _syncAllTextos();
         if (_docsState.etapasEdit.length <= 1) {
-            _docsState.etapasEdit[0] = { texto: '', foto_url: '' };
+            _docsState.etapasEdit[0] = { texto: '', fotos: [] };
         } else {
             _docsState.etapasEdit.splice(index, 1);
         }
         _renderizarEtapasEdit();
     }
 
-    async function docsUploadFoto(index, input) {
+    async function docsUploadFoto(etapaIdx, input) {
         const file = input.files[0];
         if (!file) return;
 
@@ -5430,7 +5454,7 @@ async function buscarEquipPorPatrimonio(val, lado) {
         }
 
         _syncAllTextos();
-        _docsState.etapasEdit[index].uploading = true;
+        _docsState.etapasEdit[etapaIdx].uploading = true;
         _renderizarEtapasEdit();
 
         const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
@@ -5441,7 +5465,7 @@ async function buscarEquipPorPatrimonio(val, lado) {
             .from('docs-fotos')
             .upload(caminho, file, { upsert: true, contentType: file.type });
 
-        _docsState.etapasEdit[index].uploading = false;
+        _docsState.etapasEdit[etapaIdx].uploading = false;
 
         if (error) {
             alert('Erro ao enviar foto: ' + error.message);
@@ -5453,12 +5477,14 @@ async function buscarEquipPorPatrimonio(val, lado) {
             .from('docs-fotos')
             .getPublicUrl(caminho);
 
-        _docsState.etapasEdit[index].foto_url = urlData.publicUrl;
+        if (!_docsState.etapasEdit[etapaIdx].fotos) _docsState.etapasEdit[etapaIdx].fotos = [];
+        _docsState.etapasEdit[etapaIdx].fotos.push(urlData.publicUrl);
         _renderizarEtapasEdit();
     }
 
-    function docsRemoverFoto(index) {
-        _docsState.etapasEdit[index].foto_url = '';
+    function docsRemoverFoto(etapaIdx, fotoIdx) {
+        const fotos = _docsState.etapasEdit[etapaIdx]?.fotos;
+        if (fotos) fotos.splice(fotoIdx, 1);
         _renderizarEtapasEdit();
     }
 
@@ -5481,8 +5507,8 @@ async function buscarEquipPorPatrimonio(val, lado) {
         const categoria = (document.getElementById('docsEditCategoria')?.value || '').trim();
         const tags = (document.getElementById('docsEditTags')?.value || '').trim();
         const etapas = _docsState.etapasEdit
-            .filter(e => (e.texto || '').trim() || e.foto_url)
-            .map(e => ({ texto: (e.texto || '').trim(), foto_url: e.foto_url || '' }));
+            .filter(e => (e.texto || '').trim() || (e.fotos || []).length)
+            .map(e => ({ texto: (e.texto || '').trim(), fotos: e.fotos || [] }));
 
         const agora = new Date().toISOString();
         const payload = { titulo, categoria, tags, etapas, criado_por: loggedInUser?.email || '', atualizado_em: agora };
