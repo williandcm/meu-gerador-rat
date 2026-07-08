@@ -3597,6 +3597,7 @@ create table estoque (
     }
 
     async function abrirModalRetorno() {
+        _retornoEditId = null;
         const hojeISO = _hojeISO();
         document.getElementById('retornoData').value = hojeISO;
         document.getElementById('retornoKmChegada').value = '';
@@ -3661,7 +3662,39 @@ create table estoque (
         }
     }
 
+    let _retornoEditId = null;
+
+    async function editarRetorno(id) {
+        const { data, error } = await supabaseClient.from('km_retorno').select('*').eq('id', id).single();
+        if (error || !data) { alert('Erro ao carregar registro.'); return; }
+
+        _retornoEditId = id;
+
+        // converte data pt-BR → ISO para o input[type=date]
+        const partes = (data.data || '').split('/');
+        const iso = partes.length === 3 ? `${partes[2]}-${partes[1]}-${partes[0]}` : _hojeISO();
+
+        document.getElementById('retornoData').value = iso;
+        document.getElementById('retornoHoraSaida').value = data.hora_saida || '';
+        document.getElementById('retornoKmSaida').value = data.km_saida ?? '';
+        document.getElementById('retornoKmChegada').value = data.km_chegada ?? '';
+        document.getElementById('retornoHoraChegada').value = data.hora_chegada || '';
+        document.getElementById('retornoHoraChegadaHint').textContent = '(edite se necessário)';
+        document.getElementById('retornoAutoInfo').style.display = 'none';
+        calcularRetornoKm();
+
+        document.getElementById('modalRetorno').classList.add('open');
+    }
+
+    async function excluirRetorno(id) {
+        if (!confirm('Excluir este retorno?')) return;
+        const { error } = await supabaseClient.from('km_retorno').delete().eq('id', id);
+        if (error) { alert('Erro ao excluir: ' + error.message); return; }
+        await carregarRetornos();
+    }
+
     function fecharModalRetorno() {
+        _retornoEditId = null;
         document.getElementById('modalRetorno').classList.remove('open');
     }
 
@@ -3707,14 +3740,19 @@ create table estoque (
             tecnico:      (loggedInUser?.email || '').toLowerCase(),
         };
 
-        const { error } = await supabaseClient.from('km_retorno').insert(payload);
-        if (error) { alert('Erro ao registrar: ' + error.message); return; }
+        let error;
+        if (_retornoEditId) {
+            ({ error } = await supabaseClient.from('km_retorno').update(payload).eq('id', _retornoEditId));
+        } else {
+            ({ error } = await supabaseClient.from('km_retorno').insert(payload));
+        }
+        if (error) { alert('Erro ao salvar: ' + error.message); return; }
 
         fecharModalRetorno();
         await carregarRetornos();
 
         const kmRodado = !isNaN(kmSaida) ? kmChegada - kmSaida : null;
-        alert(`Retorno registrado — ${data} às ${horaChegada}${kmRodado != null ? ' — ' + kmRodado + ' km rodados' : ''}.`);
+        alert(`Retorno ${_retornoEditId ? 'atualizado' : 'registrado'} — ${data} às ${horaChegada}${kmRodado != null ? ' — ' + kmRodado + ' km rodados' : ''}.`);
     }
 
     async function carregarRetornos() {
@@ -3755,6 +3793,10 @@ create table estoque (
                 <span class="retorno-info">Chegada: <strong>${r.hora_chegada || '—'}</strong></span>
                 ${r.km_saida != null ? `<span class="retorno-info">KM: ${r.km_saida} → ${r.km_chegada}</span>` : ''}
                 ${km != null ? `<span class="retorno-km">${km} km</span>` : ''}
+                <div style="margin-left:auto;display:flex;gap:4px;">
+                    <button class="btn-edit-table" onclick="editarRetorno(${r.id})" title="Editar">✏️</button>
+                    <button class="btn-danger-table" onclick="excluirRetorno(${r.id})" title="Excluir">🗑</button>
+                </div>
             </div>`;
         }).join('') + (totalKm > 0 && lista.length > 1
             ? `<div style="padding-top:8px;text-align:right;font-size:13px;font-weight:800;color:#166534;">Total do dia: ${totalKm} km</div>`
