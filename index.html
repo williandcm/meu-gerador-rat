@@ -637,7 +637,7 @@
         .comp-crop-hint { font-size:11px; color:rgba(255,255,255,.6); font-weight:400; margin-top:2px; }
         .comp-crop-skip { background:rgba(255,255,255,.15); color:white; border:none; padding:6px 14px; border-radius:6px; font-size:13px; cursor:pointer; }
         .comp-crop-wrapper { flex:1; display:flex; align-items:center; justify-content:center; width:100%; padding:8px; box-sizing:border-box; overflow:hidden; }
-        #compCropCanvas { touch-action:none; cursor:crosshair; display:block; max-width:100%; max-height:100%; }
+        #compCropCanvas { touch-action:none; cursor:crosshair; display:block; }
         .comp-crop-footer { width:100%; padding:12px 16px; background:rgba(0,0,0,.85); flex-shrink:0; }
         .comp-crop-btn { width:100%; padding:14px; background:#3b82f6; color:white; border:none; border-radius:10px; font-size:16px; font-weight:700; cursor:pointer; }
         .comp-crop-btn:active { background:#2563eb; }
@@ -4066,34 +4066,35 @@ create table estoque (
         const overlay = document.getElementById('compCropOverlay');
         const canvas  = document.getElementById('compCropCanvas');
 
-        // Show overlay first so wrapper has computed dimensions
+        // Show overlay first, then measure wrapper after browser lays it out
         overlay.style.display = 'flex';
-        const wrapper = document.getElementById('compCropWrapper');
-        const maxW = wrapper.clientWidth  - 16;
-        const maxH = wrapper.clientHeight - 16;
-        _cropScale = Math.min(1, maxW / imgEl.naturalWidth, maxH / imgEl.naturalHeight);
-        canvas.width  = Math.round(imgEl.naturalWidth  * _cropScale);
-        canvas.height = Math.round(imgEl.naturalHeight * _cropScale);
+        requestAnimationFrame(() => {
+            const wrapper = document.getElementById('compCropWrapper');
+            const maxW = wrapper.clientWidth  - 16;
+            const maxH = wrapper.clientHeight - 16;
+            _cropScale = Math.min(1, maxW / imgEl.naturalWidth, maxH / imgEl.naturalHeight);
+            canvas.width  = Math.round(imgEl.naturalWidth  * _cropScale);
+            canvas.height = Math.round(imgEl.naturalHeight * _cropScale);
 
-        // Default corners: 10% inset so user can see the handles clearly
-        const pad = Math.round(Math.min(canvas.width, canvas.height) * 0.08);
-        _cropCorners = [
-            { x: pad,                  y: pad },
-            { x: canvas.width  - pad,  y: pad },
-            { x: canvas.width  - pad,  y: canvas.height - pad },
-            { x: pad,                  y: canvas.height - pad }
-        ];
-        _cropDrag = -1;
+            // Default corners: 10% inset so user can see the handles clearly
+            const pad = Math.round(Math.min(canvas.width, canvas.height) * 0.08);
+            _cropCorners = [
+                { x: pad,                 y: pad },
+                { x: canvas.width - pad,  y: pad },
+                { x: canvas.width - pad,  y: canvas.height - pad },
+                { x: pad,                 y: canvas.height - pad }
+            ];
+            _cropDrag = -1;
 
-        // Event listeners (remove old ones first)
-        canvas.onmousedown  = _cropMouseDown;
-        canvas.onmousemove  = _cropMouseMove;
-        canvas.onmouseup    = _cropMouseUp;
-        canvas.ontouchstart = _cropTouchStart;
-        canvas.ontouchmove  = _cropTouchMove;
-        canvas.ontouchend   = _cropTouchEnd;
+            canvas.onmousedown  = _cropMouseDown;
+            canvas.onmousemove  = _cropMouseMove;
+            canvas.onmouseup    = _cropMouseUp;
+            canvas.ontouchstart = _cropTouchStart;
+            canvas.ontouchmove  = _cropTouchMove;
+            canvas.ontouchend   = _cropTouchEnd;
 
-        _compDesenharCrop();
+            _compDesenharCrop();
+        });
     }
 
     function _compDesenharCrop() {
