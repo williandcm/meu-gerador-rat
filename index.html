@@ -1999,6 +1999,9 @@ create table estoque (
         { id: 'mac_inst',    label: 'MAC Instalado' },
         { id: 'solucao',     label: 'Solução' },
         { id: 'defeito',     label: 'Defeito / Descritivo' },
+        { id: 'km_saida',   label: 'KM Saída' },
+        { id: 'km_chegada', label: 'KM Chegada' },
+        { id: 'km_total',   label: 'KM Rodado' },
     ];
     const COLS_PADRAO = ['chamado', 'data', 'tecnico', 'uniorg', 'endereco', 'responsavel', 'troca'];
 
@@ -2058,6 +2061,12 @@ create table estoque (
             case 'mac_inst':    return `<td>${v(item.mac_inst)}</td>`;
             case 'solucao':     return `<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v(item.solucao)}</td>`;
             case 'defeito':     return `<td>${v(item.descritivo_defeito_causa)}</td>`;
+            case 'km_saida':   return `<td>${item.km_saida != null ? item.km_saida + ' km' : '<span style="color:#94a3b8;">—</span>'}</td>`;
+            case 'km_chegada': return `<td>${item.km_chegada != null ? item.km_chegada + ' km' : '<span style="color:#94a3b8;">—</span>'}</td>`;
+            case 'km_total': {
+                const t = (item.km_saida != null && item.km_chegada != null) ? item.km_chegada - item.km_saida : null;
+                return `<td>${t != null ? `<strong style="color:#166534;">${t} km</strong>` : '<span style="color:#94a3b8;">—</span>'}</td>`;
+            }
             default:            return `<td>—</td>`;
         }
     }
