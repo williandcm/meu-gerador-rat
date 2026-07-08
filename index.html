@@ -1145,6 +1145,10 @@ create table estoque (
         <div class="retorno-auto-info" id="retornoAutoInfo" style="display:none;"></div>
 
         <div class="field">
+            <label>Data</label>
+            <input type="date" id="retornoData" onchange="retornoDataChanged()">
+        </div>
+        <div class="field">
             <label>Hora Saída <span style="font-weight:normal;color:#94a3b8;">(término do atendimento)</span></label>
             <input type="text" id="retornoHoraSaida" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)">
         </div>
@@ -1156,10 +1160,12 @@ create table estoque (
             <label>KM Chegada <span style="font-weight:normal;color:#94a3b8;">(hodômetro ao chegar em casa)</span></label>
             <input type="number" id="retornoKmChegada" placeholder="Ex: 12120" min="0" step="1" oninput="calcularRetornoKm()">
         </div>
+        <div class="field">
+            <label>Hora Chegada em Casa <span style="font-weight:normal;color:#94a3b8;" id="retornoHoraChegadaHint">(preenchida automaticamente para hoje)</span></label>
+            <input type="text" id="retornoHoraChegada" class="time-input" placeholder="00:00" maxlength="5" oninput="mascaraHora(this)">
+        </div>
 
         <div class="retorno-total" id="retornoTotal"></div>
-
-        <p style="font-size:12px;color:#94a3b8;margin-bottom:16px;">A hora de chegada em casa será registrada automaticamente ao salvar.</p>
 
         <button class="btn-cancelar-ret" onclick="fecharModalRetorno()">Cancelar</button>
         <button class="btn-retorno" onclick="salvarRetorno()">✅ Registrar Chegada em Casa</button>
@@ -3575,24 +3581,64 @@ create table estoque (
     // RETORNO CASA
     // ─────────────────────────────────────────────────────────────
 
+    function _hojeISO() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    function _isoParaPtBR(iso) {
+        if (!iso) return '';
+        const [y, m, d] = iso.split('-');
+        return `${d}/${m}/${y}`;
+    }
+
     async function abrirModalRetorno() {
-        // pré-preenche a partir do último chamado do dia
-        const hoje = new Date().toLocaleDateString('pt-BR');
+        const hojeISO = _hojeISO();
+        document.getElementById('retornoData').value = hojeISO;
+        document.getElementById('retornoKmChegada').value = '';
+        document.getElementById('retornoTotal').style.display = 'none';
+
+        // hora chegada = agora (para hoje)
+        const agora = new Date();
+        document.getElementById('retornoHoraChegada').value = agora.toTimeString().slice(0, 5);
+        document.getElementById('retornoHoraChegadaHint').textContent = '(preenchida automaticamente para hoje)';
+
+        await _preencherUltimoChamadoRetorno(hojeISO);
+
+        document.getElementById('modalRetorno').classList.add('open');
+        setTimeout(() => document.getElementById('retornoKmChegada').focus(), 100);
+    }
+
+    async function retornoDataChanged() {
+        const iso = document.getElementById('retornoData').value;
+        const hojeISO = _hojeISO();
+        const hint = document.getElementById('retornoHoraChegadaHint');
+
+        if (iso === hojeISO) {
+            document.getElementById('retornoHoraChegada').value = new Date().toTimeString().slice(0, 5);
+            hint.textContent = '(preenchida automaticamente para hoje)';
+        } else {
+            document.getElementById('retornoHoraChegada').value = '';
+            hint.textContent = '(informe a hora que chegou em casa)';
+        }
+
+        await _preencherUltimoChamadoRetorno(iso);
+    }
+
+    async function _preencherUltimoChamadoRetorno(iso) {
+        const dataPtBR = _isoParaPtBR(iso);
         const email = (loggedInUser?.email || '').toLowerCase();
 
-        const chamadosHoje = (todosChamadosCache || [])
-            .filter(c => c.data_atendimento === hoje && c.tecnico?.toLowerCase() === email)
-            .sort((a, b) => (b.hora_termino_ate || '').localeCompare(a.hora_termino_ate || ''));
+        let ultimo = (todosChamadosCache || [])
+            .filter(c => c.data_atendimento === dataPtBR && c.tecnico?.toLowerCase() === email)
+            .sort((a, b) => (b.hora_termino_ate || '').localeCompare(a.hora_termino_ate || ''))[0];
 
-        let ultimo = chamadosHoje[0];
-
-        // Se o cache não tiver dados de hoje, busca no banco
         if (!ultimo) {
             const { data } = await supabaseClient
                 .from('chamados')
                 .select('hora_termino_ate,km_chegada,chamado')
                 .eq('tecnico', email)
-                .eq('data_atendimento', hoje)
+                .eq('data_atendimento', dataPtBR)
                 .order('hora_termino_ate', { ascending: false })
                 .limit(1);
             ultimo = data?.[0] || null;
@@ -3609,11 +3655,6 @@ create table estoque (
             document.getElementById('retornoKmSaida').value = '';
             infoEl.style.display = 'none';
         }
-
-        document.getElementById('retornoKmChegada').value = '';
-        document.getElementById('retornoTotal').style.display = 'none';
-        document.getElementById('modalRetorno').classList.add('open');
-        setTimeout(() => document.getElementById('retornoKmChegada').focus(), 100);
     }
 
     function fecharModalRetorno() {
@@ -3634,26 +3675,32 @@ create table estoque (
     }
 
     async function salvarRetorno() {
-        const kmChegada = parseInt(document.getElementById('retornoKmChegada')?.value || '');
+        const kmChegada   = parseInt(document.getElementById('retornoKmChegada')?.value || '');
+        const horaChegada = (document.getElementById('retornoHoraChegada')?.value || '').trim();
+        const iso         = document.getElementById('retornoData')?.value || _hojeISO();
+
         if (isNaN(kmChegada)) {
             alert('Informe o KM de chegada em casa.');
             document.getElementById('retornoKmChegada').focus();
             return;
         }
+        if (!horaChegada) {
+            alert('Informe a hora de chegada em casa.');
+            document.getElementById('retornoHoraChegada').focus();
+            return;
+        }
 
-        const horaSaida  = (document.getElementById('retornoHoraSaida')?.value || '').trim();
-        const kmSaida    = parseInt(document.getElementById('retornoKmSaida')?.value || '');
-        const agora      = new Date();
-        const horaChegada = agora.toTimeString().slice(0, 5);
-        const data        = agora.toLocaleDateString('pt-BR');
+        const horaSaida = (document.getElementById('retornoHoraSaida')?.value || '').trim();
+        const kmSaida   = parseInt(document.getElementById('retornoKmSaida')?.value || '');
+        const data      = _isoParaPtBR(iso);
 
         const payload = {
             data,
-            hora_saida:    horaSaida || null,
-            km_saida:      isNaN(kmSaida) ? null : kmSaida,
-            hora_chegada:  horaChegada,
-            km_chegada:    kmChegada,
-            tecnico:       (loggedInUser?.email || '').toLowerCase(),
+            hora_saida:   horaSaida || null,
+            km_saida:     isNaN(kmSaida) ? null : kmSaida,
+            hora_chegada: horaChegada,
+            km_chegada:   kmChegada,
+            tecnico:      (loggedInUser?.email || '').toLowerCase(),
         };
 
         const { error } = await supabaseClient.from('km_retorno').insert(payload);
@@ -3663,7 +3710,7 @@ create table estoque (
         await carregarRetornos();
 
         const kmRodado = !isNaN(kmSaida) ? kmChegada - kmSaida : null;
-        alert(`Chegada registrada às ${horaChegada}${kmRodado != null ? ' — ' + kmRodado + ' km rodados' : ''}.`);
+        alert(`Retorno registrado — ${data} às ${horaChegada}${kmRodado != null ? ' — ' + kmRodado + ' km rodados' : ''}.`);
     }
 
     async function carregarRetornos() {
