@@ -1272,8 +1272,14 @@ create table estoque (
                             <input type="text" id="compEstabelecimento" placeholder="Nome do local">
                         </div>
                         <div class="field" style="grid-column:span 2;">
+                            <label>Chamado relacionado <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
+                            <select id="compChamadoRef">
+                                <option value="">— Nenhum —</option>
+                            </select>
+                        </div>
+                        <div class="field" style="grid-column:span 2;">
                             <label>Observação</label>
-                            <input type="text" id="compObservacao" placeholder="Referência (ex: chamado INC12345)">
+                            <input type="text" id="compObservacao" placeholder="Observação livre">
                         </div>
                     </div>
                     <div id="compFotoThumb" style="margin-top:8px;display:none;">
@@ -3975,6 +3981,27 @@ create table estoque (
     const COMP_ICONES = { estacionamento:'🅿️', pedagio:'🛣️', alimentacao:'🍽️', outro:'📋' };
     const COMP_LABELS = { estacionamento:'Estacionamento', pedagio:'Pedágio', alimentacao:'Alimentação', outro:'Outro' };
 
+    async function _compCarregarChamadosSelect(valorAtual) {
+        const sel = document.getElementById('compChamadoRef');
+        sel.innerHTML = '<option value="">— Nenhum —</option>';
+        try {
+            let query = supabaseClient.from('chamados')
+                .select('id,chamado,nome_empresa,data_atendimento')
+                .order('data_atendimento', { ascending: false })
+                .limit(60);
+            if (!_isAdmin()) query = query.eq('tecnico', _usuarioAtual);
+            const { data } = await query;
+            (data || []).forEach(c => {
+                const label = [c.chamado, c.nome_empresa, c.data_atendimento ? c.data_atendimento.split('-').reverse().join('/') : ''].filter(Boolean).join(' · ');
+                const opt = document.createElement('option');
+                opt.value = c.chamado || c.id;
+                opt.textContent = label;
+                if (valorAtual && opt.value === valorAtual) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        } catch (e) { /* silencioso */ }
+    }
+
     function abrirModalNovoComprovante() {
         _compEditId = null;
         _compFotoBlob = null;
@@ -3988,7 +4015,6 @@ create table estoque (
         document.getElementById('compQualidadeMsg').style.display = 'none';
         document.getElementById('compOCRProgress').style.display = 'none';
         document.getElementById('compFotoInput').value = '';
-        // pre-fill data com hoje
         document.getElementById('compData').value = _hojeISO();
         document.getElementById('compValor').value = '';
         document.getElementById('compHora').value = '';
@@ -3997,6 +4023,7 @@ create table estoque (
         document.getElementById('compTipo').value = 'estacionamento';
         document.getElementById('compFotoThumb').style.display = 'none';
         document.getElementById('modalComprovante').style.display = 'flex';
+        _compCarregarChamadosSelect('');
     }
 
     function fecharModalComprovante() {
@@ -4414,10 +4441,6 @@ create table estoque (
             document.getElementById('compData').value = `${y}-${mData[2]}-${mData[1]}`;
         }
 
-        // Hora: HH:MM (apenas horas válidas, ignora pares como 08/07)
-        const mHora = text.match(/\b([01]\d|2[0-3]):([0-5]\d)\b/);
-        if (mHora) document.getElementById('compHora').value = `${mHora[1]}:${mHora[2]}`;
-
         // Estabelecimento: primeira linha não-vazia
         const linhas = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
         if (linhas.length) document.getElementById('compEstabelecimento').value = linhas[0].slice(0, 60);
@@ -4466,6 +4489,7 @@ create table estoque (
             hora:            document.getElementById('compHora').value || null,
             estabelecimento: document.getElementById('compEstabelecimento').value || '',
             observacao:      document.getElementById('compObservacao').value || '',
+            chamado_ref:     document.getElementById('compChamadoRef').value || '',
             foto_url:        foto_url,
             tecnico:         _usuarioAtual
         };
@@ -4493,12 +4517,13 @@ create table estoque (
         _compFotoBlob = null;
         _compFotoOK = false;
 
-        document.getElementById('compTipo').value           = data.tipo || 'outro';
-        document.getElementById('compValor').value          = data.valor ?? '';
-        document.getElementById('compData').value           = data.data || '';
-        document.getElementById('compHora').value           = data.hora || '';
+        document.getElementById('compTipo').value            = data.tipo || 'outro';
+        document.getElementById('compValor').value           = data.valor ?? '';
+        document.getElementById('compData').value            = data.data || '';
+        document.getElementById('compHora').value            = data.hora || '';
         document.getElementById('compEstabelecimento').value = data.estabelecimento || '';
-        document.getElementById('compObservacao').value     = data.observacao || '';
+        document.getElementById('compObservacao').value      = data.observacao || '';
+        await _compCarregarChamadosSelect(data.chamado_ref || '');
 
         if (data.foto_url) {
             const thumbImg = document.getElementById('compFotoThumbImg');
@@ -4571,6 +4596,7 @@ create table estoque (
                 <div>
                     <div class="comp-card-tipo">${label}</div>
                     <div class="comp-card-sub">${sub || '—'}</div>
+                    ${c.chamado_ref ? `<div class="comp-card-sub" style="color:#3b82f6;font-weight:600;">📋 ${c.chamado_ref}</div>` : ''}
                     ${c.observacao ? `<div class="comp-card-sub" style="color:#475569;">${c.observacao}</div>` : ''}
                 </div>
                 <div>
