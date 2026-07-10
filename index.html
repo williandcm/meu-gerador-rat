@@ -3766,10 +3766,10 @@ create table estoque (
             supabaseClient.from('km_retorno').select('*')
                 .eq('tecnico', email).eq('data', dataPtBR)
                 .order('criado_em', { ascending: true }),
-            supabaseClient.from('chamados').select('km_chegada,data_atendimento')
+            supabaseClient.from('chamados').select('km_chegada')
                 .eq('tecnico', email).eq('data_atendimento', dataISO)
                 .not('km_chegada', 'is', null)
-                .order('criado_em', { ascending: false })
+                .order('id', { ascending: false })
                 .limit(1)
         ]);
 
