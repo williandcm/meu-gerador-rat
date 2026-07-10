@@ -3758,20 +3758,26 @@ create table estoque (
     async function carregarRetornos() {
         const filtroEl = document.getElementById('retornoFiltroData');
         if (filtroEl && !filtroEl.value) filtroEl.value = _hojeISO();
-        const data = filtroEl ? _isoParaPtBR(filtroEl.value) : new Date().toLocaleDateString('pt-BR');
-        const email = (loggedInUser?.email || '').toLowerCase();
+        const dataISO  = filtroEl?.value || _hojeISO();
+        const dataPtBR = _isoParaPtBR(dataISO);
+        const email    = (loggedInUser?.email || '').toLowerCase();
 
-        const { data: rows } = await supabaseClient
-            .from('km_retorno')
-            .select('*')
-            .eq('tecnico', email)
-            .eq('data', data)
-            .order('criado_em', { ascending: true });
+        const [{ data: rows }, { data: ultimoChamado }] = await Promise.all([
+            supabaseClient.from('km_retorno').select('*')
+                .eq('tecnico', email).eq('data', dataPtBR)
+                .order('criado_em', { ascending: true }),
+            supabaseClient.from('chamados').select('km_chegada,data_atendimento')
+                .eq('tecnico', email).eq('data_atendimento', dataISO)
+                .not('km_chegada', 'is', null)
+                .order('criado_em', { ascending: false })
+                .limit(1)
+        ]);
 
-        renderizarRetornos(rows || []);
+        const kmUltimoChamado = ultimoChamado?.[0]?.km_chegada ?? null;
+        renderizarRetornos(rows || [], kmUltimoChamado);
     }
 
-    function renderizarRetornos(lista) {
+    function renderizarRetornos(lista, kmUltimoChamado) {
         const listaEl = document.getElementById('retornoLista');
         if (!listaEl) return;
 
@@ -3780,27 +3786,37 @@ create table estoque (
             return;
         }
 
-        const totalKm = lista.reduce((acc, r) => {
-            if (r.km_saida != null && r.km_chegada != null) acc += r.km_chegada - r.km_saida;
-            return acc;
-        }, 0);
+        // Pega o km_chegada do último retorno (chegada em casa)
+        const ultimoRetorno = lista[lista.length - 1];
+        const kmCasa = ultimoRetorno.km_chegada;
+
+        // Km do último chamado até em casa = km_chegada(retorno) - km_chegada(último chamado)
+        const kmChamadoCasa = (kmUltimoChamado != null && kmCasa != null)
+            ? kmCasa - kmUltimoChamado
+            : null;
 
         listaEl.innerHTML = lista.map((r, i) => {
-            const km = r.km_saida != null && r.km_chegada != null ? r.km_chegada - r.km_saida : null;
+            const kmViagem = r.km_saida != null && r.km_chegada != null ? r.km_chegada - r.km_saida : null;
             return `<div class="retorno-linha">
                 <span style="color:#94a3b8;font-size:11px;font-weight:700;">#${i + 1}</span>
                 <span class="retorno-info">Saída: <strong>${r.hora_saida || '—'}</strong></span>
                 <span class="retorno-info">Chegada: <strong>${r.hora_chegada || '—'}</strong></span>
                 ${r.km_saida != null ? `<span class="retorno-info" style="color:#94a3b8;">KM: ${r.km_saida} → ${r.km_chegada}</span>` : ''}
-                ${km != null ? `<span class="retorno-km" title="Km do último chamado até em casa">🏠 ${km} km</span>` : ''}
+                ${kmViagem != null ? `<span class="retorno-info" style="color:#94a3b8;">(${kmViagem} km trecho)</span>` : ''}
                 <div style="margin-left:auto;display:flex;gap:4px;">
                     <button class="btn-edit-table" onclick="editarRetorno(${r.id})" title="Editar">✏️</button>
                     <button class="btn-danger-table" onclick="excluirRetorno(${r.id})" title="Excluir">🗑</button>
                 </div>
             </div>`;
-        }).join('') + (totalKm > 0 && lista.length > 1
-            ? `<div style="padding-top:8px;text-align:right;font-size:13px;font-weight:800;color:#166534;">🏠 Total retorno: ${totalKm} km</div>`
-            : '');
+        }).join('')
+        + (kmChamadoCasa != null
+            ? `<div style="margin-top:10px;padding:10px 14px;background:#dcfce7;border:1px solid #86efac;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13px;color:#166534;font-weight:600;">🏠 Último chamado → Casa</span>
+                <span style="font-size:20px;font-weight:800;color:#166534;">${kmChamadoCasa} km</span>
+               </div>`
+            : kmCasa != null
+                ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #f1f5f9;font-size:11px;color:#94a3b8;">💡 Cadastre o KM chegada nos chamados do dia para calcular automaticamente o km do último chamado até em casa.</div>`
+                : '');
     }
 
 
