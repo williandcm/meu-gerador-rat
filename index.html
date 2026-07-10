@@ -3802,7 +3802,7 @@ create table estoque (
                 <span class="retorno-info">Saída: <strong>${r.hora_saida || '—'}</strong></span>
                 <span class="retorno-info">Chegada: <strong>${r.hora_chegada || '—'}</strong></span>
                 ${r.km_saida != null ? `<span class="retorno-info" style="color:#94a3b8;">KM: ${r.km_saida} → ${r.km_chegada}</span>` : ''}
-                ${kmViagem != null ? `<span class="retorno-km">${kmViagem} km</span>` : ''}
+                ${kmViagem != null ? `<span class="retorno-km">🏠 ${kmViagem} km</span>` : ''}
                 <div style="margin-left:auto;display:flex;gap:4px;">
                     <button class="btn-edit-table" onclick="editarRetorno(${r.id})" title="Editar">✏️</button>
                     <button class="btn-danger-table" onclick="excluirRetorno(${r.id})" title="Excluir">🗑</button>
