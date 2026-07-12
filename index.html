@@ -4721,7 +4721,7 @@ function abrirCropFoto(file) {
     if (cropperInst) { cropperInst.destroy(); cropperInst = null; }
     img.onload = () => {
         cropperInst = new Cropper(img, {
-            aspectRatio:  1,
+            aspectRatio:  NaN,
             viewMode:     1,
             autoCropArea: 0.9,
             responsive:   true,
