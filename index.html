@@ -1274,6 +1274,11 @@ create table estoque (
                 <div id="vincularResultBad" style="display:none;" class="vincular-result ok">✅ Cadastrado no BAD com sucesso.</div>
                 <button class="btn-modal-edit" id="btnCadastrarBad" style="background:#dc2626;width:100%;" onclick="confirmarCadastrarBad()">⚠️ Cadastrar no BAD</button>
             </div>
+
+            <!-- Itens adicionais (múltiplas trocas no mesmo chamado) -->
+            <div id="vincularItensExtras"></div>
+
+            <button type="button" onclick="adicionarItemVincular()" style="width:100%;padding:10px;margin-top:4px;background:#f0fdf4;border:1px dashed #86efac;border-radius:8px;color:#166534;font-size:13px;font-weight:600;cursor:pointer;">➕ Vincular outro item a este chamado</button>
         </div>
         <div class="modal-footer">
             <button class="btn-modal-close" onclick="fecharModalVincularEstoque()">Fechar</button>
@@ -5423,6 +5428,11 @@ function abrirModalVincularEstoque(chamado) {
     if (semDadosEl) semDadosEl.style.display = semDados ? '' : 'none';
     if (descManualEl) descManualEl.value = '';
 
+    // Limpa itens extras de sessões anteriores
+    const extrasEl = document.getElementById('vincularItensExtras');
+    if (extrasEl) extrasEl.innerHTML = '';
+    _vincularExtraCount = 0;
+
     document.getElementById('modalVincularEstoque').classList.add('open');
     document.body.style.overflow = 'hidden';
 }
@@ -5435,6 +5445,126 @@ function fecharModalVincularEstoque() {
 }
 
 let _vincularChamadoDados = null;
+let _vincularExtraCount   = 0;
+const _vincularExtraItems = {}; // n → { estoqueId }
+
+function adicionarItemVincular() {
+    const n = ++_vincularExtraCount;
+    const container = document.getElementById('vincularItensExtras');
+    if (!container) return;
+
+    const sec = document.createElement('div');
+    sec.className = 'vincular-section';
+    sec.id = `vincularExtra_${n}`;
+    sec.style.marginTop = '10px';
+    sec.innerHTML = `
+        <h4 style="display:flex;justify-content:space-between;align-items:center;">
+            <span>📦 Item adicional #${n}</span>
+            <button type="button" onclick="document.getElementById('vincularExtra_${n}').remove()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;line-height:1;">✕</button>
+        </h4>
+        <div class="vincular-section" style="margin-bottom:8px;">
+            <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:6px;">📤 BAIXAR DO ESTOQUE (instalado)</div>
+            <div style="display:flex;gap:6px;margin-bottom:6px;">
+                <input type="text" id="vincularExtraSN_${n}" placeholder="Série ou Patrimônio do item instalado..." style="flex:1;padding:7px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;text-transform:uppercase;">
+                <button type="button" onclick="buscarItemAdicional(${n})" style="padding:7px 12px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap;">🔍 Buscar</button>
+            </div>
+            <div id="vincularExtraResultBusca_${n}" style="display:none;" class="vincular-result"></div>
+            <button type="button" id="vincularExtraBtnBaixar_${n}" style="display:none;width:100%;margin-top:4px;" class="btn-modal-edit" onclick="confirmarBaixarAdicional(${n})">✅ Confirmar Baixa</button>
+        </div>
+        <div class="vincular-section vincular-section-bad">
+            <div style="font-size:11px;color:#92400e;font-weight:600;margin-bottom:6px;">📥 CADASTRAR NO BAD (retirado) — opcional</div>
+            <input type="text" id="vincularExtraBADDesc_${n}" placeholder="Descrição do item retirado (ex: SUPORTE NOTEBOOK)..." style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid #fca5a5;border-radius:6px;font-size:13px;text-transform:uppercase;margin-bottom:6px;">
+            <div style="display:flex;gap:6px;">
+                <input type="text" id="vincularExtraBADSN_${n}" placeholder="Série do retirado (opcional)" style="flex:1;padding:7px 10px;border:1px solid #fca5a5;border-radius:6px;font-size:13px;text-transform:uppercase;">
+                <input type="text" id="vincularExtraBADPat_${n}" placeholder="Patrimônio (opcional)" style="flex:1;padding:7px 10px;border:1px solid #fca5a5;border-radius:6px;font-size:13px;text-transform:uppercase;">
+            </div>
+            <div id="vincularExtraResultBAD_${n}" style="display:none;margin-top:6px;" class="vincular-result ok"></div>
+            <button type="button" id="vincularExtraBtnBAD_${n}" class="btn-modal-edit" style="background:#dc2626;width:100%;margin-top:8px;" onclick="cadastrarBadAdicional(${n})">⚠️ Cadastrar no BAD</button>
+        </div>`;
+    container.appendChild(sec);
+    _vincularExtraItems[n] = { estoqueId: null };
+    document.getElementById(`vincularExtraSN_${n}`)?.focus();
+}
+
+async function buscarItemAdicional(n) {
+    const termo = (document.getElementById(`vincularExtraSN_${n}`)?.value || '').trim().toUpperCase();
+    if (!termo) { alert('Digite a série ou patrimônio do item.'); return; }
+    const result = document.getElementById(`vincularExtraResultBusca_${n}`);
+    const btnBaixar = document.getElementById(`vincularExtraBtnBaixar_${n}`);
+    if (result) { result.style.display = ''; result.className = 'vincular-result'; result.textContent = 'Buscando...'; }
+    try {
+        const { data, error } = await supabaseClient.from('estoque').select('*')
+            .or(`numero_serie.ilike.${termo},patrimonio.ilike.${termo}`)
+            .not('categoria', 'eq', 'baixado').not('categoria', 'eq', 'bad')
+            .limit(1).maybeSingle();
+        if (error) throw error;
+        if (data) {
+            _vincularExtraItems[n] = { estoqueId: data.id };
+            result.className = 'vincular-result ok';
+            result.textContent = `✅ Encontrado: ${data.descricao || ''} | SN: ${data.numero_serie || ''} | Pat: ${data.patrimonio || ''}`;
+            if (btnBaixar) btnBaixar.style.display = '';
+        } else {
+            _vincularExtraItems[n] = { estoqueId: null };
+            result.className = 'vincular-result nao';
+            result.textContent = '⚠️ Não encontrado no estoque.';
+            if (btnBaixar) btnBaixar.style.display = 'none';
+        }
+    } catch (e) {
+        if (result) { result.className = 'vincular-result nao'; result.textContent = 'Erro: ' + e.message; }
+    }
+}
+
+async function confirmarBaixarAdicional(n) {
+    const id = _vincularExtraItems[n]?.estoqueId;
+    if (!id) return;
+    if (!confirm('Confirmar baixa deste equipamento do estoque?')) return;
+    try {
+        const hoje = new Date().toISOString().slice(0, 10);
+        const { error } = await supabaseClient.from('estoque').update({
+            categoria:   'baixado',
+            chamado_ref: vincularChamadoRef || null,
+            data_saida:  hoje,
+        }).eq('id', id);
+        if (error) throw error;
+        const eq = estoqueCache.find(x => x.id === id);
+        const desc = [eq?.descricao, eq?.patrimonio ? 'Pat: ' + eq.patrimonio : '', eq?.numero_serie ? 'SN: ' + eq.numero_serie : '', vincularChamadoRef ? 'INC: ' + vincularChamadoRef : ''].filter(Boolean).join(' | ');
+        await logMovimentacao('BAIXA ESTOQUE', desc);
+        const result = document.getElementById(`vincularExtraResultBusca_${n}`);
+        if (result) { result.className = 'vincular-result ok'; result.textContent = '✅ Baixado do estoque com sucesso.'; }
+        document.getElementById(`vincularExtraBtnBaixar_${n}`)?.setAttribute('style', 'display:none;');
+        _vincularExtraItems[n].estoqueId = null;
+        await carregarEstoque();
+    } catch (e) {
+        alert('Erro ao baixar: ' + e.message);
+    }
+}
+
+async function cadastrarBadAdicional(n) {
+    const desc  = (document.getElementById(`vincularExtraBADDesc_${n}`)?.value || '').trim().toUpperCase();
+    const sn    = (document.getElementById(`vincularExtraBADSN_${n}`)?.value  || '').trim().toUpperCase();
+    const pat   = (document.getElementById(`vincularExtraBADPat_${n}`)?.value  || '').trim().toUpperCase();
+    if (!desc) { alert('Informe a descrição do item retirado.'); document.getElementById(`vincularExtraBADDesc_${n}`)?.focus(); return; }
+    try {
+        const hoje = new Date().toISOString().slice(0, 10);
+        const { error } = await supabaseClient.from('estoque').insert([{
+            categoria:        'bad',
+            descricao:        desc,
+            numero_serie:     sn  || null,
+            patrimonio:       pat || null,
+            chamado_ref:      vincularChamadoRef || null,
+            data_entrada_bad: hoje,
+            criado_por:       loggedInUser?.email || null,
+        }]);
+        if (error) throw error;
+        await logMovimentacao('ENTRADA BAD', [desc, sn ? 'SN: ' + sn : '', pat ? 'Pat: ' + pat : '', vincularChamadoRef ? 'INC: ' + vincularChamadoRef : ''].filter(Boolean).join(' | '));
+        const result = document.getElementById(`vincularExtraResultBAD_${n}`);
+        if (result) { result.style.display = ''; result.textContent = '✅ Cadastrado no BAD com sucesso.'; }
+        document.getElementById(`vincularExtraBtnBAD_${n}`)?.setAttribute('style', 'display:none;');
+        await carregarBad();
+    } catch (e) {
+        alert('Erro ao cadastrar no BAD: ' + e.message);
+    }
+}
 
 async function buscarNoEstoqueParaBaixar() {
     const sn    = (_vincularChamadoDados?.sn_inst    || '').trim().toUpperCase();
