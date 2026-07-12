@@ -931,7 +931,7 @@
                             <table id="tabelaEstoque">
                                 <thead>
                                     <tr>
-                                        <th>Ações</th><th>Descrição</th><th>Patrimônio</th>
+                                        <th>Ações</th><th style="width:56px;">📷</th><th>Descrição</th><th>Patrimônio</th>
                                         <th>Número de Série</th><th>Modelo</th><th>MAC</th><th>Qtd</th>
                                     </tr>
                                 </thead>
@@ -1339,6 +1339,13 @@ create table estoque (
             <button class="btn-modal-edit" onclick="salvarEquipamento()">💾 Salvar</button>
         </div>
     </div>
+</div>
+
+<!-- MODAL LIGHTBOX FOTO -->
+<div id="modalFotoLightbox" onclick="fecharFotoLightbox()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;align-items:center;justify-content:center;flex-direction:column;gap:12px;cursor:zoom-out;">
+    <button onclick="fecharFotoLightbox();event.stopPropagation()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:22px;width:40px;height:40px;border-radius:50%;cursor:pointer;line-height:1;">✕</button>
+    <img id="lightboxImg" src="" alt="" style="max-width:92vw;max-height:82vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.6);" onclick="event.stopPropagation()">
+    <div id="lightboxCaption" style="color:#e2e8f0;font-size:13px;text-align:center;max-width:80vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
 </div>
 
 <!-- MODAL CROP FOTO -->
@@ -4552,7 +4559,7 @@ function atualizarTabelaEstoque(lista) {
                         <button class="kebab-btn" onclick="toggleKebab(event,'ke-${eq.id}')">⋮</button>
                         <div class="kebab-menu" id="ke-${eq.id}">
                             <button onclick="verDetalheEquip(${eq.id});fecharKebabs()">👁 Ver</button>
-                            ${eq.foto_url ? `<button onclick="window.open(${JSON.stringify(eq.foto_url)},'_blank');fecharKebabs()">📷 Ver Foto</button>` : ''}
+                            ${eq.foto_url ? `<button onclick="abrirFotoLightbox('${escHtml(eq.foto_url)}','${escHtml(eq.descricao||'')}');fecharKebabs()">📷 Ver Foto</button>` : ''}
                             ${isAdmin ? `<button onclick="abrirModalEquip(${eq.id});fecharKebabs()">✏️ Editar</button>` : ''}
                             <button style="color:#0369a1;" onclick="abrirModalSaidaEstoque(${eq.id});fecharKebabs()">📤 Registrar Saída</button>
                             <button style="color:#b45309;" onclick="moverItemParaBad(${eq.id});fecharKebabs()">⚠️ Mover para BAD</button>
@@ -4560,6 +4567,11 @@ function atualizarTabelaEstoque(lista) {
                         </div>
                     </div>
                 </div>
+            </td>
+            <td style="padding:6px 4px;width:56px;">
+                ${eq.foto_url
+                    ? `<img src="${escHtml(eq.foto_url)}" onclick="abrirFotoLightbox('${escHtml(eq.foto_url)}','${escHtml(eq.descricao||'')}');event.stopPropagation()" style="width:48px;height:48px;object-fit:cover;border-radius:6px;cursor:pointer;display:block;border:1px solid #e2e8f0;" title="Ver foto">`
+                    : `<div style="width:48px;height:48px;border-radius:6px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:20px;">📷</div>`}
             </td>
             <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(eq.descricao||'')}">${_v(eq.descricao)}</td>
             <td style="font-weight:bold;">${_v(eq.patrimonio)}</td>
@@ -4682,6 +4694,23 @@ function removerFotoEquip() {
     if (preview)     { preview.src = ''; preview.style.display = 'none'; }
     if (placeholder) placeholder.style.display = '';
     if (remover)     remover.style.display = 'none';
+}
+
+function abrirFotoLightbox(url, descricao) {
+    const modal   = document.getElementById('modalFotoLightbox');
+    const img     = document.getElementById('lightboxImg');
+    const caption = document.getElementById('lightboxCaption');
+    if (!modal || !img) return;
+    img.src = url;
+    if (caption) caption.textContent = descricao || '';
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharFotoLightbox() {
+    const modal = document.getElementById('modalFotoLightbox');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
 }
 
 function abrirCropFoto(file) {
