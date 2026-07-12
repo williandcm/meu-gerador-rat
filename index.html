@@ -1589,6 +1589,11 @@ create table estoque (
                 </div>
             </div>
 
+            <div class="modal-section" id="md_itens_vinculados_wrap" style="display:none;">
+                <div class="modal-section-title">🔗 Itens do Estoque Vinculados</div>
+                <div id="md_itens_vinculados_lista"></div>
+            </div>
+
             <div class="modal-section">
                 <div class="modal-section-title">🔧 Solução</div>
                 <div class="modal-grid">
@@ -3251,7 +3256,7 @@ create table estoque (
                         <div class="kebab-menu" id="kc-${item.id}">
                             <button onclick="toggleDetalhe(${item.id});fecharKebabs()">👁 Ver</button>
                             ${temPermissao('editar_chamado') ? `<button onclick="carregarChamadoDireto(${item.id});fecharKebabs()">✏️ Editar</button>` : ''}
-                            ${(item.sn_inst || item.patri_inst) ? `<button onclick="vincularChamadoEstoque(${item.id});fecharKebabs()">🔗 Vincular Estoque</button>` : ''}
+                            <button onclick="vincularChamadoEstoque(${item.id});fecharKebabs()">🔗 Vincular Estoque</button>
                             ${temPermissao('excluir_chamado') ? `<button class="km-danger" onclick="excluirChamado(${item.id});fecharKebabs()">🗑 Excluir</button>` : ''}
                         </div>
                     </div>
@@ -3483,8 +3488,33 @@ create table estoque (
         set('md_matricula', c.matricula);
         set('md_local', c.cidade);
 
+        // Esconde seção de itens vinculados enquanto carrega
+        const itensWrap  = document.getElementById('md_itens_vinculados_wrap');
+        const itensLista = document.getElementById('md_itens_vinculados_lista');
+        if (itensWrap) itensWrap.style.display = 'none';
+
         document.getElementById('modalDetalhes').classList.add('open');
         document.body.style.overflow = 'hidden';
+
+        // Busca itens do estoque vinculados a este chamado (async, preenche após abrir)
+        if (c.chamado && itensWrap && itensLista) {
+            supabaseClient.from('estoque').select('descricao,numero_serie,patrimonio,categoria,data_saida,data_entrada_bad')
+                .eq('chamado_ref', c.chamado)
+                .then(({ data: itens }) => {
+                    if (!itens?.length) return;
+                    itensWrap.style.display = '';
+                    itensLista.innerHTML = itens.map(it => {
+                        const catLabel = it.categoria === 'baixado' ? '<span style="color:#166534;font-size:11px;font-weight:700;background:#dcfce7;padding:2px 7px;border-radius:10px;">📤 Baixado</span>'
+                                       : it.categoria === 'bad'     ? '<span style="color:#991b1b;font-size:11px;font-weight:700;background:#fee2e2;padding:2px 7px;border-radius:10px;">📥 BAD</span>'
+                                       : `<span style="font-size:11px;color:#64748b;">${it.categoria||''}</span>`;
+                        const info = [it.descricao, it.numero_serie ? 'SN: '+it.numero_serie : '', it.patrimonio ? 'Pat: '+it.patrimonio : ''].filter(Boolean).join(' · ');
+                        return `<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span style="font-size:13px;font-weight:600;">${escHtml(info)}</span>
+                            ${catLabel}
+                        </div>`;
+                    }).join('');
+                });
+        }
     }
 
     function fecharModal() {
