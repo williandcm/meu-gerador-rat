@@ -1325,7 +1325,7 @@ create table estoque (
                 <div class="field"><label>Quantidade</label><input type="number" id="eq_quantidade" min="1" value="1" style="text-transform:none;font-weight:normal;"></div>
                 <div class="field full-width">
                     <label>Foto do Equipamento</label>
-                    <div id="eq_foto_area" onclick="document.getElementById('eq_foto_input').click()" style="cursor:pointer;border:2px dashed #cbd5e1;border-radius:8px;min-height:100px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f8fafc;transition:border-color .2s;" onmouseenter="this.style.borderColor='#94a3b8'" onmouseleave="this.style.borderColor='#cbd5e1'">
+                    <div id="eq_foto_area" onclick="tentarAbrirCamera()" style="cursor:pointer;border:2px dashed #cbd5e1;border-radius:8px;min-height:100px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f8fafc;transition:border-color .2s;" onmouseenter="this.style.borderColor='#94a3b8'" onmouseleave="this.style.borderColor='#cbd5e1'">
                         <img id="eq_foto_preview" src="" alt="" style="display:none;max-width:100%;max-height:200px;object-fit:contain;border-radius:6px;">
                         <span id="eq_foto_placeholder" style="color:#94a3b8;font-size:13px;text-align:center;padding:20px;">📷 Clique para adicionar foto</span>
                     </div>
@@ -1339,6 +1339,25 @@ create table estoque (
             <button class="btn-modal-edit" onclick="salvarEquipamento()">💾 Salvar</button>
         </div>
     </div>
+</div>
+
+<!-- MODAL AUTO-CAPTURA -->
+<div id="modalAutoCapture" style="display:none;position:fixed;inset:0;background:#000;z-index:1500;flex-direction:column;">
+    <div style="position:relative;flex:1;overflow:hidden;min-height:0;">
+        <video id="autocaptureVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
+        <button onclick="fecharAutoCapture(true)" style="position:absolute;top:16px;right:16px;background:rgba(0,0,0,.55);border:none;color:#fff;font-size:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;line-height:1;">✕</button>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:16px 20px 20px;background:linear-gradient(transparent,rgba(0,0,0,.85));">
+            <div id="autocaptureStatus" style="color:#fff;font-size:14px;font-weight:600;text-align:center;margin-bottom:10px;text-shadow:0 1px 4px rgba(0,0,0,.8);">Aponte para o equipamento...</div>
+            <div style="background:rgba(255,255,255,.2);border-radius:6px;height:8px;overflow:hidden;">
+                <div id="autocaptureBar" style="height:100%;width:0%;background:#22c55e;border-radius:6px;transition:width .15s ease;"></div>
+            </div>
+        </div>
+    </div>
+    <div style="background:#111;padding:14px 16px;display:flex;gap:10px;justify-content:center;flex-shrink:0;">
+        <button onclick="capturarFotoAgora()" style="padding:12px 28px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">📸 Capturar Agora</button>
+        <button onclick="fecharAutoCapture(true);document.getElementById('eq_foto_input').click()" style="padding:12px 18px;background:#374151;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;">🖼 Galeria</button>
+    </div>
+    <canvas id="autocaptureCanvas" style="display:none;"></canvas>
 </div>
 
 <!-- MODAL LIGHTBOX FOTO -->
@@ -4695,6 +4714,140 @@ function removerFotoEquip() {
     if (placeholder) placeholder.style.display = '';
     if (remover)     remover.style.display = 'none';
 }
+
+// ── AUTO-CAPTURA: detecção de desfoque e tremido ─────────────────────────────
+
+let _acStream   = null;
+let _acLoop     = null;
+let _acPrevData = null;
+let _acFramesOk = 0;
+const _AC_NITIDEZ = 18;  // variância mínima do Laplaciano (nitidez)
+const _AC_MOV     = 12;  // diferença máxima entre frames (movimento)
+const _AC_FRAMES  = 3;   // frames estáveis e nítidos consecutivos para capturar
+
+function tentarAbrirCamera() {
+    if (navigator.mediaDevices?.getUserMedia) {
+        _abrirAutoCapture();
+    } else {
+        document.getElementById('eq_foto_input')?.click();
+    }
+}
+
+async function _abrirAutoCapture() {
+    const modal = document.getElementById('modalAutoCapture');
+    const video = document.getElementById('autocaptureVideo');
+    const status = document.getElementById('autocaptureStatus');
+    if (!modal || !video) return;
+    if (status) status.textContent = 'Iniciando câmera...';
+    try {
+        _acStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+            audio: false
+        });
+        video.srcObject = _acStream;
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        video.addEventListener('canplay', _iniciarLoopAutoCapture, { once: true });
+    } catch {
+        document.getElementById('eq_foto_input')?.click();
+    }
+}
+
+function _iniciarLoopAutoCapture() {
+    const video  = document.getElementById('autocaptureVideo');
+    const canvas = document.getElementById('autocaptureCanvas');
+    const status = document.getElementById('autocaptureStatus');
+    const barra  = document.getElementById('autocaptureBar');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    _acPrevData = null;
+    _acFramesOk = 0;
+
+    _acLoop = setInterval(() => {
+        if (!video.videoWidth) return;
+        const W = Math.max(1, Math.floor(video.videoWidth  / 4));
+        const H = Math.max(1, Math.floor(video.videoHeight / 4));
+        canvas.width = W; canvas.height = H;
+        ctx.drawImage(video, 0, 0, W, H);
+        const imgData  = ctx.getImageData(0, 0, W, H);
+        const nitidez  = _lapVariance(imgData);
+        const movimento = _acPrevData ? _frameDiff(_acPrevData, imgData.data) : 999;
+        _acPrevData = new Uint8ClampedArray(imgData.data);
+
+        const ok = nitidez >= _AC_NITIDEZ && movimento <= _AC_MOV;
+        if (ok) {
+            _acFramesOk++;
+            const pct = Math.min(100, Math.round(_acFramesOk / _AC_FRAMES * 100));
+            if (barra) barra.style.width = pct + '%';
+            if (status) status.textContent = pct < 100 ? `Estabilizando... ${pct}%` : '✅ Capturando!';
+            if (_acFramesOk >= _AC_FRAMES) capturarFotoAgora();
+        } else {
+            _acFramesOk = 0;
+            if (barra) barra.style.width = '0%';
+            if (status) status.textContent = nitidez < _AC_NITIDEZ
+                ? '🔍 Imagem borrada — segure firme e aproxime'
+                : '📷 Câmera em movimento — aguarde...';
+        }
+    }, 300);
+}
+
+function _lapVariance(imageData) {
+    const { data, width, height } = imageData;
+    let sum = 0, sumSq = 0, n = 0;
+    for (let y = 1; y < height - 1; y += 2) {
+        for (let x = 1; x < width - 1; x += 2) {
+            const i = (y * width + x) * 4;
+            const g  = (data[i]            + data[i+1]            + data[i+2])            / 3;
+            const gT = (data[i-width*4]    + data[i-width*4+1]    + data[i-width*4+2])    / 3;
+            const gB = (data[i+width*4]    + data[i+width*4+1]    + data[i+width*4+2])    / 3;
+            const gL = (data[i-4]          + data[i-3]            + data[i-2])            / 3;
+            const gR = (data[i+4]          + data[i+5]            + data[i+6])            / 3;
+            const lap = Math.abs(4*g - gT - gB - gL - gR);
+            sum += lap; sumSq += lap * lap; n++;
+        }
+    }
+    if (!n) return 0;
+    const mean = sum / n;
+    return (sumSq / n) - mean * mean;
+}
+
+function _frameDiff(prev, curr) {
+    let diff = 0, n = 0;
+    for (let i = 0; i < prev.length; i += 16) {
+        diff += (Math.abs(prev[i] - curr[i]) + Math.abs(prev[i+1] - curr[i+1]) + Math.abs(prev[i+2] - curr[i+2])) / 3;
+        n++;
+    }
+    return n ? diff / n : 0;
+}
+
+function capturarFotoAgora() {
+    clearInterval(_acLoop); _acLoop = null;
+    const video  = document.getElementById('autocaptureVideo');
+    const canvas = document.getElementById('autocaptureCanvas');
+    if (!video || !canvas) return;
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    fecharAutoCapture(false);
+    canvas.toBlob(blob => {
+        if (blob) abrirCropFoto(new File([blob], 'foto.jpg', { type: 'image/jpeg' }));
+    }, 'image/jpeg', 0.95);
+}
+
+function fecharAutoCapture(cancelou = false) {
+    clearInterval(_acLoop); _acLoop = null;
+    if (_acStream) { _acStream.getTracks().forEach(t => t.stop()); _acStream = null; }
+    const modal = document.getElementById('modalAutoCapture');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+    if (cancelou) {
+        const input = document.getElementById('eq_foto_input');
+        if (input) input.value = '';
+        if (!estoqueFotoUrl) estoqueFotoBlob = null;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function abrirFotoLightbox(url, descricao) {
     const modal   = document.getElementById('modalFotoLightbox');
