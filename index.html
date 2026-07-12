@@ -1321,6 +1321,15 @@ create table estoque (
                 <div class="field"><label>Modelo</label><input type="text" id="eq_modelo"></div>
                 <div class="field"><label>MAC</label><input type="text" id="eq_mac" placeholder="00:00:00:00:00:00" maxlength="17" oninput="mascaraMAC(this)"></div>
                 <div class="field"><label>Quantidade</label><input type="number" id="eq_quantidade" min="1" value="1" style="text-transform:none;font-weight:normal;"></div>
+                <div class="field full-width">
+                    <label>Foto do Equipamento</label>
+                    <div id="eq_foto_area" onclick="document.getElementById('eq_foto_input').click()" style="cursor:pointer;border:2px dashed #cbd5e1;border-radius:8px;min-height:100px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f8fafc;transition:border-color .2s;" onmouseenter="this.style.borderColor='#94a3b8'" onmouseleave="this.style.borderColor='#cbd5e1'">
+                        <img id="eq_foto_preview" src="" alt="" style="display:none;max-width:100%;max-height:200px;object-fit:contain;border-radius:6px;">
+                        <span id="eq_foto_placeholder" style="color:#94a3b8;font-size:13px;text-align:center;padding:20px;">📷 Clique para adicionar foto</span>
+                    </div>
+                    <input type="file" id="eq_foto_input" accept="image/*" capture="environment" style="display:none;" onchange="onEqFotoSelecionada(this)">
+                    <button type="button" id="eq_foto_remover" style="display:none;margin-top:4px;padding:2px 10px;background:none;border:1px solid #ef4444;border-radius:4px;color:#ef4444;cursor:pointer;font-size:11px;" onclick="removerFotoEquip()">✕ Remover foto</button>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
@@ -4295,6 +4304,8 @@ create table estoque (
 <script>
 let estoqueCache   = [];
 let estoqueIdAtual = null;
+let estoqueFotoBlob = null;
+let estoqueFotoUrl  = '';
 let catalogoCache  = [];
 let _catalogoCallbackAposNovo = null;
 
@@ -4514,6 +4525,7 @@ function atualizarTabelaEstoque(lista) {
                         <button class="kebab-btn" onclick="toggleKebab(event,'ke-${eq.id}')">⋮</button>
                         <div class="kebab-menu" id="ke-${eq.id}">
                             <button onclick="verDetalheEquip(${eq.id});fecharKebabs()">👁 Ver</button>
+                            ${eq.foto_url ? `<button onclick="window.open(${JSON.stringify(eq.foto_url)},'_blank');fecharKebabs()">📷 Ver Foto</button>` : ''}
                             ${isAdmin ? `<button onclick="abrirModalEquip(${eq.id});fecharKebabs()">✏️ Editar</button>` : ''}
                             <button style="color:#0369a1;" onclick="abrirModalSaidaEstoque(${eq.id});fecharKebabs()">📤 Registrar Saída</button>
                             <button style="color:#b45309;" onclick="moverItemParaBad(${eq.id});fecharKebabs()">⚠️ Mover para BAD</button>
@@ -4572,6 +4584,18 @@ function abrirModalEquip(id = null) {
     const qtdEl = document.getElementById('eq_quantidade');
     if (qtdEl) qtdEl.value = '1';
 
+    // Reset photo state
+    estoqueFotoBlob = null;
+    estoqueFotoUrl  = '';
+    const fotoPreview     = document.getElementById('eq_foto_preview');
+    const fotoPlaceholder = document.getElementById('eq_foto_placeholder');
+    const fotoRemover     = document.getElementById('eq_foto_remover');
+    const fotoInput       = document.getElementById('eq_foto_input');
+    if (fotoInput)       fotoInput.value = '';
+    if (fotoPreview)     { fotoPreview.src = ''; fotoPreview.style.display = 'none'; }
+    if (fotoPlaceholder) fotoPlaceholder.style.display = '';
+    if (fotoRemover)     fotoRemover.style.display = 'none';
+
     if (id) {
         const eq = estoqueCache.find(x => x.id === id);
         if (!eq) return;
@@ -4592,6 +4616,13 @@ function abrirModalEquip(id = null) {
             const opt = [...(selModelo?.options || [])].find(o => o.text.startsWith(eq.descricao.toUpperCase()));
             if (opt && selModelo) selModelo.value = opt.value;
         }
+        // Show existing photo
+        if (eq.foto_url) {
+            estoqueFotoUrl = eq.foto_url;
+            if (fotoPreview)     { fotoPreview.src = eq.foto_url; fotoPreview.style.display = 'block'; }
+            if (fotoPlaceholder) fotoPlaceholder.style.display = 'none';
+            if (fotoRemover)     fotoRemover.style.display = '';
+        }
     }
     const modal = document.getElementById('modalEquip');
     if (modal) { modal.classList.add('open'); document.body.style.overflow = 'hidden'; }
@@ -4605,6 +4636,32 @@ function fecharModalEquip() {
 
 function fecharModalEquipFora(e) {
     if (e.target === document.getElementById('modalEquip')) fecharModalEquip();
+}
+
+function onEqFotoSelecionada(input) {
+    const file = input.files[0];
+    if (!file) return;
+    estoqueFotoBlob = file;
+    const url         = URL.createObjectURL(file);
+    const preview     = document.getElementById('eq_foto_preview');
+    const placeholder = document.getElementById('eq_foto_placeholder');
+    const remover     = document.getElementById('eq_foto_remover');
+    if (preview)     { preview.src = url; preview.style.display = 'block'; }
+    if (placeholder) placeholder.style.display = 'none';
+    if (remover)     remover.style.display = '';
+}
+
+function removerFotoEquip() {
+    estoqueFotoBlob = null;
+    estoqueFotoUrl  = '';
+    const preview     = document.getElementById('eq_foto_preview');
+    const placeholder = document.getElementById('eq_foto_placeholder');
+    const remover     = document.getElementById('eq_foto_remover');
+    const input       = document.getElementById('eq_foto_input');
+    if (input)       input.value = '';
+    if (preview)     { preview.src = ''; preview.style.display = 'none'; }
+    if (placeholder) placeholder.style.display = '';
+    if (remover)     remover.style.display = 'none';
 }
 
 // ── SCANNER DE CÓDIGO DE BARRAS ──────────────────────────────────────────────
@@ -5289,17 +5346,35 @@ async function salvarEquipamento() {
         return;
     }
 
-    const payload = {
-        modelo_id:    modeloId,
-        descricao:    descricao,
-        patrimonio:   gUP('eq_patrimonio'),
-        numero_serie: gUP('eq_numero_serie'),
-        ean:          gUP('eq_ean'),
-        modelo:       gUP('eq_modelo'),
-        mac:          (m => /^[0:]+$/.test(m) ? '' : m)(gUP('eq_mac')),
-        quantidade:   parseInt(document.getElementById('eq_quantidade')?.value || '1', 10) || 1,
-    };
+    const btnSalvar = document.querySelector('#modalEquip .btn-modal-edit');
+    if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = '⏳ Salvando...'; }
+
     try {
+        // Upload new photo to Storage if one was selected
+        let foto_url = estoqueFotoUrl || '';
+        if (estoqueFotoBlob) {
+            const ext  = estoqueFotoBlob.name.split('.').pop().toLowerCase() || 'jpg';
+            const pat  = gUP('eq_patrimonio').replace(/[^A-Z0-9]/g, '_') || 'item';
+            const path = `estoque/${Date.now()}_${pat}.${ext}`;
+            const { error: upError } = await supabaseClient
+                .storage.from('docs-fotos')
+                .upload(path, estoqueFotoBlob, { upsert: true, contentType: estoqueFotoBlob.type });
+            if (upError) throw upError;
+            const { data: { publicUrl } } = supabaseClient.storage.from('docs-fotos').getPublicUrl(path);
+            foto_url = publicUrl;
+        }
+
+        const payload = {
+            modelo_id:    modeloId,
+            descricao:    descricao,
+            patrimonio:   gUP('eq_patrimonio'),
+            numero_serie: gUP('eq_numero_serie'),
+            ean:          gUP('eq_ean'),
+            modelo:       gUP('eq_modelo'),
+            mac:          (m => /^[0:]+$/.test(m) ? '' : m)(gUP('eq_mac')),
+            quantidade:   parseInt(document.getElementById('eq_quantidade')?.value || '1', 10) || 1,
+            foto_url,
+        };
         let error;
         if (estoqueIdAtual) {
             ({ error } = await supabaseClient.from('estoque').update(payload).eq('id', estoqueIdAtual));
@@ -5313,6 +5388,8 @@ async function salvarEquipamento() {
         await carregarEstoque();
     } catch (e) {
         alert('Erro ao salvar equipamento: ' + e.message);
+    } finally {
+        if (btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = '💾 Salvar'; }
     }
 }
 
