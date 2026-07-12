@@ -9,6 +9,8 @@
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js" integrity="sha384-lrb5efVIYR2lZw+OsuztHZzP9wpGNrhui+0VlpiHb/iPcZSCDT3CeETsL9EMQ8ih" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
     <!-- Módulo estoque em arquivo separado — falha isolada não afeta o sistema -->
     <link rel="stylesheet" href="estoque.css" onerror="console.warn('[estoque] CSS não carregado')">
     <style>
@@ -1335,6 +1337,30 @@ create table estoque (
         <div class="modal-footer">
             <button class="btn-modal-close" onclick="fecharModalEquip()">Cancelar</button>
             <button class="btn-modal-edit" onclick="salvarEquipamento()">💾 Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CROP FOTO -->
+<div class="modal-overlay" id="modalCropFoto" style="z-index:1000;align-items:center;" onclick="if(event.target===this)cancelarCropFoto()">
+    <div class="modal-box" style="max-width:520px;">
+        <div class="modal-header">
+            <div><h2>Ajustar Foto</h2></div>
+            <button class="modal-close" onclick="cancelarCropFoto()">✕</button>
+        </div>
+        <div class="modal-body" style="padding:0;background:#111;min-height:260px;overflow:hidden;">
+            <img id="cropperImg" src="" style="display:block;max-width:100%;">
+        </div>
+        <div style="display:flex;gap:6px;padding:10px 16px;flex-wrap:wrap;border-top:1px solid #e2e8f0;background:#f8fafc;">
+            <button type="button" onclick="cropperInst?.rotate(-90)" style="padding:6px 14px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;font-size:14px;" title="Girar 90° esquerda">↺ 90°</button>
+            <button type="button" onclick="cropperInst?.rotate(-15)" style="padding:6px 14px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;font-size:14px;" title="Girar 15° esquerda">↺ 15°</button>
+            <button type="button" onclick="cropperInst?.rotate(15)"  style="padding:6px 14px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;font-size:14px;" title="Girar 15° direita">↻ 15°</button>
+            <button type="button" onclick="cropperInst?.rotate(90)"  style="padding:6px 14px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;font-size:14px;" title="Girar 90° direita">↻ 90°</button>
+            <button type="button" onclick="cropperInst?.reset()"     style="padding:6px 14px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;font-size:14px;" title="Resetar">↩ Reset</button>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-close" onclick="cancelarCropFoto()">Cancelar</button>
+            <button class="btn-modal-edit" id="btnConfirmarCrop" onclick="confirmarCropFoto()">✓ Confirmar</button>
         </div>
     </div>
 </div>
@@ -4306,6 +4332,7 @@ let estoqueCache   = [];
 let estoqueIdAtual = null;
 let estoqueFotoBlob = null;
 let estoqueFotoUrl  = '';
+let cropperInst     = null;
 let catalogoCache  = [];
 let _catalogoCallbackAposNovo = null;
 
@@ -4641,14 +4668,7 @@ function fecharModalEquipFora(e) {
 function onEqFotoSelecionada(input) {
     const file = input.files[0];
     if (!file) return;
-    estoqueFotoBlob = file;
-    const url         = URL.createObjectURL(file);
-    const preview     = document.getElementById('eq_foto_preview');
-    const placeholder = document.getElementById('eq_foto_placeholder');
-    const remover     = document.getElementById('eq_foto_remover');
-    if (preview)     { preview.src = url; preview.style.display = 'block'; }
-    if (placeholder) placeholder.style.display = 'none';
-    if (remover)     remover.style.display = '';
+    abrirCropFoto(file);
 }
 
 function removerFotoEquip() {
@@ -4662,6 +4682,56 @@ function removerFotoEquip() {
     if (preview)     { preview.src = ''; preview.style.display = 'none'; }
     if (placeholder) placeholder.style.display = '';
     if (remover)     remover.style.display = 'none';
+}
+
+function abrirCropFoto(file) {
+    const img = document.getElementById('cropperImg');
+    if (!img) return;
+    const modal = document.getElementById('modalCropFoto');
+    if (modal) modal.classList.add('open');
+    if (cropperInst) { cropperInst.destroy(); cropperInst = null; }
+    img.onload = () => {
+        cropperInst = new Cropper(img, {
+            aspectRatio:  1,
+            viewMode:     1,
+            autoCropArea: 0.9,
+            responsive:   true,
+        });
+    };
+    img.src = URL.createObjectURL(file);
+}
+
+function confirmarCropFoto() {
+    if (!cropperInst) return;
+    const btn = document.getElementById('btnConfirmarCrop');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Processando...'; }
+    const canvas = cropperInst.getCroppedCanvas({ maxWidth: 1000, maxHeight: 1000 });
+    canvas.toBlob(blob => {
+        if (!blob) return;
+        estoqueFotoBlob = new File([blob], 'foto.jpg', { type: 'image/jpeg' });
+        const url         = URL.createObjectURL(blob);
+        const preview     = document.getElementById('eq_foto_preview');
+        const placeholder = document.getElementById('eq_foto_placeholder');
+        const remover     = document.getElementById('eq_foto_remover');
+        if (preview)     { preview.src = url; preview.style.display = 'block'; }
+        if (placeholder) placeholder.style.display = 'none';
+        if (remover)     remover.style.display = '';
+        fecharCropFoto();
+        if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar'; }
+    }, 'image/jpeg', 0.92);
+}
+
+function cancelarCropFoto() {
+    fecharCropFoto();
+    const input = document.getElementById('eq_foto_input');
+    if (input) input.value = '';
+    if (!estoqueFotoUrl) estoqueFotoBlob = null;
+}
+
+function fecharCropFoto() {
+    if (cropperInst) { cropperInst.destroy(); cropperInst = null; }
+    const modal = document.getElementById('modalCropFoto');
+    if (modal) modal.classList.remove('open');
 }
 
 // ── SCANNER DE CÓDIGO DE BARRAS ──────────────────────────────────────────────
