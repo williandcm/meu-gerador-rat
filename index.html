@@ -6044,6 +6044,10 @@ function limparDespesas() {
     const lista = document.getElementById('despesasLista');
     if (lista) lista.innerHTML = '';
     _despesasCounter = 0;
+    const box  = document.getElementById('despesasBox');
+    const chev = document.getElementById('despesasChevron');
+    if (box)  box.style.display = 'none';
+    if (chev) chev.textContent  = '▼';
     atualizarTotalDespesas();
 }
 
@@ -6072,6 +6076,11 @@ async function carregarDespesas(chamadoId) {
         .select('tipo,descricao,valor').eq('chamado_id', chamadoId).order('id');
     if (!data?.length) return;
     data.forEach(d => adicionarDespesa(d.tipo, d.descricao, d.valor));
+    // Manter recolhido após carregar — usuário abre manualmente
+    const box  = document.getElementById('despesasBox');
+    const chev = document.getElementById('despesasChevron');
+    if (box)  box.style.display = 'none';
+    if (chev) chev.textContent  = '▼';
 }
 
 // ── Comentários para o Sistema ───────────────────────────────────────────────
