@@ -929,6 +929,7 @@
                     <button class="estoque-tab estoque-tab-bad" id="tabBtnBad" onclick="mostrarAbaBad()">⚠️ BAD</button>
                     <button class="estoque-tab" id="tabBtnHistorico" onclick="mostrarAbaHistorico()" style="color:#7c3aed;">📋 Histórico</button>
                     <button class="estoque-tab tab-somente-admin" id="tabBtnCatalogo" onclick="mostrarAbaCatalogo()" style="color:#0891b2;">📚 Catálogo</button>
+                    <button class="estoque-tab" id="tabBtnInventario" onclick="mostrarAbaInventario()" style="color:#059669;">🔍 Inventário</button>
                 </div>
 
                 <!-- ABA ESTOQUE -->
@@ -1027,6 +1028,94 @@
                     </div>
                     <div id="statusCatalogo" style="text-align:center;color:#64748b;font-size:12px;margin-top:8px;">
                         Clique em "Atualizar" para carregar o catálogo.
+                    </div>
+                </div>
+
+                <!-- ABA INVENTÁRIO -->
+                <div id="abaInventario" class="card search-box" style="display:none;">
+
+                    <!-- Tela inicial: escolher tipo + iniciar contagem -->
+                    <div id="invTelaInicial">
+                        <div style="text-align:center;padding:24px 0 16px;">
+                            <p style="font-size:14px;color:#475569;margin-bottom:20px;">Selecione o que deseja inventariar:</p>
+                            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                                <button class="btn-novo" onclick="iniciarInventario('estoque')" style="background:#3b82f6;padding:12px 28px;font-size:14px;">📦 Estoque</button>
+                                <button class="btn-novo" onclick="iniciarInventario('bad')" style="background:#dc2626;padding:12px 28px;font-size:14px;">⚠️ BAD</button>
+                                <button class="btn-novo" onclick="iniciarInventario('todos')" style="background:#7c3aed;padding:12px 28px;font-size:14px;">📋 Todos</button>
+                            </div>
+                            <p id="invUltimaMsg" style="color:#94a3b8;font-size:12px;margin-top:20px;"></p>
+                        </div>
+                    </div>
+
+                    <!-- Tela de contagem ativa -->
+                    <div id="invTelaContagem" style="display:none;">
+                        <div style="background:#f0fdf4;border:2px solid #10b981;border-radius:10px;padding:14px;margin-bottom:14px;">
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <input type="text" id="invInputCodigo"
+                                       placeholder="Leia o código de barras ou digite SN / Patrimônio..."
+                                       style="flex:1;padding:12px 14px;font-size:17px;border:2px solid #10b981;border-radius:8px;outline:none;"
+                                       onkeydown="if(event.key==='Enter'){event.preventDefault();processarCodigoInventario();}">
+                                <button class="btn-novo" onclick="processarCodigoInventario()"
+                                        style="background:#10b981;padding:12px 18px;font-size:15px;white-space:nowrap;">✔ OK</button>
+                                <button class="btn-novo" onclick="cancelarInventario()"
+                                        style="background:#64748b;padding:12px 14px;font-size:15px;white-space:nowrap;">✖ Cancelar</button>
+                            </div>
+                        </div>
+
+                        <!-- Card resultado do último scan -->
+                        <div id="invResultadoScan" style="display:none;margin-bottom:14px;"></div>
+
+                        <!-- Contadores de progresso -->
+                        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+                            <div class="stat-card" style="flex:1;min-width:90px;border-left-color:#10b981;text-align:center;">
+                                <div class="stat-value" id="invQtdContados" style="color:#10b981;">0</div>
+                                <div class="stat-label">✅ Contados</div>
+                            </div>
+                            <div class="stat-card" style="flex:1;min-width:90px;border-left-color:#f59e0b;text-align:center;">
+                                <div class="stat-value" id="invQtdPendentes" style="color:#f59e0b;">0</div>
+                                <div class="stat-label">⏳ Pendentes</div>
+                            </div>
+                            <div class="stat-card" style="flex:1;min-width:90px;border-left-color:#7c3aed;text-align:center;">
+                                <div class="stat-value" id="invQtdExtras" style="color:#7c3aed;">0</div>
+                                <div class="stat-label">⚠️ Extras</div>
+                            </div>
+                        </div>
+
+                        <div style="text-align:right;margin-bottom:12px;">
+                            <button class="btn-novo" onclick="finalizarInventario()"
+                                    style="background:#1e293b;padding:10px 20px;">🏁 Finalizar Contagem</button>
+                        </div>
+
+                        <!-- Lista de pendentes -->
+                        <div>
+                            <h4 style="color:#f59e0b;font-size:13px;margin-bottom:8px;">
+                                ⏳ Aguardando leitura (<span id="invSpanPendentes">0</span>)
+                            </h4>
+                            <div id="invListaPendentes"
+                                 style="max-height:300px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tela de resultado final -->
+                    <div id="invTelaResultado" style="display:none;">
+                        <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+                            <div class="stat-card" style="flex:1;min-width:90px;border-left-color:#10b981;text-align:center;">
+                                <div class="stat-value" id="invResContados" style="color:#10b981;">0</div>
+                                <div class="stat-label">✅ Contados</div>
+                            </div>
+                            <div class="stat-card" style="flex:1;min-width:90px;border-left-color:#dc2626;text-align:center;">
+                                <div class="stat-value" id="invResFaltando" style="color:#dc2626;">0</div>
+                                <div class="stat-label">❌ Faltando</div>
+                            </div>
+                            <div class="stat-card" style="flex:1;min-width:90px;border-left-color:#7c3aed;text-align:center;">
+                                <div class="stat-value" id="invResExtras" style="color:#7c3aed;">0</div>
+                                <div class="stat-label">⚠️ Extras</div>
+                            </div>
+                        </div>
+                        <div id="invResDetalhes"></div>
+                        <div style="text-align:center;margin-top:20px;">
+                            <button class="btn-novo" onclick="mostrarAbaInventario()" style="background:#3b82f6;">🔄 Nova Contagem</button>
+                        </div>
                     </div>
                 </div>
 
@@ -5129,11 +5218,11 @@ function abrirScannerFiltro() {
 // ── TABS ESTOQUE / BAD ────────────────────────────────────────────────────────
 
 function _ocultarTodasAbas() {
-    ['abaEstoque','abaBad','abaHistorico','abaCatalogo'].forEach(id => {
+    ['abaEstoque','abaBad','abaHistorico','abaCatalogo','abaInventario'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
-    ['tabBtnEstoque','tabBtnBad','tabBtnHistorico','tabBtnCatalogo'].forEach(id => {
+    ['tabBtnEstoque','tabBtnBad','tabBtnHistorico','tabBtnCatalogo','tabBtnInventario'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.remove('ativo');
     });
@@ -5164,6 +5253,207 @@ function mostrarAbaCatalogo() {
     document.getElementById('abaCatalogo').style.display = '';
     document.getElementById('tabBtnCatalogo').classList.add('ativo');
     if (!catalogoCache.length) carregarCatalogo();
+}
+
+// ── INVENTÁRIO ────────────────────────────────────────────────────────────────
+
+let invPendentes      = [];   // itens ainda não lidos
+let invContados       = [];   // itens confirmados
+let invExtras         = [];   // códigos lidos mas não encontrados
+let invItemEncontrado = null; // item aguardando confirmação do usuário
+
+function mostrarAbaInventario() {
+    _ocultarTodasAbas();
+    document.getElementById('abaInventario').style.display = '';
+    document.getElementById('tabBtnInventario').classList.add('ativo');
+    _invMostrarTela('inicial');
+}
+
+function _invMostrarTela(tela) {
+    document.getElementById('invTelaInicial').style.display   = tela === 'inicial'   ? '' : 'none';
+    document.getElementById('invTelaContagem').style.display  = tela === 'contagem'  ? '' : 'none';
+    document.getElementById('invTelaResultado').style.display = tela === 'resultado' ? '' : 'none';
+}
+
+async function iniciarInventario(tipo) {
+    invPendentes      = [];
+    invContados       = [];
+    invExtras         = [];
+    invItemEncontrado = null;
+
+    let query = supabaseClient.from('estoque').select('id,descricao,patrimonio,numero_serie,modelo,mac,ean,categoria');
+    if (tipo === 'estoque')      query = query.or('categoria.is.null,categoria.eq.estoque');
+    else if (tipo === 'bad')     query = query.eq('categoria', 'bad');
+
+    const { data, error } = await query.order('id');
+    if (error) { alert('Erro ao carregar itens: ' + error.message); return; }
+
+    invPendentes = (data || []);
+    _invMostrarTela('contagem');
+    _invAtualizarContadores();
+    _invRenderizarPendentes();
+    setTimeout(() => { const inp = document.getElementById('invInputCodigo'); if (inp) inp.focus(); }, 100);
+}
+
+function processarCodigoInventario() {
+    const inp = document.getElementById('invInputCodigo');
+    if (!inp) return;
+    const codigo = inp.value.trim();
+    inp.value = '';
+    if (!codigo) return;
+
+    const norm = codigo.toLowerCase();
+    const idx  = invPendentes.findIndex(it =>
+        (it.patrimonio   || '').toLowerCase() === norm ||
+        (it.numero_serie || '').toLowerCase() === norm ||
+        (it.mac          || '').toLowerCase() === norm ||
+        (it.ean          || '').toLowerCase() === norm ||
+        (it.descricao    || '').toLowerCase().includes(norm) ||
+        (it.modelo       || '').toLowerCase().includes(norm)
+    );
+
+    const res = document.getElementById('invResultadoScan');
+
+    if (idx >= 0) {
+        const item = invPendentes[idx];
+        invItemEncontrado = { ...item, _idx: idx };
+        const cat = item.categoria === 'bad' ? 'BAD' : 'Estoque';
+        const detalhes = [
+            item.modelo       ? `Modelo: <b>${item.modelo}</b>`       : '',
+            item.patrimonio   ? `Patrim.: <b>${item.patrimonio}</b>`   : '',
+            item.numero_serie ? `SN: <b>${item.numero_serie}</b>`     : '',
+            item.ean          ? `EAN: <b>${item.ean}</b>`             : '',
+            item.mac          ? `MAC: <b>${item.mac}</b>`             : '',
+        ].filter(Boolean).join(' &nbsp;');
+        res.style.display = '';
+        res.innerHTML = `<div style="background:#f0fdf4;border:2px solid #10b981;border-radius:10px;padding:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <div>
+                    <div style="font-size:12px;color:#10b981;font-weight:bold;margin-bottom:4px;">✅ Encontrado no ${cat}</div>
+                    <div style="font-size:15px;font-weight:bold;color:#1e293b;">${item.descricao || item.modelo || '(sem descrição)'}</div>
+                    <div style="font-size:12px;color:#475569;margin-top:4px;">${detalhes}</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-novo" onclick="confirmarItemInventario()"
+                            style="background:#10b981;padding:10px 20px;font-size:14px;">✔ Confirmar</button>
+                    <button class="btn-novo" onclick="ignorarItemInventario()"
+                            style="background:#64748b;padding:10px 14px;font-size:14px;">✖</button>
+                </div>
+            </div>
+        </div>`;
+    } else {
+        invItemEncontrado = null;
+        const codEsc = codigo.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+        res.style.display = '';
+        res.innerHTML = `<div style="background:#fff7ed;border:2px solid #f59e0b;border-radius:10px;padding:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <div>
+                    <div style="font-size:12px;color:#f59e0b;font-weight:bold;margin-bottom:4px;">⚠️ Não encontrado no inventário</div>
+                    <div style="font-size:14px;color:#1e293b;font-family:monospace;">${codigo}</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-novo" onclick="adicionarExtraInventario('${codEsc}')"
+                            style="background:#7c3aed;padding:10px 14px;font-size:13px;">+ Registrar como Extra</button>
+                    <button class="btn-novo" onclick="ignorarItemInventario()"
+                            style="background:#64748b;padding:10px 14px;font-size:14px;">✖</button>
+                </div>
+            </div>
+        </div>`;
+    }
+    setTimeout(() => { if (inp) inp.focus(); }, 50);
+}
+
+function confirmarItemInventario() {
+    if (!invItemEncontrado) return;
+    const idx = invItemEncontrado._idx;
+    invContados.push(invPendentes[idx]);
+    invPendentes.splice(idx, 1);
+    invItemEncontrado = null;
+    document.getElementById('invResultadoScan').style.display = 'none';
+    _invAtualizarContadores();
+    _invRenderizarPendentes();
+    setTimeout(() => { const inp = document.getElementById('invInputCodigo'); if (inp) inp.focus(); }, 50);
+}
+
+function ignorarItemInventario() {
+    invItemEncontrado = null;
+    document.getElementById('invResultadoScan').style.display = 'none';
+    setTimeout(() => { const inp = document.getElementById('invInputCodigo'); if (inp) inp.focus(); }, 50);
+}
+
+function adicionarExtraInventario(codigo) {
+    invExtras.push(codigo);
+    document.getElementById('invResultadoScan').style.display = 'none';
+    _invAtualizarContadores();
+    setTimeout(() => { const inp = document.getElementById('invInputCodigo'); if (inp) inp.focus(); }, 50);
+}
+
+function _invAtualizarContadores() {
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('invQtdContados',  invContados.length);
+    set('invQtdPendentes', invPendentes.length);
+    set('invQtdExtras',    invExtras.length);
+    set('invSpanPendentes', invPendentes.length);
+}
+
+function _invRenderizarPendentes() {
+    const lista = document.getElementById('invListaPendentes');
+    if (!lista) return;
+    if (!invPendentes.length) {
+        lista.innerHTML = '<div style="padding:14px;text-align:center;color:#10b981;font-size:13px;font-weight:bold;">✅ Todos os itens foram lidos!</div>';
+        return;
+    }
+    lista.innerHTML = invPendentes.map(it => {
+        const cat = it.categoria === 'bad'
+            ? '<span style="color:#dc2626;font-size:10px;font-weight:bold;background:#fee2e2;padding:2px 6px;border-radius:4px;margin-left:4px;">BAD</span>'
+            : '';
+        const ids = [it.patrimonio, it.numero_serie, it.mac].filter(Boolean).join(' · ');
+        return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;">
+            <span style="color:#f59e0b;">⏳</span>
+            <div style="flex:1;">
+                <span style="font-weight:500;">${it.descricao || it.modelo || '(sem descrição)'}</span>${cat}
+                ${ids ? `<span style="color:#94a3b8;font-size:11px;margin-left:6px;">${ids}</span>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function finalizarInventario() {
+    _invMostrarTela('resultado');
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('invResContados', invContados.length);
+    set('invResFaltando', invPendentes.length);
+    set('invResExtras',   invExtras.length);
+
+    const rowItem = (it, cor) => `<div style="padding:7px 12px;border-bottom:1px solid ${cor}22;font-size:12px;color:#1e293b;">
+        <b>${it.descricao || it.modelo || '—'}</b>
+        <span style="color:#94a3b8;margin-left:8px;">${[it.patrimonio, it.numero_serie].filter(Boolean).join(' / ')}</span>
+    </div>`;
+
+    let html = '';
+    if (invContados.length)  html += `<div style="margin-bottom:16px;">
+        <h4 style="color:#10b981;margin-bottom:8px;font-size:13px;">✅ Contados (${invContados.length})</h4>
+        <div style="border:1px solid #d1fae5;border-radius:8px;overflow:hidden;">${invContados.map(it => rowItem(it,'#10b981')).join('')}</div>
+    </div>`;
+    if (invPendentes.length) html += `<div style="margin-bottom:16px;">
+        <h4 style="color:#dc2626;margin-bottom:8px;font-size:13px;">❌ Faltando — não lidos (${invPendentes.length})</h4>
+        <div style="border:1px solid #fee2e2;border-radius:8px;overflow:hidden;">${invPendentes.map(it => rowItem(it,'#dc2626')).join('')}</div>
+    </div>`;
+    if (invExtras.length)    html += `<div style="margin-bottom:16px;">
+        <h4 style="color:#7c3aed;margin-bottom:8px;font-size:13px;">⚠️ Extras — não cadastrados (${invExtras.length})</h4>
+        <div style="border:1px solid #ede9fe;border-radius:8px;overflow:hidden;">
+            ${invExtras.map(cod => `<div style="padding:7px 12px;border-bottom:1px solid #ede9fe22;font-size:12px;font-family:monospace;color:#1e293b;">${cod}</div>`).join('')}
+        </div>
+    </div>`;
+    if (!html) html = '<div style="text-align:center;padding:24px;color:#10b981;font-size:16px;font-weight:bold;">🎉 Inventário perfeito! Tudo conferido.</div>';
+
+    document.getElementById('invResDetalhes').innerHTML = html;
+}
+
+function cancelarInventario() {
+    if (!confirm('Cancelar a contagem? O progresso será perdido.')) return;
+    invPendentes = []; invContados = []; invExtras = []; invItemEncontrado = null;
+    _invMostrarTela('inicial');
 }
 
 // ── BAD ───────────────────────────────────────────────────────────────────────
