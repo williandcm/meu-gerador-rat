@@ -5391,7 +5391,7 @@ function confirmarItemInventario() {
     document.getElementById('invResultadoScan').style.display = 'none';
     _invAtualizarContadores();
     _invRenderizarPendentes();
-    setTimeout(() => { const inp = document.getElementById('invInputCodigo'); if (inp) inp.focus(); }, 50);
+    setTimeout(() => abrirScannerInventario(), 100);
 }
 
 function ignorarItemInventario() {
