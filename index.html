@@ -183,10 +183,25 @@
         .btn-success-table:hover { background: #047857; }
 
         /* ── TABS ESTOQUE / BAD ── */
-        .estoque-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 12px; }
-        .estoque-tab { padding: 9px 22px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 700; color: #64748b; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: .15s; }
+        .estoque-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 12px; overflow-x: auto; }
+        .estoque-tab { padding: 9px 22px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 700; color: #64748b; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: .15s; white-space: nowrap; }
         .estoque-tab.ativo { color: var(--primary); border-bottom-color: var(--primary); }
         .estoque-tab-bad.ativo { color: #dc2626; border-bottom-color: #dc2626; }
+        /* ── INVENTÁRIO RESPONSIVO ── */
+        .inv-input-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .inv-input-row input { flex: 1; min-width: 180px; }
+        .inv-btn-group { display: flex; gap: 8px; }
+        .inv-pending-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .inv-pending-info { flex: 1; min-width: 0; }
+        .inv-pending-nome { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+        .inv-pending-ids  { color: #94a3b8; font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        @media (max-width: 640px) {
+            .inv-input-row input { min-width: 100%; }
+            .inv-btn-group { flex: 1; justify-content: stretch; }
+            .inv-btn-group .btn-novo { flex: 1; text-align: center; padding: 12px 8px; }
+            .inv-card-found { flex-direction: column !important; }
+            .inv-card-found .inv-card-btns { width: 100%; justify-content: flex-end; }
+        }
         .tab-somente-admin { display: none !important; }
         .bad-envio-ok { color: #16a34a; font-size: 11px; font-weight: bold; }
         /* ── MODAL VINCULAR ESTOQUE ── */
@@ -1050,17 +1065,19 @@
                     <!-- Tela de contagem ativa -->
                     <div id="invTelaContagem" style="display:none;">
                         <div style="background:#f0fdf4;border:2px solid #10b981;border-radius:10px;padding:14px;margin-bottom:14px;">
-                            <div style="display:flex;gap:8px;align-items:center;">
+                            <div class="inv-input-row">
                                 <input type="text" id="invInputCodigo"
                                        placeholder="Leia o código de barras ou digite SN / Patrimônio / EAN..."
-                                       style="flex:1;padding:12px 14px;font-size:17px;border:2px solid #10b981;border-radius:8px;outline:none;"
+                                       style="padding:12px 14px;font-size:17px;border:2px solid #10b981;border-radius:8px;outline:none;"
                                        onkeydown="if(event.key==='Enter'){event.preventDefault();processarCodigoInventario();}">
-                                <button class="btn-novo" onclick="abrirScannerInventario()" title="Abrir câmera / QR Code"
-                                        style="background:#0891b2;padding:12px 14px;font-size:18px;white-space:nowrap;">📷</button>
-                                <button class="btn-novo" onclick="processarCodigoInventario()"
-                                        style="background:#10b981;padding:12px 18px;font-size:15px;white-space:nowrap;">✔ OK</button>
-                                <button class="btn-novo" onclick="cancelarInventario()"
-                                        style="background:#64748b;padding:12px 14px;font-size:15px;white-space:nowrap;">✖ Cancelar</button>
+                                <div class="inv-btn-group">
+                                    <button class="btn-novo" onclick="abrirScannerInventario()" title="Abrir câmera / QR Code"
+                                            style="background:#0891b2;padding:12px 14px;font-size:18px;">📷</button>
+                                    <button class="btn-novo" onclick="processarCodigoInventario()"
+                                            style="background:#10b981;padding:12px 18px;font-size:15px;">✔ OK</button>
+                                    <button class="btn-novo" onclick="cancelarInventario()"
+                                            style="background:#64748b;padding:12px 14px;font-size:15px;">✖ Cancelar</button>
+                                </div>
                             </div>
                         </div>
 
@@ -5329,13 +5346,13 @@ function processarCodigoInventario() {
         ].filter(Boolean).join(' &nbsp;');
         res.style.display = '';
         res.innerHTML = `<div style="background:#f0fdf4;border:2px solid #10b981;border-radius:10px;padding:14px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-                <div>
+            <div class="inv-card-found" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <div style="min-width:0;flex:1;">
                     <div style="font-size:12px;color:#10b981;font-weight:bold;margin-bottom:4px;">✅ Encontrado no ${cat}</div>
-                    <div style="font-size:15px;font-weight:bold;color:#1e293b;">${item.descricao || item.modelo || '(sem descrição)'}</div>
-                    <div style="font-size:12px;color:#475569;margin-top:4px;">${detalhes}</div>
+                    <div style="font-size:15px;font-weight:bold;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.descricao || item.modelo || '(sem descrição)'}</div>
+                    <div style="font-size:12px;color:#475569;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${detalhes}</div>
                 </div>
-                <div style="display:flex;gap:8px;">
+                <div class="inv-card-btns" style="display:flex;gap:8px;flex-shrink:0;">
                     <button class="btn-novo" onclick="confirmarItemInventario()"
                             style="background:#10b981;padding:10px 20px;font-size:14px;">✔ Confirmar</button>
                     <button class="btn-novo" onclick="ignorarItemInventario()"
@@ -5348,14 +5365,14 @@ function processarCodigoInventario() {
         const codEsc = codigo.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
         res.style.display = '';
         res.innerHTML = `<div style="background:#fff7ed;border:2px solid #f59e0b;border-radius:10px;padding:14px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-                <div>
+            <div class="inv-card-found" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <div style="min-width:0;flex:1;">
                     <div style="font-size:12px;color:#f59e0b;font-weight:bold;margin-bottom:4px;">⚠️ Não encontrado no inventário</div>
-                    <div style="font-size:14px;color:#1e293b;font-family:monospace;">${codigo}</div>
+                    <div style="font-size:14px;color:#1e293b;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${codigo}</div>
                 </div>
-                <div style="display:flex;gap:8px;">
+                <div class="inv-card-btns" style="display:flex;gap:8px;flex-shrink:0;">
                     <button class="btn-novo" onclick="adicionarExtraInventario('${codEsc}')"
-                            style="background:#7c3aed;padding:10px 14px;font-size:13px;">+ Registrar como Extra</button>
+                            style="background:#7c3aed;padding:10px 14px;font-size:13px;">+ Extra</button>
                     <button class="btn-novo" onclick="ignorarItemInventario()"
                             style="background:#64748b;padding:10px 14px;font-size:14px;">✖</button>
                 </div>
@@ -5410,14 +5427,14 @@ function _invRenderizarPendentes() {
             ? '<span style="color:#dc2626;font-size:10px;font-weight:bold;background:#fee2e2;padding:2px 6px;border-radius:4px;margin-left:4px;">BAD</span>'
             : '';
         const ids = [it.patrimonio, it.numero_serie, it.ean, it.mac].filter(Boolean).join(' · ');
-        return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;">
-            <span style="color:#f59e0b;">⏳</span>
-            <div style="flex:1;">
-                <span style="font-weight:500;">${it.descricao || it.modelo || '(sem descrição)'}</span>${cat}
-                ${ids ? `<span style="color:#94a3b8;font-size:11px;margin-left:6px;">${ids}</span>` : ''}
+        return `<div class="inv-pending-item">
+            <span style="color:#f59e0b;flex-shrink:0;">⏳</span>
+            <div class="inv-pending-info">
+                <span class="inv-pending-nome">${it.descricao || it.modelo || '(sem descrição)'}${cat}</span>
+                ${ids ? `<span class="inv-pending-ids">${ids}</span>` : ''}
             </div>
             <button onclick="baixarItemInventarioPorId(${it.id})"
-                    style="background:#10b981;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">✔ Baixar</button>
+                    style="background:#10b981;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;">✔ Baixar</button>
         </div>`;
     }).join('');
 }
