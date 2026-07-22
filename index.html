@@ -5379,7 +5379,9 @@ function processarCodigoInventario() {
             </div>
         </div>`;
     }
-    setTimeout(() => { if (inp) inp.focus(); }, 50);
+    // Tira o foco do input para fechar o teclado no celular e rola o card para a view
+    if (inp) inp.blur();
+    setTimeout(() => { res.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 80);
 }
 
 function confirmarItemInventario() {
