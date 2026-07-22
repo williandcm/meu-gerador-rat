@@ -1052,9 +1052,11 @@
                         <div style="background:#f0fdf4;border:2px solid #10b981;border-radius:10px;padding:14px;margin-bottom:14px;">
                             <div style="display:flex;gap:8px;align-items:center;">
                                 <input type="text" id="invInputCodigo"
-                                       placeholder="Leia o código de barras ou digite SN / Patrimônio..."
+                                       placeholder="Leia o código de barras ou digite SN / Patrimônio / EAN..."
                                        style="flex:1;padding:12px 14px;font-size:17px;border:2px solid #10b981;border-radius:8px;outline:none;"
                                        onkeydown="if(event.key==='Enter'){event.preventDefault();processarCodigoInventario();}">
+                                <button class="btn-novo" onclick="abrirScannerInventario()" title="Abrir câmera / QR Code"
+                                        style="background:#0891b2;padding:12px 14px;font-size:18px;white-space:nowrap;">📷</button>
                                 <button class="btn-novo" onclick="processarCodigoInventario()"
                                         style="background:#10b981;padding:12px 18px;font-size:15px;white-space:nowrap;">✔ OK</button>
                                 <button class="btn-novo" onclick="cancelarInventario()"
@@ -5407,13 +5409,15 @@ function _invRenderizarPendentes() {
         const cat = it.categoria === 'bad'
             ? '<span style="color:#dc2626;font-size:10px;font-weight:bold;background:#fee2e2;padding:2px 6px;border-radius:4px;margin-left:4px;">BAD</span>'
             : '';
-        const ids = [it.patrimonio, it.numero_serie, it.mac].filter(Boolean).join(' · ');
+        const ids = [it.patrimonio, it.numero_serie, it.ean, it.mac].filter(Boolean).join(' · ');
         return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;">
             <span style="color:#f59e0b;">⏳</span>
             <div style="flex:1;">
                 <span style="font-weight:500;">${it.descricao || it.modelo || '(sem descrição)'}</span>${cat}
                 ${ids ? `<span style="color:#94a3b8;font-size:11px;margin-left:6px;">${ids}</span>` : ''}
             </div>
+            <button onclick="baixarItemInventarioPorId(${it.id})"
+                    style="background:#10b981;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">✔ Baixar</button>
         </div>`;
     }).join('');
 }
@@ -5448,6 +5452,20 @@ function finalizarInventario() {
     if (!html) html = '<div style="text-align:center;padding:24px;color:#10b981;font-size:16px;font-weight:bold;">🎉 Inventário perfeito! Tudo conferido.</div>';
 
     document.getElementById('invResDetalhes').innerHTML = html;
+}
+
+function baixarItemInventarioPorId(id) {
+    const idx = invPendentes.findIndex(it => it.id === id);
+    if (idx < 0) return;
+    invContados.push(invPendentes[idx]);
+    invPendentes.splice(idx, 1);
+    document.getElementById('invResultadoScan').style.display = 'none';
+    _invAtualizarContadores();
+    _invRenderizarPendentes();
+}
+
+function abrirScannerInventario() {
+    abrirScanner('invInputCodigo', 'Inventário', () => processarCodigoInventario());
 }
 
 function cancelarInventario() {
